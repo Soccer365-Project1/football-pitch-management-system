@@ -91,6 +91,10 @@ public class JwtTokenProvider {
         return claims.get("email", String.class);
     }
 
+    public String getEmailFromToken(String token) {
+        return getEmailFromJWT(token);
+    }
+
     public String getRoleFromJWT(String token) {
         Claims claims = getClaimsFromJWT(token);
         return claims.get("role", String.class);

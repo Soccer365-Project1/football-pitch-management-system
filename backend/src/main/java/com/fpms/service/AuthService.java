@@ -3,6 +3,8 @@ package com.fpms.service;
 import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.response.AuthResponse;
+import com.fpms.dto.response.UserResponse;
+import com.fpms.security.UserPrincipal;
 
 public interface AuthService {
 
@@ -20,4 +22,12 @@ public interface AuthService {
      * @return AuthResponse chứa cặp token và thông tin user
      */
     AuthResponse login(LoginRequest request);
+
+    /**
+     * Lấy thông tin tài khoản người dùng hiện tại từ phiên đăng nhập
+     *
+     * @param userPrincipal thông tin Principal của người dùng đang đăng nhập
+     * @return UserResponse chứa thông tin tài khoản (ẩn mật khẩu)
+     */
+    UserResponse getCurrentUser(UserPrincipal userPrincipal);
 }

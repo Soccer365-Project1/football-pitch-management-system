@@ -15,6 +15,7 @@ import com.fpms.mapper.UserMapper;
 import com.fpms.repository.RoleRepository;
 import com.fpms.repository.UserRepository;
 import com.fpms.security.JwtTokenProvider;
+import com.fpms.security.UserPrincipal;
 import com.fpms.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -105,5 +106,22 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType("Bearer")
                 .user(userResponse)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getCurrentUser(UserPrincipal userPrincipal) {
+        if (userPrincipal == null || userPrincipal.getId() == null) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+
+        User user = userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new AppException(ErrorCode.USER_LOCKED);
+        }
+
+        return userMapper.toUserResponse(user);
     }
 }
