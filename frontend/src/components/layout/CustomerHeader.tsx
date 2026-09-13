@@ -5,7 +5,6 @@ import { Moon, Sun, User, LogOut, Menu, X } from 'lucide-react';
 interface CustomerHeaderProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  isLoggedIn: boolean;
   handleLogout: () => void;
   showUserMenu: boolean;
   isProfilePage: boolean;
@@ -14,7 +13,6 @@ interface CustomerHeaderProps {
 const CustomerHeader: React.FC<CustomerHeaderProps> = ({
   theme,
   toggleTheme,
-  isLoggedIn,
   handleLogout,
   showUserMenu,
   isProfilePage

@@ -5,7 +5,6 @@ import CustomerFooter from '../components/layout/CustomerFooter';
 
 const CustomerLayout: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -17,11 +16,6 @@ const CustomerLayout: React.FC = () => {
   });
 
   const showUserMenu = isLoggedIn || isAuthRequiredPage;
-
-  useEffect(() => {
-    // Close mobile menu when route changes
-    setIsMobileMenuOpen(false);
-  }, [location]);
 
   useEffect(() => {
     if (isAuthRequiredPage) {
@@ -61,7 +55,6 @@ const CustomerLayout: React.FC = () => {
       <CustomerHeader
         theme={theme}
         toggleTheme={toggleTheme}
-        isLoggedIn={isLoggedIn}
         handleLogout={handleLogout}
         showUserMenu={showUserMenu}
         isProfilePage={isProfilePage}

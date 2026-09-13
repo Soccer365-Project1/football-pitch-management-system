@@ -1,5 +1,4 @@
-import React from 'react';
-import type { RouteObject } from 'react-router-dom';
+import type { RouteObject } from 'react-router';
 
 // Layouts
 import CustomerLayout from '../layouts/CustomerLayout';

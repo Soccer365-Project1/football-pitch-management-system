@@ -39,6 +39,9 @@ src/
 - **Định tuyến (Router):** Đã thiết lập xong `react-router-dom` v7+ (sử dụng `RouterProvider`) và chia tách thành công cấu hình định tuyến cho phân hệ khách hàng (`customer.routes.tsx`).
 - **Giao diện Khách hàng (Customer Portal):** Đã di chuyển và tích hợp thành công layout chung (Header, Footer) cùng với trang Chủ (Home), trang Đăng nhập (Login) và đồng bộ toàn bộ CSS/Icons.
 - **Tạo khung các trang tính năng:** Đã tạo sẵn các file page riêng biệt (`BookPitch`, `Register`, `ForgotPassword`, `Profile`, `MyBookings`, `Checkout`) và kết nối sẵn vào router, sẵn sàng để phát triển chi tiết.
+- **Giao diện Quản trị (Admin Portal):** Đã sao chép và thiết lập khung layout Admin (`AdminLayout`, `AdminSidebar`, `AdminTopbar`).
+- **Tạo khung trang Admin:** Đã tạo các trang rỗng với thẻ tiêu đề cơ bản cho các tính năng quản trị (`Dashboard`, `Timeline`, `Bookings`, `Transactions`, `Users`, `Pitches`, `TimeSlots`, `Pricing`).
+- **Định tuyến Admin:** Đã cấu hình và nhóm định tuyến cho phân hệ Quản trị (`admin.routes.tsx`) và tích hợp vào root router chính.
 
 ---
 
