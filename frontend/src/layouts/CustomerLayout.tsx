@@ -1,31 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import CustomerHeader from '../components/layout/CustomerHeader';
 import CustomerFooter from '../components/layout/CustomerFooter';
 
 const CustomerLayout: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const isProfilePage = location.pathname === '/profile';
-  const isAuthRequiredPage = location.pathname.startsWith('/checkout') || location.pathname === '/my-bookings' || location.pathname === '/profile';
-
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('isLoggedIn') === 'true' || isAuthRequiredPage;
-  });
-
-  const showUserMenu = isLoggedIn || isAuthRequiredPage;
 
   useEffect(() => {
-    if (isAuthRequiredPage) {
-      setIsLoggedIn(true);
-      localStorage.setItem('isLoggedIn', 'true');
-    }
-  }, [location.pathname, isAuthRequiredPage]);
-
-  useEffect(() => {
-    // Check local storage or system preference on mount
+    // Kiểm tra theme lưu trong localStorage hoặc theo hệ điều hành
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     if (savedTheme) {
       setTheme(savedTheme);
@@ -44,20 +26,11 @@ const CustomerLayout: React.FC = () => {
     localStorage.setItem('theme', newTheme);
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    localStorage.removeItem('isLoggedIn');
-    navigate('/login');
-  };
-
   return (
     <div className="customer-layout">
       <CustomerHeader
         theme={theme}
         toggleTheme={toggleTheme}
-        handleLogout={handleLogout}
-        showUserMenu={showUserMenu}
-        isProfilePage={isProfilePage}
       />
 
       <main className="customer-main">

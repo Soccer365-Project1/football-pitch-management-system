@@ -1,7 +1,8 @@
-import type { RouteObject } from 'react-router';
+import type { RouteObject } from 'react-router-dom';
 
-// Layouts
+// Layouts & Route Guard
 import CustomerLayout from '../layouts/CustomerLayout';
+import ProtectedRoute from '../components/common/ProtectedRoute';
 
 // Pages
 import Home from '../pages/Home';
@@ -18,6 +19,7 @@ export const customerRoutes: RouteObject[] = [
     path: '/',
     element: <CustomerLayout />,
     children: [
+      // 1. CÁC TRANG CÔNG KHAI (Mở tự do để tiện phát triển và kiểm thử)
       {
         index: true,
         element: <Home />,
@@ -25,10 +27,6 @@ export const customerRoutes: RouteObject[] = [
       {
         path: 'login',
         element: <Login />,
-      },
-      {
-        path: 'book-pitch',
-        element: <BookPitch />,
       },
       {
         path: 'register',
@@ -39,8 +37,8 @@ export const customerRoutes: RouteObject[] = [
         element: <ForgotPassword />,
       },
       {
-        path: 'profile',
-        element: <Profile />,
+        path: 'book-pitch',
+        element: <BookPitch />,
       },
       {
         path: 'my-bookings',
@@ -50,7 +48,17 @@ export const customerRoutes: RouteObject[] = [
         path: 'checkout/:timeSlotId/:pitchId',
         element: <Checkout />,
       },
+
+      // 2. CÁC TRANG YÊU CẦU ĐĂNG NHẬP (Bảo vệ bằng ProtectedRoute)
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: 'profile',
+            element: <Profile />,
+          },
+        ],
+      },
     ],
   },
 ];
-
