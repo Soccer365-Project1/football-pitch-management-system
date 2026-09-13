@@ -1,6 +1,7 @@
 package com.fpms.controller;
 
 import com.fpms.common.response.ApiResponse;
+import com.fpms.dto.request.GoogleLoginRequest;
 import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.response.AuthResponse;
@@ -42,6 +43,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse authResponse = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authResponse));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        AuthResponse authResponse = authService.loginWithGoogle(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập bằng Google thành công", authResponse));
     }
 
     @GetMapping("/me")

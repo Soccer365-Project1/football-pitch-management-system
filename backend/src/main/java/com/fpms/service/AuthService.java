@@ -1,5 +1,6 @@
 package com.fpms.service;
 
+import com.fpms.dto.request.GoogleLoginRequest;
 import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.response.AuthResponse;
@@ -22,6 +23,14 @@ public interface AuthService {
      * @return AuthResponse chứa cặp token và thông tin user
      */
     AuthResponse login(LoginRequest request);
+
+    /**
+     * Đăng nhập hệ thống bằng Google ID Token, cấp phát cặp JWT Token
+     *
+     * @param request thông tin GoogleLoginRequest chứa idToken
+     * @return AuthResponse chứa cặp token và thông tin user
+     */
+    AuthResponse loginWithGoogle(GoogleLoginRequest request);
 
     /**
      * Lấy thông tin tài khoản người dùng hiện tại từ phiên đăng nhập
