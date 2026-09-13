@@ -4,11 +4,15 @@ import com.fpms.common.response.ApiResponse;
 import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.response.AuthResponse;
+import com.fpms.dto.response.UserResponse;
+import com.fpms.security.UserPrincipal;
 import com.fpms.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,5 +42,13 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse authResponse = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authResponse));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        UserResponse userResponse = authService.getCurrentUser(userPrincipal);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin tài khoản thành công", userResponse));
     }
 }
