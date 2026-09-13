@@ -1,29 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Moon, Sun, User, LogOut, Menu, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface CustomerHeaderProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  handleLogout: () => void;
-  showUserMenu: boolean;
-  isProfilePage: boolean;
 }
 
-const CustomerHeader: React.FC<CustomerHeaderProps> = ({
-  theme,
-  toggleTheme,
-  handleLogout,
-  showUserMenu,
-  isProfilePage
-}) => {
+const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const isProfilePage = location.pathname === '/profile';
 
   useEffect(() => {
-    // Close mobile menu when route changes
+    // Đóng mobile menu khi chuyển trang
     setIsMobileMenuOpen(false);
   }, [location]);
+
+  const handleLogoutClick = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <header className="navbar">
@@ -43,7 +44,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
             
-            {showUserMenu ? (
+            {isAuthenticated ? (
               <>
                 <Link 
                   to="/profile" 
@@ -51,11 +52,11 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                   style={{ padding: '0 1rem', height: '40px', justifyContent: 'center' }}
                 >
                   <User size={18} />
-                  <span>Hồ Sơ</span>
+                  <span>{user?.fullName || 'Hồ Sơ'}</span>
                 </Link>
                 <button 
-                  onClick={handleLogout} 
-                  className="btn btn-secondary flex items-center gap-1.5 font-semibold" 
+                  onClick={handleLogoutClick} 
+                  className="btn btn-secondary flex items-center gap-1.5 font-semibold cursor-pointer" 
                   style={{ padding: '0 1rem', height: '40px', justifyContent: 'center', color: 'var(--color-danger)' }}
                   title="Đăng xuất"
                 >
@@ -98,13 +99,17 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
             <Link to="/" className="font-semibold py-2">Trang Chủ</Link>
             <Link to="/book-pitch" className="font-semibold py-2">Đặt Sân</Link>
             <Link to="/my-bookings" className="font-semibold py-2">Đơn Của Tôi</Link>
-            {showUserMenu && <Link to="/profile" className="font-semibold py-2">Hồ Sơ Của Tôi</Link>}
+            {isAuthenticated && (
+              <Link to="/profile" className="font-semibold py-2">
+                Hồ Sơ ({user?.fullName || 'Của Tôi'})
+              </Link>
+            )}
             
             <div className="pt-2 border-t flex flex-col gap-2" style={{ borderColor: 'var(--color-border)' }}>
-              {showUserMenu ? (
+              {isAuthenticated ? (
                 <button 
-                  onClick={handleLogout} 
-                  className="btn btn-secondary font-semibold w-full flex items-center justify-center gap-2"
+                  onClick={handleLogoutClick} 
+                  className="btn btn-secondary font-semibold w-full flex items-center justify-center gap-2 cursor-pointer"
                   style={{ color: 'var(--color-danger)', padding: '0.75rem' }}
                 >
                   <LogOut size={20} />
