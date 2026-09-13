@@ -33,7 +33,7 @@ export interface UserResponse {
   id: number;
   fullName: string;
   email: string;
-  phoneNumber: string;
+  phoneNumber?: string | null;
   avatarUrl?: string;
   role: 'ROLE_CUSTOMER' | 'ROLE_STAFF' | 'ROLE_ADMIN';
   status: 'ACTIVE' | 'LOCKED';

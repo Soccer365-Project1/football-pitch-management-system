@@ -7,6 +7,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest, rememberMe?: boolean) => Promise<UserResponse>;
+  loginWithGoogle: (idToken: string) => Promise<UserResponse>;
   logout: () => void;
 }
 
@@ -77,6 +78,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Xử lý Đăng nhập qua Google ID Token
+  const loginWithGoogle = async (idToken: string): Promise<UserResponse> => {
+    setIsLoading(true);
+    try {
+      const res = await authService.loginWithGoogleApi(idToken);
+      const authData = res.data;
+
+      if (!authData) {
+        throw new Error('Dữ liệu xác thực Google không hợp lệ');
+      }
+
+      // Tài khoản Google mặc định lưu lâu dài vào localStorage
+      localStorage.setItem('accessToken', authData.accessToken);
+      localStorage.setItem('refreshToken', authData.refreshToken);
+
+      setUser(authData.user);
+      return authData.user;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Xử lý Đăng xuất tập trung
   const logout = () => {
     authService.logout();
@@ -90,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGoogle,
         logout,
       }}
     >

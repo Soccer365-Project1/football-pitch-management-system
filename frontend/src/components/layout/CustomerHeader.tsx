@@ -40,8 +40,14 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
           <Link to="/my-bookings" className="font-semibold">Đơn Của Tôi</Link>
           
           <div className="flex items-center gap-4">
-            <button onClick={toggleTheme} className="btn btn-secondary" style={{ padding: '0.5rem', borderRadius: '50%' }} title="Chuyển đổi giao diện">
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            <button 
+              onClick={toggleTheme} 
+              className="btn btn-secondary" 
+              style={{ padding: '0.5rem', borderRadius: '50%' }} 
+              title="Chuyển đổi giao diện"
+              aria-label="Chuyển đổi giao diện sáng tối"
+            >
+              {theme === 'light' ? <Moon size={20} aria-hidden="true" /> : <Sun size={20} aria-hidden="true" />}
             </button>
             
             {isAuthenticated ? (
@@ -51,7 +57,17 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
                   className={`btn ${isProfilePage ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2 font-semibold`} 
                   style={{ padding: '0 1rem', height: '40px', justifyContent: 'center' }}
                 >
-                  <User size={18} />
+                  {user?.avatarUrl ? (
+                    <img 
+                      src={user.avatarUrl} 
+                      alt="" 
+                      aria-hidden="true"
+                      style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <User size={18} aria-hidden="true" />
+                  )}
                   <span>{user?.fullName || 'Hồ Sơ'}</span>
                 </Link>
                 <button 
@@ -59,8 +75,9 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
                   className="btn btn-secondary flex items-center gap-1.5 font-semibold cursor-pointer" 
                   style={{ padding: '0 1rem', height: '40px', justifyContent: 'center', color: 'var(--color-danger)' }}
                   title="Đăng xuất"
+                  aria-label="Đăng xuất"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={18} aria-hidden="true" />
                   <span>Đăng xuất</span>
                 </button>
               </>
@@ -79,15 +96,21 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-2 md:hidden">
-          <button onClick={toggleTheme} className="btn btn-secondary" style={{ padding: '0.5rem', borderRadius: '50%' }}>
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          <button 
+            onClick={toggleTheme} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.5rem', borderRadius: '50%' }}
+            aria-label="Chuyển đổi giao diện sáng tối"
+          >
+            {theme === 'light' ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
           </button>
           <button 
             className="btn btn-secondary" 
             style={{ padding: '0.5rem' }} 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? 'Đóng menu điều hướng' : 'Mở menu điều hướng'}
           >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {isMobileMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
           </button>
         </div>
       </div>

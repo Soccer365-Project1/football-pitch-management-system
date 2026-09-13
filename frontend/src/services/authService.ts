@@ -35,6 +35,15 @@ export const authService = {
   },
 
   /**
+   * Gọi API Đăng nhập bằng Google ID Token
+   * Endpoint: POST /api/v1/auth/google
+   */
+  loginWithGoogleApi: async (idToken: string): Promise<ApiResponse<AuthResponse>> => {
+    const response = await api.post<ApiResponse<AuthResponse>>('/auth/google', { idToken });
+    return response.data;
+  },
+
+  /**
    * Xóa sạch token ở Client khi người dùng đăng xuất
    * Xóa ở cả localStorage (nếu có ghi nhớ) và sessionStorage (nếu không ghi nhớ)
    */

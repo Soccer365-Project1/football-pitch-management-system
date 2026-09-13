@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+
+// Biến module-level để trỏ callback tới instance hiện tại của component Login
+let activeGoogleCallback: ((response: { credential: string }) => void) | null = null;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
 
   // 1. Quản lý trạng thái Form
   const [formData, setFormData] = useState({
@@ -84,9 +87,93 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    alert('Tính năng Đăng nhập với Google đang được phát triển và sẽ sớm ra mắt!');
-  };
+  // Khởi tạo dịch vụ Google Identity Services
+  useEffect(() => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId || googleClientId.includes('YOUR_GOOGLE_CLIENT_ID')) return;
+
+    // Cập nhật callback cho instance hiện tại của component
+    activeGoogleCallback = async (response: { credential: string }) => {
+      if (!response.credential) {
+        setServerError('Không nhận được mã xác thực từ Google');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const user = await loginWithGoogle(response.credential);
+
+        // Điều hướng thông minh sau khi đăng nhập thành công
+        const fromPath = (location.state as any)?.from?.pathname;
+        if (fromPath) {
+          navigate(fromPath, { replace: true });
+        } else if (user.role === 'ROLE_ADMIN') {
+          navigate('/admin/dashboard', { replace: true });
+        } else if (user.role === 'ROLE_STAFF') {
+          navigate('/staff/orders', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
+      } catch (err: any) {
+        const message = err.response?.data?.message || 'Đăng nhập bằng Google thất bại. Vui lòng thử lại!';
+        setServerError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const renderGoogleSignIn = () => {
+      if (!window.google?.accounts?.id) return;
+
+      // 1. Chỉ gọi initialize duy nhất 1 lần trong toàn bộ window session
+      const win = window as any;
+      if (!win.__fpms_google_initialized__) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          auto_select: false,
+          callback: (response: { credential: string }) => {
+            activeGoogleCallback?.(response);
+          },
+        });
+        win.__fpms_google_initialized__ = true;
+      }
+
+      // 2. Render nút Đăng nhập chuẩn của Google vào container của trang Login
+      const googleBtnContainer = document.getElementById('googleSignInBtnContainer');
+      if (googleBtnContainer) {
+        googleBtnContainer.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnContainer, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          width: 350,
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        });
+      }
+    };
+
+    // Nạp động Google GSI SDK khi người dùng vào trang đăng nhập
+    if (window.google?.accounts?.id) {
+      renderGoogleSignIn();
+    } else {
+      let script = document.getElementById('google-gsi-script') as HTMLScriptElement;
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'google-gsi-script';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          renderGoogleSignIn();
+        };
+        document.head.appendChild(script);
+      } else {
+        script.addEventListener('load', () => renderGoogleSignIn());
+      }
+    }
+  }, [loginWithGoogle, navigate, location.state]);
 
   return (
     <div className="flex justify-center items-start pt-4">
@@ -185,21 +272,10 @@ const Login: React.FC = () => {
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }}></div>
           </div>
           
-          {/* Nút Đăng nhập bằng Google */}
-          <button 
-            type="button" 
-            onClick={handleGoogleLogin}
-            className="btn btn-secondary flex items-center justify-center gap-2 cursor-pointer" 
-            style={{ padding: '0.75rem', width: '100%', backgroundColor: 'var(--color-bg-surface)' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Đăng nhập bằng Google
-          </button>
+          {/* Nút Đăng nhập bằng Google chuẩn từ Google SDK */}
+          <div className="flex justify-center items-center w-full my-1" style={{ minHeight: '44px' }}>
+            <div id="googleSignInBtnContainer" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}></div>
+          </div>
           
           {/* Chuyển sang Đăng ký */}
           <div className="text-center text-sm mt-4">
