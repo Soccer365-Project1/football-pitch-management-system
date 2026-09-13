@@ -1,7 +1,9 @@
 package com.fpms.controller;
 
 import com.fpms.common.response.ApiResponse;
+import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
+import com.fpms.dto.response.AuthResponse;
 import com.fpms.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,5 +32,11 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse authResponse = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authResponse));
     }
 }
