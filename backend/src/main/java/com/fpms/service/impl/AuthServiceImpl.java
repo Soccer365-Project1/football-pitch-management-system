@@ -1,10 +1,14 @@
 package com.fpms.service.impl;
 
+import com.fpms.dto.request.ForgotPasswordRequest;
 import com.fpms.dto.request.GoogleLoginRequest;
 import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
+import com.fpms.dto.request.ResetPasswordRequest;
+import com.fpms.dto.request.VerifyOtpRequest;
 import com.fpms.dto.response.AuthResponse;
 import com.fpms.dto.response.UserResponse;
+import com.fpms.entity.PasswordReset;
 import com.fpms.entity.Role;
 import com.fpms.entity.User;
 import com.fpms.entity.enums.AuthProvider;
@@ -13,18 +17,25 @@ import com.fpms.entity.enums.UserStatus;
 import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.UserMapper;
+import com.fpms.repository.PasswordResetRepository;
 import com.fpms.repository.RoleRepository;
 import com.fpms.repository.UserRepository;
 import com.fpms.security.GoogleTokenVerifier;
 import com.fpms.security.JwtTokenProvider;
 import com.fpms.security.UserPrincipal;
 import com.fpms.service.AuthService;
+import com.fpms.service.EmailService;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -33,10 +44,14 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final PasswordResetRepository passwordResetRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final EmailService emailService;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
     @Transactional
@@ -187,5 +202,121 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return userMapper.toUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+
+        // 1. Kiểm tra tài khoản người dùng
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new AppException(ErrorCode.USER_LOCKED);
+        }
+
+        // 2. Kiểm tra Cooldown 60 giây chống spam gửi mã liên tục
+        Optional<PasswordReset> latestOtp = passwordResetRepository
+                .findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email);
+
+        if (latestOtp.isPresent()) {
+            LocalDateTime cooldownUntil = latestOtp.get().getCreatedAt().plusSeconds(60);
+            if (LocalDateTime.now().isBefore(cooldownUntil)) {
+                throw new AppException(ErrorCode.OTP_COOLDOWN_ACTIVE);
+            }
+        }
+
+        // 3. Vô hiệu hóa tất cả các OTP cũ chưa sử dụng của email này
+        List<PasswordReset> oldOtps = passwordResetRepository.findByEmailAndIsUsedFalse(email);
+        for (PasswordReset old : oldOtps) {
+            old.setIsUsed(true);
+        }
+        passwordResetRepository.saveAll(oldOtps);
+
+        // 4. Sinh mã OTP 6 số ngẫu nhiên an toàn bằng SecureRandom (100000 - 999999)
+        String otpCode = String.format("%06d", secureRandom.nextInt(900000) + 100000);
+
+        // 5. Lưu bản ghi OTP mới vào CSDL (Thời hạn 10 phút)
+        PasswordReset passwordReset = PasswordReset.builder()
+                .email(email)
+                .otpCode(otpCode)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .isUsed(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        passwordResetRepository.save(passwordReset);
+
+        // 6. Gửi email bất đồng bộ qua EmailService (SendGrid hoặc Dev Console log)
+        emailService.sendOtpEmail(email, otpCode, 10);
+        log.info("Đã tạo mã OTP và gửi email đặt lại mật khẩu cho tài khoản: email={}", email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void verifyOtp(VerifyOtpRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String otpCode = request.getOtpCode().trim();
+
+        // 1. Tìm bản ghi OTP mới nhất chưa sử dụng
+        PasswordReset resetRecord = passwordResetRepository
+                .findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new AppException(ErrorCode.OTP_INVALID));
+
+        // 2. Kiểm tra hết hạn (quá 10 phút)
+        if (resetRecord.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.OTP_EXPIRED);
+        }
+
+        // 3. So khớp mã OTP
+        if (!resetRecord.getOtpCode().equals(otpCode)) {
+            throw new AppException(ErrorCode.OTP_INVALID);
+        }
+
+        log.info("Xác thực mã OTP thành công cho email: {}", email);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String otpCode = request.getOtpCode().trim();
+
+        // 1. Kiểm tra mật khẩu xác nhận
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+
+        // 2. Tìm người dùng
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new AppException(ErrorCode.USER_LOCKED);
+        }
+
+        // 3. Xác thực OTP
+        PasswordReset resetRecord = passwordResetRepository
+                .findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new AppException(ErrorCode.OTP_INVALID));
+
+        if (resetRecord.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.OTP_EXPIRED);
+        }
+
+        if (!resetRecord.getOtpCode().equals(otpCode)) {
+            throw new AppException(ErrorCode.OTP_INVALID);
+        }
+
+        // 4. Băm mật khẩu mới bằng BCrypt và cập nhật user
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // 5. Đánh dấu mã OTP đã được sử dụng
+        resetRecord.setIsUsed(true);
+        passwordResetRepository.save(resetRecord);
+
+        log.info("Đặt lại mật khẩu thành công cho tài khoản: userId={}, email={}", user.getId(), email);
     }
 }
