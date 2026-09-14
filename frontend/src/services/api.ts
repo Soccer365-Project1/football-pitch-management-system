@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { showToast } from '../utils/toast';
 
 /**
  * Lấy Base URL từ biến môi trường Vite (.env) hoặc fallback về cổng 8080 mặc định
@@ -58,6 +59,10 @@ api.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
+    } else {
+      // Global error handling with SweetAlert2
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Có lỗi xảy ra, vui lòng thử lại!';
+      showToast(errorMessage, 'error');
     }
     return Promise.reject(error);
   }

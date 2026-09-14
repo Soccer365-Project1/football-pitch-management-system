@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Moon, Sun, User, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { showConfirm, showToast } from '../../utils/toast';
 
 interface CustomerHeaderProps {
   theme: 'light' | 'dark';
@@ -21,9 +22,18 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  const handleLogoutClick = () => {
-    logout();
-    navigate('/login');
+  const handleLogoutClick = async () => {
+    const isConfirmed = await showConfirm(
+      'Xác nhận đăng xuất',
+      'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?',
+      'Đăng xuất'
+    );
+    
+    if (isConfirmed) {
+      logout();
+      showToast('Đăng xuất thành công!', 'success');
+      navigate('/login');
+    }
   };
 
   return (
