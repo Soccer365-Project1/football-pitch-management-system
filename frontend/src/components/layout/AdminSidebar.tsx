@@ -1,6 +1,8 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, CreditCard, Settings, Users, LogOut, BarChart3, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { showConfirm, showToast } from '../../utils/toast';
 
 interface AdminSidebarProps {
   sidebarOpen: boolean;
@@ -9,6 +11,22 @@ interface AdminSidebarProps {
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogoutClick = async () => {
+    const isConfirmed = await showConfirm(
+      'Xác nhận đăng xuất',
+      'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?',
+      'Đăng xuất'
+    );
+    
+    if (isConfirmed) {
+      logout();
+      showToast('Đăng xuất thành công!', 'success');
+      navigate('/login');
+    }
+  };
 
   const menuItems = [
     { path: '/admin', icon: <BarChart3 size={20} />, label: 'Thống kê' },
@@ -64,9 +82,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
         </nav>
 
         <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
-          <Link to="/" className="btn w-full" style={{ justifyContent: 'flex-start', color: 'var(--color-danger)', padding: '0.875rem 1rem', fontSize: '1rem' }}>
+          <button onClick={handleLogoutClick} className="btn w-full cursor-pointer" style={{ justifyContent: 'flex-start', color: 'var(--color-danger)', padding: '0.875rem 1rem', fontSize: '1rem' }}>
             <LogOut size={20} /> Đăng xuất
-          </Link>
+          </button>
         </div>
       </aside>
     </>

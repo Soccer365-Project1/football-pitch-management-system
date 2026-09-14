@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { showToast } from '../utils/toast';
 
 // Biến module-level để trỏ callback tới instance hiện tại của component Login
 let activeGoogleCallback: ((response: { credential: string }) => void) | null = null;
@@ -66,6 +67,8 @@ const Login: React.FC = () => {
         password: formData.password,
       }, formData.rememberMe);
 
+      showToast('Đăng nhập thành công!', 'success');
+
       // Điều hướng thông minh sau khi đăng nhập thành công
       const fromPath = (location.state as any)?.from?.pathname;
       if (fromPath) {
@@ -102,6 +105,8 @@ const Login: React.FC = () => {
       setIsLoading(true);
       try {
         const user = await loginWithGoogle(response.credential);
+
+        showToast('Đăng nhập thành công!', 'success');
 
         // Điều hướng thông minh sau khi đăng nhập thành công
         const fromPath = (location.state as any)?.from?.pathname;
