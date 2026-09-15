@@ -51,4 +51,37 @@ export interface AuthResponse {
   user: UserResponse;
 }
 
+// ==========================================
+// 3. TÍNH NĂNG QUÊN & ĐẶT LẠI MẬT KHẨU (ST-02)
+// ==========================================
+
+/**
+ * Dữ liệu gửi lên khi yêu cầu cấp OTP quên mật khẩu
+ * Tương ứng với ForgotPasswordRequest.java
+ */
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+/**
+ * Dữ liệu gửi lên khi xác thực mã OTP
+ * Tương ứng với VerifyOtpRequest.java
+ */
+export interface VerifyOtpRequest {
+  email: string;
+  otpCode: string;
+}
+
+/**
+ * Dữ liệu gửi lên khi đặt lại mật khẩu mới
+ * Tương ứng với ResetPasswordRequest.java
+ */
+export interface ResetPasswordRequest {
+  email: string;
+  otpCode: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export type { ApiResponse };
+

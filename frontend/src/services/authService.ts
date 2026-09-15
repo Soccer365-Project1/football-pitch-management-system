@@ -1,5 +1,14 @@
 import api from './api';
-import type { ApiResponse, RegisterRequest, LoginRequest, AuthResponse, UserResponse } from '../types/auth';
+import type { 
+  ApiResponse, 
+  RegisterRequest, 
+  LoginRequest, 
+  AuthResponse, 
+  UserResponse,
+  ForgotPasswordRequest,
+  VerifyOtpRequest,
+  ResetPasswordRequest 
+} from '../types/auth';
 
 /**
  * Tầng Dịch vụ Xác thực (Auth Service)
@@ -44,6 +53,33 @@ export const authService = {
   },
 
   /**
+   * Gọi API yêu cầu cấp mã OTP qua Email
+   * Endpoint: POST /api/v1/auth/forgot-password
+   */
+  forgotPasswordApi: async (data: ForgotPasswordRequest): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/auth/forgot-password', data);
+    return response.data;
+  },
+
+  /**
+   * Gọi API xác thực mã OTP
+   * Endpoint: POST /api/v1/auth/verify-otp
+   */
+  verifyOtpApi: async (data: VerifyOtpRequest): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/auth/verify-otp', data);
+    return response.data;
+  },
+
+  /**
+   * Gọi API đặt lại mật khẩu mới
+   * Endpoint: POST /api/v1/auth/reset-password
+   */
+  resetPasswordApi: async (data: ResetPasswordRequest): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/auth/reset-password', data);
+    return response.data;
+  },
+
+  /**
    * Xóa sạch token ở Client khi người dùng đăng xuất
    * Xóa ở cả localStorage (nếu có ghi nhớ) và sessionStorage (nếu không ghi nhớ)
    */
@@ -54,3 +90,4 @@ export const authService = {
     sessionStorage.removeItem('refreshToken');
   },
 };
+
