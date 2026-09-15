@@ -1,9 +1,12 @@
 package com.fpms.controller;
 
 import com.fpms.common.response.ApiResponse;
+import com.fpms.dto.request.ForgotPasswordRequest;
 import com.fpms.dto.request.GoogleLoginRequest;
 import com.fpms.dto.request.LoginRequest;
 import com.fpms.dto.request.RegisterRequest;
+import com.fpms.dto.request.ResetPasswordRequest;
+import com.fpms.dto.request.VerifyOtpRequest;
 import com.fpms.dto.response.AuthResponse;
 import com.fpms.dto.response.UserResponse;
 import com.fpms.security.UserPrincipal;
@@ -57,5 +60,23 @@ public class AuthController {
     ) {
         UserResponse userResponse = authService.getCurrentUser(userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin tài khoản thành công", userResponse));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Mã xác thực OTP đã được gửi tới email của bạn", null));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        authService.verifyOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP hợp lệ", null));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới", null));
     }
 }

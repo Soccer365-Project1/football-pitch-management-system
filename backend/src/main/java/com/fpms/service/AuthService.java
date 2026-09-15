@@ -1,8 +1,6 @@
 package com.fpms.service;
 
-import com.fpms.dto.request.GoogleLoginRequest;
-import com.fpms.dto.request.LoginRequest;
-import com.fpms.dto.request.RegisterRequest;
+import com.fpms.dto.request.*;
 import com.fpms.dto.response.AuthResponse;
 import com.fpms.dto.response.UserResponse;
 import com.fpms.security.UserPrincipal;
@@ -39,4 +37,25 @@ public interface AuthService {
      * @return UserResponse chứa thông tin tài khoản (ẩn mật khẩu)
      */
     UserResponse getCurrentUser(UserPrincipal userPrincipal);
+
+    /**
+     * Tiếp nhận yêu cầu quên mật khẩu, sinh mã OTP 6 số và gửi qua email
+     *
+     * @param request thông tin email người dùng
+     */
+    void forgotPassword(ForgotPasswordRequest request);
+
+    /**
+     * Xác thực tính hợp lệ của mã OTP trước khi cho phép thiết lập mật khẩu mới
+     *
+     * @param request thông tin email và mã OTP
+     */
+    void verifyOtp(VerifyOtpRequest request);
+
+    /**
+     * Đặt lại mật khẩu mới sau khi xác thực OTP thành công
+     *
+     * @param request thông tin email, mã OTP, mật khẩu mới và xác nhận mật khẩu
+     */
+    void resetPassword(ResetPasswordRequest request);
 }

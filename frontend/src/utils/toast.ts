@@ -1,4 +1,4 @@
-import Swal, { SweetAlertIcon } from 'sweetalert2';
+import Swal, { type SweetAlertIcon } from 'sweetalert2';
 
 // Toast configuration (small notification at the top-end)
 const Toast = Swal.mixin({
