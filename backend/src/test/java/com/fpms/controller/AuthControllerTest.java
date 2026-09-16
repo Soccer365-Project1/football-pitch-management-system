@@ -1,7 +1,10 @@
 package com.fpms.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fpms.dto.request.ForgotPasswordRequest;
 import com.fpms.dto.request.RegisterRequest;
+import com.fpms.dto.request.ResetPasswordRequest;
+import com.fpms.dto.request.VerifyOtpRequest;
 import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.exception.GlobalExceptionHandler;
@@ -287,6 +290,248 @@ class AuthControllerTest {
         } finally {
             org.springframework.security.core.context.SecurityContextHolder.clearContext();
         }
+    }
+
+    // ================= Test Cases Cho Subtask ST-02 Endpoints =================
+
+    // --- POST /api/v1/auth/forgot-password ---
+
+    @Test
+    @DisplayName("TC-01: POST /api/v1/auth/forgot-password - Yêu cầu gửi OTP thành công trả về 200 OK")
+    void forgotPassword_Success() throws Exception {
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .build();
+
+        doNothing().when(authService).forgotPassword(any(ForgotPasswordRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("Mã xác thực OTP đã được gửi tới email của bạn"));
+
+        verify(authService, times(1)).forgotPassword(any(ForgotPasswordRequest.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/forgot-password - Email sai định dạng trả về 400 Bad Request")
+    void forgotPassword_InvalidEmail_ReturnsBadRequest() throws Exception {
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                .email("invalid-email-format")
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400));
+
+        verify(authService, never()).forgotPassword(any());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/forgot-password - Bỏ trống email trả về 400 Bad Request")
+    void forgotPassword_BlankEmail_ReturnsBadRequest() throws Exception {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400));
+
+        verify(authService, never()).forgotPassword(any());
+    }
+
+    @Test
+    @DisplayName("TC-02: POST /api/v1/auth/forgot-password - Email không tồn tại trả về 404 Not Found")
+    void forgotPassword_UserNotFound_ReturnsNotFound() throws Exception {
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                .email("unknown@gmail.com")
+                .build();
+
+        doThrow(new AppException(ErrorCode.USER_NOT_FOUND))
+                .when(authService).forgotPassword(any(ForgotPasswordRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(2006))
+                .andExpect(jsonPath("$.message").value(ErrorCode.USER_NOT_FOUND.getMessage()));
+    }
+
+    @Test
+    @DisplayName("TC-04: POST /api/v1/auth/forgot-password - Spam yêu cầu trong 60s trả về 429 Too Many Requests")
+    void forgotPassword_CooldownActive_ReturnsTooManyRequests() throws Exception {
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .build();
+
+        doThrow(new AppException(ErrorCode.OTP_COOLDOWN_ACTIVE))
+                .when(authService).forgotPassword(any(ForgotPasswordRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(2014))
+                .andExpect(jsonPath("$.message").value(ErrorCode.OTP_COOLDOWN_ACTIVE.getMessage()));
+    }
+
+    // --- POST /api/v1/auth/verify-otp ---
+
+    @Test
+    @DisplayName("TC-05: POST /api/v1/auth/verify-otp - Xác thực OTP thành công trả về 200 OK")
+    void verifyOtp_Success() throws Exception {
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("849201")
+                .build();
+
+        doNothing().when(authService).verifyOtp(any(VerifyOtpRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("Mã OTP hợp lệ"));
+
+        verify(authService, times(1)).verifyOtp(any(VerifyOtpRequest.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/verify-otp - Mã OTP không đủ 6 số trả về 400 Bad Request")
+    void verifyOtp_InvalidOtpPattern_ReturnsBadRequest() throws Exception {
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("123") // Không đúng 6 chữ số
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400));
+
+        verify(authService, never()).verifyOtp(any());
+    }
+
+    @Test
+    @DisplayName("TC-06: POST /api/v1/auth/verify-otp - Sai mã OTP trả về 400 Bad Request và code 2011")
+    void verifyOtp_WrongOtp_ReturnsBadRequest() throws Exception {
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("000000")
+                .build();
+
+        doThrow(new AppException(ErrorCode.OTP_INVALID))
+                .when(authService).verifyOtp(any(VerifyOtpRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(2011))
+                .andExpect(jsonPath("$.message").value(ErrorCode.OTP_INVALID.getMessage()));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/verify-otp - OTP đã hết hạn trả về 400 Bad Request và code 2012")
+    void verifyOtp_ExpiredOtp_ReturnsBadRequest() throws Exception {
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("849201")
+                .build();
+
+        doThrow(new AppException(ErrorCode.OTP_EXPIRED))
+                .when(authService).verifyOtp(any(VerifyOtpRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(2012))
+                .andExpect(jsonPath("$.message").value(ErrorCode.OTP_EXPIRED.getMessage()));
+    }
+
+    // --- POST /api/v1/auth/reset-password ---
+
+    @Test
+    @DisplayName("TC-07: POST /api/v1/auth/reset-password - Đổi mật khẩu thành công trả về 200 OK")
+    void resetPassword_Success() throws Exception {
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        doNothing().when(authService).resetPassword(any(ResetPasswordRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới"));
+
+        verify(authService, times(1)).resetPassword(any(ResetPasswordRequest.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/reset-password - Mật khẩu mới dưới 6 ký tự trả về 400 Bad Request")
+    void resetPassword_ShortPassword_ReturnsBadRequest() throws Exception {
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("849201")
+                .newPassword("12345") // < 6 ký tự
+                .confirmPassword("12345")
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400));
+
+        verify(authService, never()).resetPassword(any());
+    }
+
+    @Test
+    @DisplayName("TC-08: POST /api/v1/auth/reset-password - Mật khẩu xác nhận không khớp trả về 400 và code 2007")
+    void resetPassword_PasswordConfirmNotMatch_ReturnsBadRequest() throws Exception {
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("differentPassword")
+                .build();
+
+        doThrow(new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH))
+                .when(authService).resetPassword(any(ResetPasswordRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(2007))
+                .andExpect(jsonPath("$.message").value(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH.getMessage()));
     }
 }
 

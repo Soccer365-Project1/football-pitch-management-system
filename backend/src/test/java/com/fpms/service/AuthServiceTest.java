@@ -23,6 +23,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.fpms.dto.request.ForgotPasswordRequest;
+import com.fpms.dto.request.ResetPasswordRequest;
+import com.fpms.dto.request.VerifyOtpRequest;
+import com.fpms.entity.PasswordReset;
+import com.fpms.repository.PasswordResetRepository;
+import com.fpms.security.GoogleTokenVerifier;
+import com.fpms.service.EmailService;
+
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,6 +50,9 @@ class AuthServiceTest {
     private RoleRepository roleRepository;
 
     @Mock
+    private PasswordResetRepository passwordResetRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -46,6 +60,12 @@ class AuthServiceTest {
 
     @Mock
     private com.fpms.security.JwtTokenProvider jwtTokenProvider;
+
+    @Mock
+    private GoogleTokenVerifier googleTokenVerifier;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -356,6 +376,436 @@ class AuthServiceTest {
         AppException exception = assertThrows(AppException.class, () -> authService.getCurrentUser(null));
 
         assertEquals(ErrorCode.INVALID_TOKEN, exception.getErrorCode());
+    }
+
+    // ================= Test Cases Cho Subtask ST-02 (Quên & Đặt Lại Mật Khẩu) =================
+
+    // --- forgotPassword ---
+
+    @Test
+    @DisplayName("TC-01: Yêu cầu cấp OTP thành công khi email tồn tại và không bị spam")
+    void forgotPassword_Success() {
+        String email = "nguyenvana@gmail.com";
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder().email(email).build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.empty());
+        when(passwordResetRepository.findByEmailAndIsUsedFalse(email))
+                .thenReturn(Collections.emptyList());
+
+        authService.forgotPassword(request);
+
+        ArgumentCaptor<PasswordReset> resetCaptor = ArgumentCaptor.forClass(PasswordReset.class);
+        verify(passwordResetRepository, times(1)).save(resetCaptor.capture());
+        PasswordReset savedReset = resetCaptor.getValue();
+        assertEquals(email, savedReset.getEmail());
+        assertNotNull(savedReset.getOtpCode());
+        assertEquals(6, savedReset.getOtpCode().length());
+        assertFalse(savedReset.getIsUsed());
+        assertNotNull(savedReset.getExpiresAt());
+
+        verify(emailService, times(1)).sendOtpEmail(eq(email), eq(savedReset.getOtpCode()), eq(10));
+    }
+
+    @Test
+    @DisplayName("TC-02: Ném USER_NOT_FOUND khi yêu cầu OTP với email không tồn tại")
+    void forgotPassword_UserNotFound_ThrowsException() {
+        String email = "unknown@gmail.com";
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder().email(email).build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> authService.forgotPassword(request));
+
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+        verify(emailService, never()).sendOtpEmail(any(), any(), anyInt());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-03: Ném USER_LOCKED khi yêu cầu OTP cho tài khoản bị khóa")
+    void forgotPassword_UserLocked_ThrowsException() {
+        String email = "locked@gmail.com";
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder().email(email).build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.LOCKED)
+                .build();
+        user.setId(1L);
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.forgotPassword(request));
+
+        assertEquals(ErrorCode.USER_LOCKED, exception.getErrorCode());
+        verify(emailService, never()).sendOtpEmail(any(), any(), anyInt());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-04: Ném OTP_COOLDOWN_ACTIVE khi gửi yêu cầu liên tục trong vòng 60 giây")
+    void forgotPassword_CooldownActive_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder().email(email).build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        PasswordReset recentReset = PasswordReset.builder()
+                .id(10L)
+                .email(email)
+                .otpCode("123456")
+                .createdAt(LocalDateTime.now().minusSeconds(30))
+                .isUsed(false)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(recentReset));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.forgotPassword(request));
+
+        assertEquals(ErrorCode.OTP_COOLDOWN_ACTIVE, exception.getErrorCode());
+        verify(emailService, never()).sendOtpEmail(any(), any(), anyInt());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Vô hiệu hóa toàn bộ OTP cũ khi sinh mã OTP mới")
+    void forgotPassword_InvalidatesOldOtps() {
+        String email = "nguyenvana@gmail.com";
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder().email(email).build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        PasswordReset oldReset1 = PasswordReset.builder().id(1L).email(email).isUsed(false).createdAt(LocalDateTime.now().minusMinutes(5)).build();
+        PasswordReset oldReset2 = PasswordReset.builder().id(2L).email(email).isUsed(false).createdAt(LocalDateTime.now().minusMinutes(3)).build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(PasswordReset.builder().id(2L).email(email).isUsed(false).createdAt(LocalDateTime.now().minusSeconds(65)).build()));
+        when(passwordResetRepository.findByEmailAndIsUsedFalse(email))
+                .thenReturn(List.of(oldReset1, oldReset2));
+
+        authService.forgotPassword(request);
+
+        assertTrue(oldReset1.getIsUsed());
+        assertTrue(oldReset2.getIsUsed());
+        verify(passwordResetRepository, times(1)).saveAll(anyList());
+        verify(passwordResetRepository, times(1)).save(any(PasswordReset.class));
+        verify(emailService, times(1)).sendOtpEmail(eq(email), anyString(), eq(10));
+    }
+
+    // --- verifyOtp ---
+
+    @Test
+    @DisplayName("TC-05: Xác thực OTP thành công với mã hợp lệ và còn hạn")
+    void verifyOtp_Success() {
+        String email = "nguyenvana@gmail.com";
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .build();
+
+        PasswordReset validRecord = PasswordReset.builder()
+                .id(1L)
+                .email(email)
+                .otpCode("849201")
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .isUsed(false)
+                .build();
+
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(validRecord));
+
+        assertDoesNotThrow(() -> authService.verifyOtp(request));
+    }
+
+    @Test
+    @DisplayName("Ném OTP_INVALID khi không tìm thấy bản ghi OTP chưa sử dụng")
+    void verifyOtp_NotFound_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .build();
+
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> authService.verifyOtp(request));
+
+        assertEquals(ErrorCode.OTP_INVALID, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Ném OTP_EXPIRED khi mã OTP đã hết hạn 10 phút")
+    void verifyOtp_Expired_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .build();
+
+        PasswordReset expiredRecord = PasswordReset.builder()
+                .id(1L)
+                .email(email)
+                .otpCode("849201")
+                .expiresAt(LocalDateTime.now().minusSeconds(10))
+                .isUsed(false)
+                .build();
+
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(expiredRecord));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.verifyOtp(request));
+
+        assertEquals(ErrorCode.OTP_EXPIRED, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("TC-06: Ném OTP_INVALID khi nhập sai mã OTP")
+    void verifyOtp_WrongOtp_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email(email)
+                .otpCode("000000")
+                .build();
+
+        PasswordReset record = PasswordReset.builder()
+                .id(1L)
+                .email(email)
+                .otpCode("849201")
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .isUsed(false)
+                .build();
+
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(record));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.verifyOtp(request));
+
+        assertEquals(ErrorCode.OTP_INVALID, exception.getErrorCode());
+    }
+
+    // --- resetPassword ---
+
+    @Test
+    @DisplayName("TC-07: Đặt lại mật khẩu thành công và đánh dấu OTP đã sử dụng")
+    void resetPassword_Success() {
+        String email = "nguyenvana@gmail.com";
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        User user = User.builder()
+                .email(email)
+                .passwordHash("oldHashedPassword")
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        PasswordReset resetRecord = PasswordReset.builder()
+                .id(1L)
+                .email(email)
+                .otpCode("849201")
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .isUsed(false)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(resetRecord));
+        when(passwordEncoder.encode("newPassword123")).thenReturn("$2a$10$newHashedPassword");
+
+        authService.resetPassword(request);
+
+        assertEquals("$2a$10$newHashedPassword", user.getPasswordHash());
+        verify(userRepository, times(1)).save(user);
+
+        assertTrue(resetRecord.getIsUsed());
+        verify(passwordResetRepository, times(1)).save(resetRecord);
+    }
+
+    @Test
+    @DisplayName("TC-08: Ném PASSWORD_CONFIRM_NOT_MATCH khi mật khẩu xác nhận không khớp")
+    void resetPassword_PasswordConfirmNotMatch_ThrowsException() {
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email("nguyenvana@gmail.com")
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("differentPassword")
+                .build();
+
+        AppException exception = assertThrows(AppException.class, () -> authService.resetPassword(request));
+
+        assertEquals(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Ném USER_NOT_FOUND khi đặt lại mật khẩu cho email không tồn tại")
+    void resetPassword_UserNotFound_ThrowsException() {
+        String email = "unknown@gmail.com";
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> authService.resetPassword(request));
+
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Ném USER_LOCKED khi đặt lại mật khẩu cho tài khoản bị khóa")
+    void resetPassword_UserLocked_ThrowsException() {
+        String email = "locked@gmail.com";
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.LOCKED)
+                .build();
+        user.setId(1L);
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.resetPassword(request));
+
+        assertEquals(ErrorCode.USER_LOCKED, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-09: Ném OTP_INVALID khi OTP không tồn tại hoặc đã bị sử dụng")
+    void resetPassword_OtpNotFoundOrUsed_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> authService.resetPassword(request));
+
+        assertEquals(ErrorCode.OTP_INVALID, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Ném OTP_EXPIRED khi mã OTP đã hết hạn tại bước reset password")
+    void resetPassword_OtpExpired_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email(email)
+                .otpCode("849201")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        PasswordReset expiredRecord = PasswordReset.builder()
+                .id(1L)
+                .email(email)
+                .otpCode("849201")
+                .expiresAt(LocalDateTime.now().minusMinutes(1))
+                .isUsed(false)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(expiredRecord));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.resetPassword(request));
+
+        assertEquals(ErrorCode.OTP_EXPIRED, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+        verify(passwordResetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Ném OTP_INVALID khi mã OTP không khớp tại bước reset password")
+    void resetPassword_WrongOtp_ThrowsException() {
+        String email = "nguyenvana@gmail.com";
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email(email)
+                .otpCode("999999")
+                .newPassword("newPassword123")
+                .confirmPassword("newPassword123")
+                .build();
+
+        User user = User.builder()
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .build();
+        user.setId(1L);
+
+        PasswordReset record = PasswordReset.builder()
+                .id(1L)
+                .email(email)
+                .otpCode("849201")
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .isUsed(false)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordResetRepository.findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(record));
+
+        AppException exception = assertThrows(AppException.class, () -> authService.resetPassword(request));
+
+        assertEquals(ErrorCode.OTP_INVALID, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+        verify(passwordResetRepository, never()).save(any());
     }
 }
 
