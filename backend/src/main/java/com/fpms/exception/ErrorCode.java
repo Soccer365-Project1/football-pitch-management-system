@@ -24,7 +24,12 @@ public enum ErrorCode {
     PASSWORD_CONFIRM_NOT_MATCH(2007, HttpStatus.BAD_REQUEST, "Mật khẩu xác nhận không trùng khớp"),
     ROLE_NOT_FOUND(2008, HttpStatus.INTERNAL_SERVER_ERROR, "Không tìm thấy vai trò người dùng mặc định"),
     UNAUTHORIZED(2009, HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện chức năng này"),
-    INVALID_TOKEN(2010, HttpStatus.UNAUTHORIZED, "Mã xác thực không hợp lệ hoặc đã hết hạn");
+    INVALID_TOKEN(2010, HttpStatus.UNAUTHORIZED, "Mã xác thực không hợp lệ hoặc đã hết hạn"),
+    OTP_INVALID(2011, HttpStatus.BAD_REQUEST, "Mã xác thực OTP không chính xác"),
+    OTP_EXPIRED(2012, HttpStatus.BAD_REQUEST, "Mã xác thực OTP đã hết hạn. Vui lòng yêu cầu gửi lại mã mới"),
+    OTP_ALREADY_USED(2013, HttpStatus.BAD_REQUEST, "Mã xác thực OTP này đã được sử dụng"),
+    OTP_COOLDOWN_ACTIVE(2014, HttpStatus.TOO_MANY_REQUESTS, "Vui lòng chờ 60 giây trước khi yêu cầu gửi lại mã OTP mới"),
+    EMAIL_SEND_FAILED(2015, HttpStatus.INTERNAL_SERVER_ERROR, "Không thể gửi email xác thực, vui lòng thử lại sau");
 
 
     private final int code;

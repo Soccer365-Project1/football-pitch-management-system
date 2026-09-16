@@ -74,7 +74,7 @@ const Login: React.FC = () => {
       if (fromPath) {
         navigate(fromPath, { replace: true });
       } else if (user.role === 'ROLE_ADMIN') {
-        navigate('/admin/dashboard', { replace: true });
+        navigate('/admin', { replace: true });
       } else if (user.role === 'ROLE_STAFF') {
         navigate('/staff/orders', { replace: true });
       } else {
@@ -113,7 +113,7 @@ const Login: React.FC = () => {
         if (fromPath) {
           navigate(fromPath, { replace: true });
         } else if (user.role === 'ROLE_ADMIN') {
-          navigate('/admin/dashboard', { replace: true });
+          navigate('/admin', { replace: true });
         } else if (user.role === 'ROLE_STAFF') {
           navigate('/staff/orders', { replace: true });
         } else {
