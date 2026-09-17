@@ -1,14 +1,376 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Save, User, Loader2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { userService } from '../services/userService';
+import { showToast } from '../utils/toast';
+
+interface ProfileErrors {
+  fullName?: string;
+  phoneNumber?: string;
+  general?: string;
+}
+
+interface PasswordErrors {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  general?: string;
+}
 
 const Profile: React.FC = () => {
+  const { user, updateUser } = useAuth();
+
+  // Contact Info state
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
+
+  // Change Password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
+
+  useEffect(() => {
+    if (user) {
+      setFullName(user.fullName || '');
+      setPhoneNumber(user.phoneNumber || '');
+    }
+  }, [user]);
+
+  // Xử lý Cập nhật thông tin cá nhân
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors: ProfileErrors = {};
+
+    if (!fullName.trim()) {
+      errors.fullName = 'Vui lòng nhập họ và tên';
+    }
+
+    if (!phoneNumber.trim()) {
+      errors.phoneNumber = 'Vui lòng nhập số điện thoại';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setProfileErrors(errors);
+      return;
+    }
+
+    setProfileErrors({});
+    setProfileLoading(true);
+    try {
+      const res = await userService.updateMyProfileApi({
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber.trim(),
+      });
+
+      if (res.data) {
+        updateUser(res.data);
+        showToast('Cập nhật thông tin thành công!', 'success');
+      }
+    } catch (err: any) {
+      const code = err.response?.data?.code;
+      const message = err.response?.data?.message || 'Cập nhật thông tin thất bại. Vui lòng thử lại!';
+      if (code === 2002 || message.toLowerCase().includes('số điện thoại') || message.toLowerCase().includes('phone')) {
+        setProfileErrors({ phoneNumber: 'Số điện thoại đã được sử dụng bởi tài khoản khác' });
+      } else {
+        setProfileErrors({ general: message });
+      }
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Xử lý Đổi mật khẩu
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors: PasswordErrors = {};
+
+    if (!currentPassword) {
+      errors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
+    }
+
+    if (!newPassword) {
+      errors.newPassword = 'Vui lòng nhập mật khẩu mới';
+    } else if (newPassword.length < 6) {
+      errors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    }
+
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới';
+    } else if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+      errors.confirmPassword = 'Mật khẩu xác nhận không khớp với mật khẩu mới';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPasswordErrors(errors);
+      return;
+    }
+
+    setPasswordErrors({});
+    setPasswordLoading(true);
+    try {
+      await userService.changePasswordApi({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      showToast('Đổi mật khẩu thành công!', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      const code = err.response?.data?.code;
+      const message = err.response?.data?.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại!';
+      if (code === 2016 || message.toLowerCase().includes('hiện tại') || message.toLowerCase().includes('current password')) {
+        setPasswordErrors({ currentPassword: 'Mật khẩu hiện tại không chính xác' });
+      } else if (code === 2007 || message.toLowerCase().includes('khớp') || message.toLowerCase().includes('confirm')) {
+        setPasswordErrors({ confirmPassword: 'Mật khẩu xác nhận không khớp' });
+      } else {
+        setPasswordErrors({ general: message });
+      }
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-16 text-center animate-fade-in">
-      <h1 className="text-3xl font-bold mb-4">Hồ sơ cá nhân</h1>
-      <p className="text-muted text-lg mb-8">Tính năng của trang Hồ sơ cá nhân đang phát triển...</p>
-      <Link to="/" className="btn btn-primary inline-flex items-center">
-        Quay lại trang chủ
-      </Link>
+    <div className="max-w-[1400px] mx-auto px-4 flex flex-col gap-6 pb-12">
+      {/* Header Card với Background Gradient và Unsplash Image */}
+      <div 
+        className="shadow-lg relative overflow-hidden"
+        style={{ 
+          borderRadius: '1rem',
+          background: "linear-gradient(135deg, rgba(5,150,105,0.9) 0%, rgba(16,185,129,0.85) 50%, rgba(6,182,212,0.9) 100%), url('https://images.unsplash.com/photo-1518605368461-1ee7e53f0b2f?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat",
+          color: 'white',
+          padding: '3rem 2rem',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <h1 className="text-4xl font-bold mb-3 flex items-center justify-center gap-3 text-white">
+          <User size={36} />
+          <span>Hồ sơ cá nhân</span>
+        </h1>
+        <p className="text-lg" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+          Quản lý thông tin và cài đặt bảo mật của bạn.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Contact Info Card */}
+        <div className="card h-full flex flex-col">
+          <h2 className="text-xl font-semibold mb-6 pb-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            Thông tin liên hệ
+          </h2>
+
+          <form onSubmit={handleUpdateProfile} className="flex flex-col gap-4 h-full">
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="font-semibold text-sm">Họ và tên</label>
+                <input 
+                  type="text" 
+                  value={fullName}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (profileErrors.fullName) setProfileErrors(prev => ({ ...prev, fullName: undefined }));
+                  }}
+                  className="mt-2 w-full outline-none" 
+                  style={{ 
+                    padding: '0.75rem', 
+                    borderRadius: 'var(--radius-md)', 
+                    border: profileErrors.fullName ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                    backgroundColor: 'var(--color-bg-base)', 
+                    color: 'var(--color-text-base)' 
+                  }} 
+                />
+                {profileErrors.fullName && (
+                  <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{profileErrors.fullName}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="font-semibold text-sm">Số điện thoại</label>
+                <input 
+                  type="text" 
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value);
+                    if (profileErrors.phoneNumber) setProfileErrors(prev => ({ ...prev, phoneNumber: undefined }));
+                  }}
+                  className="mt-2 w-full outline-none" 
+                  style={{ 
+                    padding: '0.75rem', 
+                    borderRadius: 'var(--radius-md)', 
+                    border: profileErrors.phoneNumber ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                    backgroundColor: 'var(--color-bg-base)', 
+                    color: 'var(--color-text-base)' 
+                  }} 
+                />
+                {profileErrors.phoneNumber && (
+                  <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{profileErrors.phoneNumber}</p>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex items-center gap-2">
+                <label className="font-semibold text-sm">Email</label>
+                <span className="text-xs text-muted font-normal">(Không thể thay đổi sau khi đăng ký)</span>
+              </div>
+              <input 
+                type="email" 
+                value={user?.email || ''} 
+                className="mt-2 w-full" 
+                style={{ 
+                  padding: '0.75rem', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)',
+                  opacity: 0.7,
+                  cursor: 'not-allowed'
+                }} 
+                disabled 
+              />
+            </div>
+
+            {profileErrors.general && (
+              <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{profileErrors.general}</p>
+            )}
+            
+            <div className="mt-auto pt-4 flex justify-end">
+              <button 
+                type="submit" 
+                disabled={profileLoading}
+                className="btn btn-primary cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2" 
+                style={{ padding: '0.6rem 1.5rem' }}
+              >
+                {profileLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    <span>Lưu thông tin</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+        
+        {/* Change Password Card */}
+        <div className="card h-full flex flex-col">
+          <h2 className="text-xl font-semibold mb-6 pb-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            Đổi mật khẩu
+          </h2>
+
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-4 h-full">
+            <div>
+              <label className="font-semibold text-sm">Mật khẩu hiện tại</label>
+              <input 
+                type="password" 
+                value={currentPassword}
+                onChange={(e) => {
+                  setCurrentPassword(e.target.value);
+                  if (passwordErrors.currentPassword) setPasswordErrors(prev => ({ ...prev, currentPassword: undefined }));
+                }}
+                placeholder="••••••••"
+                className="mt-2 w-full block outline-none" 
+                style={{ 
+                  padding: '0.75rem', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: passwordErrors.currentPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)' 
+                }} 
+              />
+              {passwordErrors.currentPassword && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.currentPassword}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="font-semibold text-sm">Mật khẩu mới</label>
+              <input 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  if (passwordErrors.newPassword) setPasswordErrors(prev => ({ ...prev, newPassword: undefined }));
+                }}
+                placeholder="••••••••"
+                className="mt-2 w-full block outline-none" 
+                style={{ 
+                  padding: '0.75rem', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: passwordErrors.newPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)' 
+                }} 
+              />
+              {passwordErrors.newPassword && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.newPassword}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="font-semibold text-sm">Xác nhận mật khẩu mới</label>
+              <input 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (passwordErrors.confirmPassword) setPasswordErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                }}
+                placeholder="••••••••"
+                className="mt-2 w-full block outline-none" 
+                style={{ 
+                  padding: '0.75rem', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: passwordErrors.confirmPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)' 
+                }} 
+              />
+              {passwordErrors.confirmPassword && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.confirmPassword}</p>
+              )}
+            </div>
+
+            {passwordErrors.general && (
+              <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.general}</p>
+            )}
+            
+            <div className="mt-auto pt-4 flex justify-end">
+              <button 
+                type="submit" 
+                disabled={passwordLoading}
+                className="btn btn-secondary cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2" 
+                style={{ padding: '0.6rem 1.5rem' }}
+              >
+                {passwordLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Đang cập nhật...</span>
+                  </>
+                ) : (
+                  <span>Cập nhật mật khẩu</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

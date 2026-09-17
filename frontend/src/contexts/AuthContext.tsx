@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (data: LoginRequest, rememberMe?: boolean) => Promise<UserResponse>;
   loginWithGoogle: (idToken: string) => Promise<UserResponse>;
   logout: () => void;
+  updateUser: (updatedUser: UserResponse) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +44,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth();
   }, []);
+
+  // Cập nhật thông tin User trong Context
+  const updateUser = (updatedUser: UserResponse) => {
+    setUser(updatedUser);
+  };
 
   // Xử lý Đăng nhập tập trung có hỗ trợ "Ghi nhớ" (rememberMe)
   const login = async (data: LoginRequest, rememberMe: boolean = false): Promise<UserResponse> => {
@@ -115,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         loginWithGoogle,
         logout,
+        updateUser,
       }}
     >
       {children}
