@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, User, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
-import { showToast } from '../utils/toast';
+import { showToast, showConfirm } from '../utils/toast';
 
 interface ProfileErrors {
   fullName?: string;
@@ -44,13 +44,18 @@ const Profile: React.FC = () => {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: ProfileErrors = {};
+    const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
 
     if (!fullName.trim()) {
       errors.fullName = 'Vui lòng nhập họ và tên';
+    } else if (fullName.trim().length < 2) {
+      errors.fullName = 'Họ và tên phải có ít nhất 2 ký tự';
     }
 
     if (!phoneNumber.trim()) {
       errors.phoneNumber = 'Vui lòng nhập số điện thoại';
+    } else if (!phoneRegex.test(phoneNumber.trim())) {
+      errors.phoneNumber = 'Số điện thoại không hợp lệ (gồm 10 chữ số, VD: 0987654321)';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -59,6 +64,15 @@ const Profile: React.FC = () => {
     }
 
     setProfileErrors({});
+
+    // Hiển thị hộp thoại xác nhận trước khi cập nhật
+    const isConfirmed = await showConfirm(
+      'Xác nhận cập nhật',
+      'Bạn có chắc chắn muốn thay đổi thông tin cá nhân không?',
+      'Lưu thông tin'
+    );
+    if (!isConfirmed) return;
+
     setProfileLoading(true);
     try {
       const res = await userService.updateMyProfileApi({
@@ -110,6 +124,15 @@ const Profile: React.FC = () => {
     }
 
     setPasswordErrors({});
+
+    // Hiển thị hộp thoại xác nhận trước khi đổi mật khẩu
+    const isConfirmed = await showConfirm(
+      'Xác nhận đổi mật khẩu',
+      'Bạn có chắc chắn muốn cập nhật mật khẩu mới không?',
+      'Đổi mật khẩu'
+    );
+    if (!isConfirmed) return;
+
     setPasswordLoading(true);
     try {
       await userService.changePasswordApi({
