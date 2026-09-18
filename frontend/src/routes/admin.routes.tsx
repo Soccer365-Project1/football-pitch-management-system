@@ -8,6 +8,7 @@ import AdminUsers from '../pages/admin/AdminUsers';
 import AdminPitches from '../pages/admin/AdminPitches';
 import AdminTimeSlots from '../pages/admin/AdminTimeSlots';
 import AdminPricing from '../pages/admin/AdminPricing';
+import AdminProfile from '../pages/admin/AdminProfile';
 
 export const adminRoutes: RouteObject[] = [
   {
@@ -45,6 +46,10 @@ export const adminRoutes: RouteObject[] = [
       {
         path: 'pricing',
         element: <AdminPricing />
+      },
+      {
+        path: 'profile',
+        element: <AdminProfile />
       }
     ]
   }
