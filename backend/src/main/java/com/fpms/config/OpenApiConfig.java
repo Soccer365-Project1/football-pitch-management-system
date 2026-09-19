@@ -31,10 +31,14 @@ public class OpenApiConfig {
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
-                .servers(List.of(
-                        new Server().url("http://localhost:8080").description("Máy chủ phát triển nội bộ (Local Dev Server)")
-                ))
-                .components(new Components()
+               .servers(List.of(
+        new Server()
+                .url("http://localhost:8080")
+                .description("Local Dev Server"),
+        new Server()
+                .url("https://football-pitch-backend-mvp.onrender.com")
+                .description("Production Server (Render)")
+))                .components(new Components()
                         .addSecuritySchemes(SECURITY_SCHEME_NAME, new SecurityScheme()
                                 .name(SECURITY_SCHEME_NAME)
                                 .type(SecurityScheme.Type.HTTP)
