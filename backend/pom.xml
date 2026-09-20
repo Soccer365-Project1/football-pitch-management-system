@@ -53,6 +53,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
+		<!-- Spring Data Redis Starter (Redis Token Blacklist / Cache) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
 		<!-- SpringDoc OpenAPI 3 / Swagger UI -->
 		<dependency>
 			<groupId>org.springdoc</groupId>

@@ -7,7 +7,8 @@ import type {
   UserResponse,
   ForgotPasswordRequest,
   VerifyOtpRequest,
-  ResetPasswordRequest 
+  ResetPasswordRequest,
+  LogoutRequest
 } from '../types/auth';
 
 /**
@@ -80,14 +81,24 @@ export const authService = {
   },
 
   /**
-   * Xóa sạch token ở Client khi người dùng đăng xuất
-   * Xóa ở cả localStorage (nếu có ghi nhớ) và sessionStorage (nếu không ghi nhớ)
+   * Đăng xuất: Gửi LogoutRequest chứa token để Backend thu hồi vào Redis Blacklist,
+   * sau đó xóa sạch token ở Client (cả localStorage và sessionStorage).
    */
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
+  logout: async (): Promise<void> => {
+    try {
+      const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      if (token) {
+        const payload: LogoutRequest = { token };
+        await api.post<ApiResponse<void>>('/auth/logout', payload);
+      }
+    } catch (error) {
+      console.warn('Lỗi khi gọi API logout:', error);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+    }
   },
 };
 

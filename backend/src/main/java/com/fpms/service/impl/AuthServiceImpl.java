@@ -3,6 +3,7 @@ package com.fpms.service.impl;
 import com.fpms.dto.request.ForgotPasswordRequest;
 import com.fpms.dto.request.GoogleLoginRequest;
 import com.fpms.dto.request.LoginRequest;
+import com.fpms.dto.request.LogoutRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.request.ResetPasswordRequest;
 import com.fpms.dto.request.VerifyOtpRequest;
@@ -26,6 +27,8 @@ import com.fpms.security.UserPrincipal;
 import com.fpms.service.AuthService;
 import com.fpms.service.EmailService;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import org.springframework.util.StringUtils;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -318,5 +321,17 @@ public class AuthServiceImpl implements AuthService {
         passwordResetRepository.save(resetRecord);
 
         log.info("Đặt lại mật khẩu thành công cho tài khoản: userId={}, email={}", user.getId(), email);
+    }
+
+    @Override
+    public void logout(LogoutRequest request) {
+        if (request != null && StringUtils.hasText(request.getToken())) {
+            String jwt = request.getToken().trim();
+            if (jwt.startsWith("Bearer ")) {
+                jwt = jwt.substring(7);
+            }
+            jwtTokenProvider.blacklistToken(jwt);
+            log.info("Đăng xuất thành công, đã thu hồi JWT token vào Redis blacklist");
+        }
     }
 }

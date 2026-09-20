@@ -83,5 +83,13 @@ export interface ResetPasswordRequest {
   confirmPassword: string;
 }
 
+/**
+ * Dữ liệu gửi lên khi Đăng xuất để thu hồi token vào Redis blacklist
+ * Tương ứng với LogoutRequest.java
+ */
+export interface LogoutRequest {
+  token: string;
+}
+
 export type { ApiResponse };
 
