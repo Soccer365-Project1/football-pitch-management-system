@@ -44,7 +44,7 @@ const Profile: React.FC = () => {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: ProfileErrors = {};
-    const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
+    const phoneRegex = /^(0[35789])[0-9]{8}$/;
 
     if (!fullName.trim()) {
       errors.fullName = 'Vui lòng nhập họ và tên';
@@ -55,7 +55,7 @@ const Profile: React.FC = () => {
     if (!phoneNumber.trim()) {
       errors.phoneNumber = 'Vui lòng nhập số điện thoại';
     } else if (!phoneRegex.test(phoneNumber.trim())) {
-      errors.phoneNumber = 'Số điện thoại không hợp lệ (gồm 10 chữ số, VD: 0987654321)';
+      errors.phoneNumber = 'Số điện thoại không hợp lệ (phải gồm 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09)';
     }
 
     if (Object.keys(errors).length > 0) {
