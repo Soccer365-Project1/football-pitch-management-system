@@ -4,6 +4,7 @@ import com.fpms.common.response.ApiResponse;
 import com.fpms.dto.request.ForgotPasswordRequest;
 import com.fpms.dto.request.GoogleLoginRequest;
 import com.fpms.dto.request.LoginRequest;
+import com.fpms.dto.request.LogoutRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.request.ResetPasswordRequest;
 import com.fpms.dto.request.VerifyOtpRequest;
@@ -89,5 +90,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới", null));
+    }
+
+    @Operation(summary = "Đăng xuất tài khoản", description = "Thu hồi JWT token hiện tại và lưu vào Redis blacklist", security = @SecurityRequirement(name = "BearerAuth"))
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công", null));
     }
 }

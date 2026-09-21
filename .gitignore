@@ -10,6 +10,7 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.env*
 
 # Docker
 docker-compose.override.yml
@@ -23,5 +24,6 @@ docker-compose.override.yml
 .Trashes
 ehthumbs.db
 Thumbs.db
-.vercel
-.env*
+
+# Vercel
+.vercel/

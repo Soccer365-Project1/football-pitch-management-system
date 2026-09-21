@@ -92,7 +92,11 @@ const Login: React.FC = () => {
 
   // Khởi tạo dịch vụ Google Identity Services
   useEffect(() => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    // Fallback Client ID mặc định đồng bộ với cấu hình Backend nếu không có file .env khi deploy
+    const googleClientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      '1032558823852-is8rsjbfg1ckpntdajo7emphtpnstha0.apps.googleusercontent.com';
+
     if (!googleClientId || googleClientId.includes('YOUR_GOOGLE_CLIENT_ID')) return;
 
     // Cập nhật callback cho instance hiện tại của component
@@ -151,7 +155,7 @@ const Login: React.FC = () => {
           type: 'standard',
           theme: 'outline',
           size: 'large',
-          width: 350,
+          width: 380,
           text: 'signin_with',
           shape: 'rectangular',
           logo_alignment: 'left',
@@ -277,9 +281,42 @@ const Login: React.FC = () => {
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }}></div>
           </div>
           
-          {/* Nút Đăng nhập bằng Google chuẩn từ Google SDK */}
-          <div className="flex justify-center items-center w-full my-1" style={{ minHeight: '44px' }}>
-            <div id="googleSignInBtnContainer" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}></div>
+          {/* Nút Đăng nhập bằng Google: Custom Button UI nhúng logo đa sắc kết hợp lớp phủ Google GSI */}
+          <div className="relative w-full flex justify-center items-center my-1" style={{ minHeight: '44px' }}>
+            {/* 1. Nút Custom UI chuẩn giao diện dự án (Luôn hiển thị 100%, không bao giờ mất layout) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.google?.accounts?.id) {
+                  window.google.accounts.id.prompt();
+                } else {
+                  showToast('Đang kết nối tới dịch vụ Google, vui lòng thử lại sau giây lát...', 'info');
+                }
+              }}
+              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border rounded-lg font-medium text-sm transition-all shadow-sm cursor-pointer hover:bg-gray-50"
+              style={{
+                backgroundColor: '#ffffff',
+                borderColor: 'var(--color-border, #e5e7eb)',
+                color: '#374151',
+                height: '44px',
+              }}
+            >
+              {/* Google SVG Logo đa sắc */}
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.27a7.22 7.22 0 0 1 0-4.54V6.58H1.25a11.98 11.98 0 0 0 0 10.84l4.03-3.15z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+              </svg>
+              <span className="font-semibold text-sm">Đăng nhập bằng Google</span>
+            </button>
+
+            {/* 2. Lớp phủ iframe Google GSI (Ẩn trong suốt, phủ lên trên để bắt sự kiện click an toàn) */}
+            <div
+              id="googleSignInBtnContainer"
+              className="absolute inset-0 flex justify-center items-center overflow-hidden cursor-pointer"
+              style={{ opacity: 0.0001 }}
+            ></div>
           </div>
           
           {/* Chuyển sang Đăng ký */}

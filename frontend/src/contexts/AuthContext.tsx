@@ -8,7 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (data: LoginRequest, rememberMe?: boolean) => Promise<UserResponse>;
   loginWithGoogle: (idToken: string) => Promise<UserResponse>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (updatedUser: UserResponse) => void;
 }
 
@@ -107,8 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Xử lý Đăng xuất tập trung
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
   };
 

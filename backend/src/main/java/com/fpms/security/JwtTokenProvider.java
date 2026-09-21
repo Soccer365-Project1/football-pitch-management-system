@@ -8,17 +8,25 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecurityException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JwtTokenProvider {
+
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -100,12 +108,54 @@ public class JwtTokenProvider {
         return claims.get("role", String.class);
     }
 
+    public Date getExpirationFromJWT(String token) {
+        return getClaimsFromJWT(token).getExpiration();
+    }
+
+    public long getRemainingExpirationMs(String token) {
+        Date expiration = getExpirationFromJWT(token);
+        long diff = expiration.getTime() - System.currentTimeMillis();
+        return Math.max(0, diff);
+    }
+
+    public void blacklistToken(String token) {
+        try {
+            long remainingMs = getRemainingExpirationMs(token);
+            if (remainingMs > 0) {
+                redisTemplate.opsForValue().set(
+                        BLACKLIST_PREFIX + token,
+                        "blacklisted",
+                        remainingMs,
+                        TimeUnit.MILLISECONDS
+                );
+                log.info("Đã đưa token vào Redis blacklist với TTL = {} ms", remainingMs);
+            }
+        } catch (Exception ex) {
+            log.error("Lỗi khi lưu token vào Redis blacklist: {}", ex.getMessage());
+        }
+    }
+
+    public boolean isBlacklisted(String token) {
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
+        } catch (Exception ex) {
+            log.error("Lỗi khi kiểm tra Redis blacklist: {}", ex.getMessage());
+            return false;
+        }
+    }
+
     public boolean validateToken(String authToken) {
         try {
             Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
                     .parseSignedClaims(authToken);
+
+            if (isBlacklisted(authToken)) {
+                log.warn("Mã xác thực JWT đã bị thu hồi (người dùng đã đăng xuất)");
+                return false;
+            }
+
             return true;
         } catch (SecurityException | MalformedJwtException ex) {
             log.error("Chữ ký JWT không hợp lệ: {}", ex.getMessage());

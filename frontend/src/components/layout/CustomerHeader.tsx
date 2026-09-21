@@ -30,7 +30,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
     );
     
     if (isConfirmed) {
-      logout();
+      await logout();
       showToast('Đăng xuất thành công!', 'success');
       navigate('/login');
     }
