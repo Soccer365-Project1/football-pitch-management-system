@@ -2,6 +2,7 @@ package com.fpms.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fpms.dto.request.ForgotPasswordRequest;
+import com.fpms.dto.request.LogoutRequest;
 import com.fpms.dto.request.RegisterRequest;
 import com.fpms.dto.request.ResetPasswordRequest;
 import com.fpms.dto.request.VerifyOtpRequest;
@@ -532,6 +533,41 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value(2007))
                 .andExpect(jsonPath("$.message").value(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH.getMessage()));
+    }
+
+    @Test
+    @DisplayName("TC-09: POST /api/v1/auth/logout - Đăng xuất thành công trả về 200 OK")
+    void logout_Success_ReturnsOk() throws Exception {
+        LogoutRequest request = LogoutRequest.builder()
+                .token("mockJwtToken")
+                .build();
+
+        doNothing().when(authService).logout(any(LogoutRequest.class));
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Đăng xuất thành công"));
+
+        verify(authService, times(1)).logout(any(LogoutRequest.class));
+    }
+
+    @Test
+    @DisplayName("TC-10: POST /api/v1/auth/logout - Thất bại do token rỗng trả về 400 Bad Request")
+    void logout_BlankToken_ReturnsBadRequest() throws Exception {
+        LogoutRequest request = LogoutRequest.builder()
+                .token("")
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(authService, never()).logout(any(LogoutRequest.class));
     }
 }
 

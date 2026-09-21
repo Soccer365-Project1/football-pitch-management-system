@@ -55,8 +55,8 @@ const Register: React.FC = () => {
 
     if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Số điện thoại không được để trống';
-    } else if (!/^0\d{9}$/.test(formData.phoneNumber.trim())) {
-      newErrors.phoneNumber = 'Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0';
+    } else if (!/^(0[35789])[0-9]{8}$/.test(formData.phoneNumber.trim())) {
+      newErrors.phoneNumber = 'Số điện thoại không hợp lệ (phải gồm 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09)';
     }
 
     if (!formData.email.trim()) {

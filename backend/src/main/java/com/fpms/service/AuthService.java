@@ -58,4 +58,11 @@ public interface AuthService {
      * @param request thông tin email, mã OTP, mật khẩu mới và xác nhận mật khẩu
      */
     void resetPassword(ResetPasswordRequest request);
+
+    /**
+     * Đăng xuất tài khoản người dùng và thu hồi JWT token vào Redis blacklist
+     *
+     * @param request thông tin LogoutRequest chứa token cần thu hồi
+     */
+    void logout(LogoutRequest request);
 }

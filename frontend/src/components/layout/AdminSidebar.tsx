@@ -22,7 +22,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
     );
     
     if (isConfirmed) {
-      logout();
+      await logout();
       showToast('Đăng xuất thành công!', 'success');
       navigate('/login');
     }
