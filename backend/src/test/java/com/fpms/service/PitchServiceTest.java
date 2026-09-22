@@ -17,7 +17,6 @@ import com.fpms.repository.PitchTypeRepository;
 import com.fpms.service.impl.PitchServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,7 +33,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -108,309 +107,288 @@ class PitchServiceTest {
                 .build();
     }
 
-    @Nested
-    @DisplayName("Tests cho getPitches")
-    class GetPitchesTests {
+    // ================= 1. Test Cases Cho getPitches (Phân trang & Lọc) =================
 
-        @Test
-        @DisplayName("Lấy danh sách sân bóng thành công với phân trang")
-        void getPitches_Success() {
-            Page<Pitch> page = new PageImpl<>(List.of(pitch1));
-            when(pitchRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
-            when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+    @Test
+    @DisplayName("UT-01: Lấy danh sách sân bóng thành công với phân trang")
+    void getPitches_Success() {
+        Page<Pitch> page = new PageImpl<>(List.of(pitch1));
+        when(pitchRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
 
-            PageResponse<PitchResponse> result = pitchService.getPitches("5A", 1L, PitchStatus.ACTIVE, 1, 10);
+        PageResponse<PitchResponse> result = pitchService.getPitches("5A", 1L, PitchStatus.ACTIVE, 1, 10);
 
-            assertNotNull(result);
-            assertEquals(1, result.getTotalElements());
-            assertEquals(1, result.getItems().size());
-            assertEquals("Sân 5A", result.getItems().get(0).getName());
-            verify(pitchRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
-        }
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getItems().size());
+        assertEquals("Sân 5A", result.getItems().get(0).getName());
+        verify(pitchRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     }
 
-    @Nested
-    @DisplayName("Tests cho getPitchById")
-    class GetPitchByIdTests {
+    // ================= 2. Test Cases Cho getAllPitchTypes =================
 
-        @Test
-        @DisplayName("Tìm thấy sân bóng theo ID")
-        void getPitchById_Success() {
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
-            when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+    @Test
+    @DisplayName("UT-02: Lấy danh sách các loại sân bóng thành công")
+    void getAllPitchTypes_Success() {
+        when(pitchTypeRepository.findAllByIsDeletedFalse()).thenReturn(List.of(pitchType5, pitchType7));
+        when(pitchTypeMapper.toPitchTypeResponseList(anyList())).thenReturn(List.of(pitchTypeResponse5));
 
-            PitchResponse result = pitchService.getPitchById(10L);
+        List<PitchTypeResponse> result = pitchService.getAllPitchTypes();
 
-            assertNotNull(result);
-            assertEquals(10L, result.getId());
-            assertEquals("Sân 5A", result.getName());
-            verify(pitchRepository, times(1)).findByIdAndIsDeletedFalse(10L);
-        }
-
-        @Test
-        @DisplayName("Bắn ngoại lệ PITCH_NOT_FOUND khi ID không tồn tại")
-        void getPitchById_NotFound_ThrowsException() {
-            when(pitchRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
-
-            AppException ex = assertThrows(AppException.class, () -> pitchService.getPitchById(99L));
-
-            assertEquals(ErrorCode.PITCH_NOT_FOUND, ex.getErrorCode());
-            verify(pitchRepository, times(1)).findByIdAndIsDeletedFalse(99L);
-        }
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(pitchTypeRepository, times(1)).findAllByIsDeletedFalse();
     }
 
-    @Nested
-    @DisplayName("Tests cho createPitch (UC015.1)")
-    class CreatePitchTests {
+    // ================= 3. Test Cases Cho getPitchById =================
 
-        @Test
-        @DisplayName("Thêm mới sân bóng thành công với trạng thái mặc định ACTIVE")
-        void createPitch_Success() {
-            PitchRequest request = PitchRequest.builder()
-                    .name("Sân 5B")
-                    .pitchTypeId(1L)
-                    .description("Sân mới hoàn thành")
-                    .build();
+    @Test
+    @DisplayName("UT-03: Tìm thấy sân bóng theo ID hợp lệ")
+    void getPitchById_Success() {
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
 
-            Pitch newPitch = Pitch.builder()
-                    .name("Sân 5B")
-                    .pitchType(pitchType5)
-                    .status(PitchStatus.ACTIVE)
-                    .description("Sân mới hoàn thành")
-                    .build();
+        PitchResponse result = pitchService.getPitchById(10L);
 
-            Pitch savedPitch = Pitch.builder()
-                    .name("Sân 5B")
-                    .pitchType(pitchType5)
-                    .status(PitchStatus.ACTIVE)
-                    .description("Sân mới hoàn thành")
-                    .build();
-            savedPitch.setId(11L);
-
-            PitchResponse response = PitchResponse.builder()
-                    .id(11L)
-                    .name("Sân 5B")
-                    .pitchType(pitchTypeResponse5)
-                    .status(PitchStatus.ACTIVE)
-                    .build();
-
-            when(pitchRepository.existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5B")).thenReturn(false);
-            when(pitchTypeRepository.findByIdAndIsDeletedFalse(1L)).thenReturn(Optional.of(pitchType5));
-            when(pitchMapper.toPitch(request)).thenReturn(newPitch);
-            when(pitchRepository.save(any(Pitch.class))).thenReturn(savedPitch);
-            when(pitchMapper.toPitchResponse(savedPitch)).thenReturn(response);
-
-            PitchResponse result = pitchService.createPitch(request);
-
-            assertNotNull(result);
-            assertEquals(11L, result.getId());
-            assertEquals("Sân 5B", result.getName());
-            assertEquals(PitchStatus.ACTIVE, result.getStatus());
-            verify(pitchRepository, times(1)).existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5B");
-            verify(pitchTypeRepository, times(1)).findByIdAndIsDeletedFalse(1L);
-            verify(pitchRepository, times(1)).save(any(Pitch.class));
-        }
-
-        @Test
-        @DisplayName("Bắn ngoại lệ PITCH_NAME_ALREADY_EXISTS khi tên sân đã tồn tại")
-        void createPitch_DuplicateName_ThrowsException() {
-            PitchRequest request = PitchRequest.builder()
-                    .name("Sân 5A")
-                    .pitchTypeId(1L)
-                    .build();
-
-            when(pitchRepository.existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5A")).thenReturn(true);
-
-            AppException ex = assertThrows(AppException.class, () -> pitchService.createPitch(request));
-
-            assertEquals(ErrorCode.PITCH_NAME_ALREADY_EXISTS, ex.getErrorCode());
-            verify(pitchRepository, times(1)).existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5A");
-            verify(pitchRepository, never()).save(any(Pitch.class));
-        }
-
-        @Test
-        @DisplayName("Bắn ngoại lệ PITCH_TYPE_NOT_FOUND khi loại sân không tồn tại")
-        void createPitch_PitchTypeNotFound_ThrowsException() {
-            PitchRequest request = PitchRequest.builder()
-                    .name("Sân Mới")
-                    .pitchTypeId(99L)
-                    .build();
-
-            when(pitchRepository.existsByNameIgnoreCaseAndIsDeletedFalse("Sân Mới")).thenReturn(false);
-            when(pitchTypeRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
-
-            AppException ex = assertThrows(AppException.class, () -> pitchService.createPitch(request));
-
-            assertEquals(ErrorCode.PITCH_TYPE_NOT_FOUND, ex.getErrorCode());
-            verify(pitchTypeRepository, times(1)).findByIdAndIsDeletedFalse(99L);
-            verify(pitchRepository, never()).save(any(Pitch.class));
-        }
+        assertNotNull(result);
+        assertEquals(10L, result.getId());
+        assertEquals("Sân 5A", result.getName());
+        verify(pitchRepository, times(1)).findByIdAndIsDeletedFalse(10L);
     }
 
-    @Nested
-    @DisplayName("Tests cho updatePitch (UC015.2)")
-    class UpdatePitchTests {
+    @Test
+    @DisplayName("UT-04: Bắn ngoại lệ PITCH_NOT_FOUND khi ID không tồn tại")
+    void getPitchById_NotFound_ThrowsException() {
+        when(pitchRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
 
-        @Test
-        @DisplayName("Cập nhật thông tin sân bóng thành công")
-        void updatePitch_Success() {
-            PitchRequest request = PitchRequest.builder()
-                    .name("Sân 5A VIP")
-                    .pitchTypeId(1L)
-                    .description("Nâng cấp cỏ nhân tạo")
-                    .build();
+        AppException ex = assertThrows(AppException.class, () -> pitchService.getPitchById(99L));
 
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
-            when(pitchRepository.existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5A VIP", 10L)).thenReturn(false);
-            when(pitchRepository.save(pitch1)).thenReturn(pitch1);
-            when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
-
-            PitchResponse result = pitchService.updatePitch(10L, request);
-
-            assertNotNull(result);
-            verify(pitchRepository, times(1)).findByIdAndIsDeletedFalse(10L);
-            verify(pitchRepository, times(1)).existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5A VIP", 10L);
-            verify(pitchRepository, times(1)).save(pitch1);
-        }
-
-        @Test
-        @DisplayName("Cập nhật loại sân thành công khi đổi từ sân 5 sang sân 7")
-        void updatePitch_ChangePitchType_Success() {
-            PitchRequest request = PitchRequest.builder()
-                    .name("Sân 5A")
-                    .pitchTypeId(2L)
-                    .build();
-
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
-            when(pitchRepository.existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5A", 10L)).thenReturn(false);
-            when(pitchTypeRepository.findByIdAndIsDeletedFalse(2L)).thenReturn(Optional.of(pitchType7));
-            when(pitchRepository.save(pitch1)).thenReturn(pitch1);
-            when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
-
-            PitchResponse result = pitchService.updatePitch(10L, request);
-
-            assertNotNull(result);
-            assertEquals(pitchType7, pitch1.getPitchType());
-            verify(pitchTypeRepository, times(1)).findByIdAndIsDeletedFalse(2L);
-        }
-
-        @Test
-        @DisplayName("Bắn ngoại lệ PITCH_NAME_ALREADY_EXISTS khi đổi tên trùng với sân khác")
-        void updatePitch_DuplicateName_ThrowsException() {
-            PitchRequest request = PitchRequest.builder()
-                    .name("Sân 5B")
-                    .pitchTypeId(1L)
-                    .build();
-
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
-            when(pitchRepository.existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5B", 10L)).thenReturn(true);
-
-            AppException ex = assertThrows(AppException.class, () -> pitchService.updatePitch(10L, request));
-
-            assertEquals(ErrorCode.PITCH_NAME_ALREADY_EXISTS, ex.getErrorCode());
-            verify(pitchRepository, never()).save(any(Pitch.class));
-        }
+        assertEquals(ErrorCode.PITCH_NOT_FOUND, ex.getErrorCode());
+        verify(pitchRepository, times(1)).findByIdAndIsDeletedFalse(99L);
     }
 
-    @Nested
-    @DisplayName("Tests cho updatePitchStatus (UC015.3)")
-    class UpdatePitchStatusTests {
+    // ================= 4. Test Cases Cho createPitch (UC015.1) =================
 
-        @Test
-        @DisplayName("Chuyển trạng thái sân từ ACTIVE sang MAINTENANCE (Bảo trì)")
-        void updatePitchStatus_ToMaintenance_Success() {
-            UpdatePitchStatusRequest request = UpdatePitchStatusRequest.builder()
-                    .status(PitchStatus.MAINTENANCE)
-                    .build();
+    @Test
+    @DisplayName("UT-05: Thêm mới sân bóng thành công với trạng thái mặc định ACTIVE")
+    void createPitch_Success() {
+        PitchRequest request = PitchRequest.builder()
+                .name("Sân 5B")
+                .pitchTypeId(1L)
+                .description("Sân mới hoàn thành")
+                .build();
 
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
-            when(pitchRepository.save(pitch1)).thenReturn(pitch1);
+        Pitch newPitch = Pitch.builder()
+                .name("Sân 5B")
+                .pitchType(pitchType5)
+                .status(PitchStatus.ACTIVE)
+                .description("Sân mới hoàn thành")
+                .build();
 
-            pitchResponse1.setStatus(PitchStatus.MAINTENANCE);
-            when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+        Pitch savedPitch = Pitch.builder()
+                .name("Sân 5B")
+                .pitchType(pitchType5)
+                .status(PitchStatus.ACTIVE)
+                .description("Sân mới hoàn thành")
+                .build();
+        savedPitch.setId(11L);
 
-            PitchResponse result = pitchService.updatePitchStatus(10L, request);
+        PitchResponse response = PitchResponse.builder()
+                .id(11L)
+                .name("Sân 5B")
+                .pitchType(pitchTypeResponse5)
+                .status(PitchStatus.ACTIVE)
+                .build();
 
-            assertNotNull(result);
-            assertEquals(PitchStatus.MAINTENANCE, pitch1.getStatus());
-            verify(pitchRepository, times(1)).save(pitch1);
-        }
+        when(pitchRepository.existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5B")).thenReturn(false);
+        when(pitchTypeRepository.findByIdAndIsDeletedFalse(1L)).thenReturn(Optional.of(pitchType5));
+        when(pitchMapper.toPitch(request)).thenReturn(newPitch);
+        when(pitchRepository.save(any(Pitch.class))).thenReturn(savedPitch);
+        when(pitchMapper.toPitchResponse(savedPitch)).thenReturn(response);
 
-        @Test
-        @DisplayName("Chuyển trạng thái sân từ MAINTENANCE sang ACTIVE (Hoạt động)")
-        void updatePitchStatus_ToActive_Success() {
-            pitch1.setStatus(PitchStatus.MAINTENANCE);
-            UpdatePitchStatusRequest request = UpdatePitchStatusRequest.builder()
-                    .status(PitchStatus.ACTIVE)
-                    .build();
+        PitchResponse result = pitchService.createPitch(request);
 
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
-            when(pitchRepository.save(pitch1)).thenReturn(pitch1);
-
-            pitchResponse1.setStatus(PitchStatus.ACTIVE);
-            when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
-
-            PitchResponse result = pitchService.updatePitchStatus(10L, request);
-
-            assertNotNull(result);
-            assertEquals(PitchStatus.ACTIVE, pitch1.getStatus());
-            verify(pitchRepository, times(1)).save(pitch1);
-        }
-
-        @Test
-        @DisplayName("Bắn ngoại lệ PITCH_STATUS_INVALID khi status truyền vào là null")
-        void updatePitchStatus_NullStatus_ThrowsException() {
-            UpdatePitchStatusRequest request = new UpdatePitchStatusRequest();
-
-            AppException ex = assertThrows(AppException.class, () -> pitchService.updatePitchStatus(10L, request));
-
-            assertEquals(ErrorCode.PITCH_STATUS_INVALID, ex.getErrorCode());
-            verify(pitchRepository, never()).save(any(Pitch.class));
-        }
+        assertNotNull(result);
+        assertEquals(11L, result.getId());
+        assertEquals("Sân 5B", result.getName());
+        assertEquals(PitchStatus.ACTIVE, result.getStatus());
+        verify(pitchRepository, times(1)).existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5B");
+        verify(pitchTypeRepository, times(1)).findByIdAndIsDeletedFalse(1L);
+        verify(pitchRepository, times(1)).save(any(Pitch.class));
     }
 
-    @Nested
-    @DisplayName("Tests cho deletePitch")
-    class DeletePitchTests {
+    @Test
+    @DisplayName("UT-06: Bắn ngoại lệ PITCH_NAME_ALREADY_EXISTS khi tên sân đã tồn tại")
+    void createPitch_DuplicateName_ThrowsException() {
+        PitchRequest request = PitchRequest.builder()
+                .name("Sân 5A")
+                .pitchTypeId(1L)
+                .build();
 
-        @Test
-        @DisplayName("Xóa mềm sân bóng thành công")
-        void deletePitch_Success() {
-            when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5A")).thenReturn(true);
 
-            pitchService.deletePitch(10L);
+        AppException ex = assertThrows(AppException.class, () -> pitchService.createPitch(request));
 
-            assertTrue(pitch1.getIsDeleted());
-            verify(pitchRepository, times(1)).save(pitch1);
-        }
-
-        @Test
-        @DisplayName("Bắn ngoại lệ PITCH_NOT_FOUND khi xóa ID không tồn tại")
-        void deletePitch_NotFound_ThrowsException() {
-            when(pitchRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
-
-            AppException ex = assertThrows(AppException.class, () -> pitchService.deletePitch(99L));
-
-            assertEquals(ErrorCode.PITCH_NOT_FOUND, ex.getErrorCode());
-            verify(pitchRepository, never()).save(any(Pitch.class));
-        }
+        assertEquals(ErrorCode.PITCH_NAME_ALREADY_EXISTS, ex.getErrorCode());
+        verify(pitchRepository, times(1)).existsByNameIgnoreCaseAndIsDeletedFalse("Sân 5A");
+        verify(pitchRepository, never()).save(any(Pitch.class));
     }
 
-    @Nested
-    @DisplayName("Tests cho getAllPitchTypes")
-    class GetAllPitchTypesTests {
+    @Test
+    @DisplayName("UT-07: Bắn ngoại lệ PITCH_TYPE_NOT_FOUND khi loại sân không tồn tại")
+    void createPitch_PitchTypeNotFound_ThrowsException() {
+        PitchRequest request = PitchRequest.builder()
+                .name("Sân Mới")
+                .pitchTypeId(99L)
+                .build();
 
-        @Test
-        @DisplayName("Lấy danh sách các loại sân bóng thành công")
-        void getAllPitchTypes_Success() {
-            when(pitchTypeRepository.findAllByIsDeletedFalse()).thenReturn(List.of(pitchType5, pitchType7));
-            when(pitchTypeMapper.toPitchTypeResponseList(anyList())).thenReturn(List.of(pitchTypeResponse5));
+        when(pitchRepository.existsByNameIgnoreCaseAndIsDeletedFalse("Sân Mới")).thenReturn(false);
+        when(pitchTypeRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
 
-            List<PitchTypeResponse> result = pitchService.getAllPitchTypes();
+        AppException ex = assertThrows(AppException.class, () -> pitchService.createPitch(request));
 
-            assertNotNull(result);
-            assertEquals(1, result.size());
-            verify(pitchTypeRepository, times(1)).findAllByIsDeletedFalse();
-        }
+        assertEquals(ErrorCode.PITCH_TYPE_NOT_FOUND, ex.getErrorCode());
+        verify(pitchTypeRepository, times(1)).findByIdAndIsDeletedFalse(99L);
+        verify(pitchRepository, never()).save(any(Pitch.class));
+    }
+
+    // ================= 5. Test Cases Cho updatePitch (UC015.2) =================
+
+    @Test
+    @DisplayName("UT-08: Cập nhật thông tin tên và mô tả sân bóng thành công")
+    void updatePitch_Success() {
+        PitchRequest request = PitchRequest.builder()
+                .name("Sân 5A VIP")
+                .pitchTypeId(1L)
+                .description("Nâng cấp cỏ nhân tạo")
+                .build();
+
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5A VIP", 10L)).thenReturn(false);
+        when(pitchRepository.save(pitch1)).thenReturn(pitch1);
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+
+        PitchResponse result = pitchService.updatePitch(10L, request);
+
+        assertNotNull(result);
+        verify(pitchRepository, times(1)).findByIdAndIsDeletedFalse(10L);
+        verify(pitchRepository, times(1)).existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5A VIP", 10L);
+        verify(pitchRepository, times(1)).save(pitch1);
+    }
+
+    @Test
+    @DisplayName("UT-09: Cập nhật loại sân thành công khi đổi từ sân 5 sang sân 7")
+    void updatePitch_ChangePitchType_Success() {
+        PitchRequest request = PitchRequest.builder()
+                .name("Sân 5A")
+                .pitchTypeId(2L)
+                .build();
+
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5A", 10L)).thenReturn(false);
+        when(pitchTypeRepository.findByIdAndIsDeletedFalse(2L)).thenReturn(Optional.of(pitchType7));
+        when(pitchRepository.save(pitch1)).thenReturn(pitch1);
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+
+        PitchResponse result = pitchService.updatePitch(10L, request);
+
+        assertNotNull(result);
+        assertEquals(pitchType7, pitch1.getPitchType());
+        verify(pitchTypeRepository, times(1)).findByIdAndIsDeletedFalse(2L);
+    }
+
+    @Test
+    @DisplayName("UT-10: Bắn ngoại lệ PITCH_NAME_ALREADY_EXISTS khi đổi tên trùng với sân khác")
+    void updatePitch_DuplicateName_ThrowsException() {
+        PitchRequest request = PitchRequest.builder()
+                .name("Sân 5B")
+                .pitchTypeId(1L)
+                .build();
+
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.existsByNameIgnoreCaseAndIdNotAndIsDeletedFalse("Sân 5B", 10L)).thenReturn(true);
+
+        AppException ex = assertThrows(AppException.class, () -> pitchService.updatePitch(10L, request));
+
+        assertEquals(ErrorCode.PITCH_NAME_ALREADY_EXISTS, ex.getErrorCode());
+        verify(pitchRepository, never()).save(any(Pitch.class));
+    }
+
+    // ================= 6. Test Cases Cho updatePitchStatus (UC015.3) =================
+
+    @Test
+    @DisplayName("UT-11: Chuyển trạng thái sân từ ACTIVE sang MAINTENANCE (Bảo trì)")
+    void updatePitchStatus_ToMaintenance_Success() {
+        UpdatePitchStatusRequest request = UpdatePitchStatusRequest.builder()
+                .status(PitchStatus.MAINTENANCE)
+                .build();
+
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.save(pitch1)).thenReturn(pitch1);
+
+        pitchResponse1.setStatus(PitchStatus.MAINTENANCE);
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+
+        PitchResponse result = pitchService.updatePitchStatus(10L, request);
+
+        assertNotNull(result);
+        assertEquals(PitchStatus.MAINTENANCE, pitch1.getStatus());
+        verify(pitchRepository, times(1)).save(pitch1);
+    }
+
+    @Test
+    @DisplayName("UT-12: Chuyển trạng thái sân từ MAINTENANCE sang ACTIVE (Hoạt động)")
+    void updatePitchStatus_ToActive_Success() {
+        pitch1.setStatus(PitchStatus.MAINTENANCE);
+        UpdatePitchStatusRequest request = UpdatePitchStatusRequest.builder()
+                .status(PitchStatus.ACTIVE)
+                .build();
+
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.save(pitch1)).thenReturn(pitch1);
+
+        pitchResponse1.setStatus(PitchStatus.ACTIVE);
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+
+        PitchResponse result = pitchService.updatePitchStatus(10L, request);
+
+        assertNotNull(result);
+        assertEquals(PitchStatus.ACTIVE, pitch1.getStatus());
+        verify(pitchRepository, times(1)).save(pitch1);
+    }
+
+    @Test
+    @DisplayName("UT-13: Bắn ngoại lệ PITCH_STATUS_INVALID khi status truyền vào là null")
+    void updatePitchStatus_NullStatus_ThrowsException() {
+        UpdatePitchStatusRequest request = new UpdatePitchStatusRequest();
+
+        AppException ex = assertThrows(AppException.class, () -> pitchService.updatePitchStatus(10L, request));
+
+        assertEquals(ErrorCode.PITCH_STATUS_INVALID, ex.getErrorCode());
+        verify(pitchRepository, never()).save(any(Pitch.class));
+    }
+
+    // ================= 7. Test Cases Cho deletePitch (Xóa mềm) =================
+
+    @Test
+    @DisplayName("UT-14: Xóa mềm sân bóng thành công")
+    void deletePitch_Success() {
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+
+        pitchService.deletePitch(10L);
+
+        assertTrue(pitch1.getIsDeleted());
+        verify(pitchRepository, times(1)).save(pitch1);
+    }
+
+    @Test
+    @DisplayName("UT-15: Bắn ngoại lệ PITCH_NOT_FOUND khi xóa ID không tồn tại")
+    void deletePitch_NotFound_ThrowsException() {
+        when(pitchRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
+
+        AppException ex = assertThrows(AppException.class, () -> pitchService.deletePitch(99L));
+
+        assertEquals(ErrorCode.PITCH_NOT_FOUND, ex.getErrorCode());
+        verify(pitchRepository, never()).save(any(Pitch.class));
     }
 }
