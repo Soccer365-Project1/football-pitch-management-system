@@ -1,10 +1,12 @@
 package com.fpms.config;
 
+import com.fpms.entity.PitchType;
 import com.fpms.entity.Role;
 import com.fpms.entity.User;
 import com.fpms.entity.enums.AuthProvider;
 import com.fpms.entity.enums.RoleName;
 import com.fpms.entity.enums.UserStatus;
+import com.fpms.repository.PitchTypeRepository;
 import com.fpms.repository.RoleRepository;
 import com.fpms.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final PitchTypeRepository pitchTypeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -28,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         initRoles();
         initDefaultAdmin();
+        initPitchTypes();
     }
 
     private void initRoles() {
@@ -68,6 +72,24 @@ public class DataInitializer implements CommandLineRunner {
 
             userRepository.save(admin);
             log.info("Khởi tạo tài khoản Admin mặc định thành công: Email={}, Mật khẩu mặc định=123456", adminEmail);
+        }
+    }
+
+    private void initPitchTypes() {
+        createPitchTypeIfNotFound("Sân 5 người", 10, "Sân bóng đá mini 5 người tiêu chuẩn");
+        createPitchTypeIfNotFound("Sân 7 người", 14, "Sân bóng đá mini 7 người tiêu chuẩn");
+    }
+
+    private void createPitchTypeIfNotFound(String name, Integer capacity, String description) {
+        if (pitchTypeRepository.findByNameIgnoreCaseAndIsDeletedFalse(name).isEmpty()) {
+            PitchType pitchType = PitchType.builder()
+                    .name(name)
+                    .playerCapacity(capacity)
+                    .description(description)
+                    .build();
+            pitchType.setIsDeleted(false);
+            pitchTypeRepository.save(pitchType);
+            log.info("Khởi tạo loại sân mặc định: {} (Sức chứa tối đa: {} người)", name, capacity);
         }
     }
 }

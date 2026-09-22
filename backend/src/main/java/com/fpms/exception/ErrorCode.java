@@ -30,7 +30,13 @@ public enum ErrorCode {
     OTP_ALREADY_USED(2013, HttpStatus.BAD_REQUEST, "Mã xác thực OTP này đã được sử dụng"),
     OTP_COOLDOWN_ACTIVE(2014, HttpStatus.TOO_MANY_REQUESTS, "Vui lòng chờ 60 giây trước khi yêu cầu gửi lại mã OTP mới"),
     EMAIL_SEND_FAILED(2015, HttpStatus.INTERNAL_SERVER_ERROR, "Không thể gửi email xác thực, vui lòng thử lại sau"),
-    OLD_PASSWORD_INCORRECT(2016, HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không chính xác");
+    OLD_PASSWORD_INCORRECT(2016, HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không chính xác"),
+
+    // 3. Nhóm Lỗi Phân Hệ Sân Bóng & Khung Giờ (3000 - 3999)
+    PITCH_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin sân bóng"),
+    PITCH_NAME_ALREADY_EXISTS(3002, HttpStatus.BAD_REQUEST, "Tên sân bóng đã tồn tại trên hệ thống"),
+    PITCH_TYPE_NOT_FOUND(3003, HttpStatus.NOT_FOUND, "Không tìm thấy loại sân bóng yêu cầu"),
+    PITCH_STATUS_INVALID(3004, HttpStatus.BAD_REQUEST, "Trạng thái sân bóng không hợp lệ");
 
 
     private final int code;
