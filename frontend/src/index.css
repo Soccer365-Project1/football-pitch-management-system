@@ -713,3 +713,112 @@ button {
 .menu-toggle-btn {
   display: none;
 }
+
+/* ==========================================================================
+   Admin Pitches Responsive Styles
+   ========================================================================== */
+.admin-pitches-container {
+  height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-pitches-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+}
+
+.admin-pitches-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-base);
+  width: 300px;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.admin-pitches-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-pitches-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admin-pitches-table.is-empty {
+  min-width: 100%;
+  height: 100%;
+}
+
+.admin-pitches-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.25rem;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  padding: 0.75rem 1.25rem;
+}
+
+/* Responsive Breakpoints cho trang Quản lý sân bóng */
+@media (max-width: 860px) {
+  .admin-pitches-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .admin-pitches-search {
+    width: 100%;
+  }
+  .admin-pitches-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-pitches-container {
+    height: auto;
+    min-height: calc(100vh - 100px);
+  }
+  .admin-pitches-toolbar {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-pitches-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .admin-pitches-actions select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .admin-pitches-actions button {
+    grid-column: span 2;
+    width: 100% !important;
+  }
+  .admin-pitches-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.5rem;
+  }
+}
