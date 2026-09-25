@@ -7,13 +7,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
+    port: 5173,
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/setupTests.ts',
   },
 })
