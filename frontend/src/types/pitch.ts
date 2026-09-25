@@ -1,4 +1,3 @@
-
 export type PitchStatus = 'ACTIVE' | 'MAINTENANCE';
 
 export interface PitchType {
@@ -20,9 +19,9 @@ export interface Pitch {
 
 export interface PageResponse<T> {
   items: T[];
-  content?: T[];
+  content?: T[]; // backward-compatibility fallback
   pageNo: number;
-  pageNumber?: number;
+  pageNumber?: number; // backward-compatibility fallback
   pageSize: number;
   totalElements: number;
   totalPages: number;
@@ -34,8 +33,8 @@ export interface PitchFilterParams {
   keyword?: string;
   pitchTypeId?: number | string;
   status?: PitchStatus | 'ALL' | '';
-  page?: number;
-  size?: number;
+  page: number;
+  size: number;
 }
 
 export interface PitchRequest {
