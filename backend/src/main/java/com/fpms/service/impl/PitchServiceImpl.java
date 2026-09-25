@@ -12,6 +12,7 @@ import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.PitchMapper;
 import com.fpms.mapper.PitchTypeMapper;
+import com.fpms.repository.BookingRepository;
 import com.fpms.repository.PitchRepository;
 import com.fpms.repository.PitchTypeRepository;
 import com.fpms.service.PitchService;
@@ -38,6 +39,7 @@ public class PitchServiceImpl implements PitchService {
 
     private final PitchRepository pitchRepository;
     private final PitchTypeRepository pitchTypeRepository;
+    private final BookingRepository bookingRepository;
     private final PitchMapper pitchMapper;
     private final PitchTypeMapper pitchTypeMapper;
 
@@ -152,9 +154,15 @@ public class PitchServiceImpl implements PitchService {
     @Override
     @Transactional
     public void deletePitch(Long id) {
-        log.info("Xóa mềm sân bóng ID: {}", id);
+        log.info("Xóa sân bóng ID: {}", id);
         Pitch pitch = pitchRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PITCH_NOT_FOUND));
+
+        // Ràng buộc nghiệp vụ: Nếu sân đã từng phát sinh đơn đặt sân (Booking), không cho phép xóa
+        if (bookingRepository.existsByPitchId(id)) {
+            log.warn("Chặn xóa sân bóng ID: {} do đã có dữ liệu đặt sân trong lịch sử", id);
+            throw new AppException(ErrorCode.PITCH_HAS_BOOKINGS);
+        }
 
         pitch.setIsDeleted(true);
         pitchRepository.save(pitch);

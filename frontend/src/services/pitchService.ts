@@ -3,6 +3,7 @@ import type { ApiResponse } from '../types/common';
 import type { 
   Pitch, 
   PitchType, 
+  PitchStatus,
   PitchFilterParams, 
   PitchRequest, 
   PageResponse 
@@ -78,11 +79,11 @@ export const pitchService = {
   },
 
   /**
-   * Chuyển đổi trạng thái hoạt động của sân (ACTIVE ⇄ MAINTENANCE)
+   * Chuyển đổi trạng thái hoạt động của sân (ACTIVE, MAINTENANCE, INACTIVE)
    * @param id Mã sân bóng
-   * @param status Trạng thái mới: 'ACTIVE' (Hoạt động) hoặc 'MAINTENANCE' (Bảo trì)
+   * @param status Trạng thái mới: 'ACTIVE' (Hoạt động), 'MAINTENANCE' (Bảo trì) hoặc 'INACTIVE' (Ngừng hoạt động)
    */
-  updatePitchStatus: async (id: number, status: 'ACTIVE' | 'MAINTENANCE'): Promise<Pitch> => {
+  updatePitchStatus: async (id: number, status: PitchStatus): Promise<Pitch> => {
     const response = await api.patch<ApiResponse<Pitch>>(`/admin/pitches/${id}/status`, { status });
     return response.data.data!;
   },

@@ -16,4 +16,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             LocalDate bookingDate,
             Collection<BookingStatus> statuses
     );
+
+    boolean existsByPitchId(Long pitchId);
 }

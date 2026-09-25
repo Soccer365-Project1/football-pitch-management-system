@@ -1,4 +1,4 @@
-export type PitchStatus = 'ACTIVE' | 'MAINTENANCE';
+export type PitchStatus = 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
 
 export interface PitchType {
   id: number;

@@ -37,6 +37,7 @@ public enum ErrorCode {
     PITCH_NAME_ALREADY_EXISTS(3002, HttpStatus.BAD_REQUEST, "Tên sân bóng đã tồn tại trên hệ thống"),
     PITCH_TYPE_NOT_FOUND(3003, HttpStatus.NOT_FOUND, "Không tìm thấy loại sân bóng yêu cầu"),
     PITCH_STATUS_INVALID(3004, HttpStatus.BAD_REQUEST, "Trạng thái sân bóng không hợp lệ"),
+    PITCH_HAS_BOOKINGS(3005, HttpStatus.BAD_REQUEST, "Sân bóng đã có dữ liệu đặt sân trong lịch sử, không thể xóa. Vui lòng chuyển trạng thái sang Không hoạt động"),
     TIME_SLOT_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin khung giờ"),
     TIME_SLOT_INVALID_TIME(3012, HttpStatus.BAD_REQUEST, "Giờ kết thúc phải lớn hơn giờ bắt đầu"),
     TIME_SLOT_OVERLAPPING(3013, HttpStatus.BAD_REQUEST, "Khung giờ bị chồng chéo với khung giờ khác đã tồn tại"),

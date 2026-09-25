@@ -12,6 +12,7 @@ import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.PitchMapper;
 import com.fpms.mapper.PitchTypeMapper;
+import com.fpms.repository.BookingRepository;
 import com.fpms.repository.PitchRepository;
 import com.fpms.repository.PitchTypeRepository;
 import com.fpms.service.impl.PitchServiceImpl;
@@ -44,6 +45,9 @@ class PitchServiceTest {
 
     @Mock
     private PitchTypeRepository pitchTypeRepository;
+
+    @Mock
+    private BookingRepository bookingRepository;
 
     @Mock
     private PitchMapper pitchMapper;
@@ -368,12 +372,32 @@ class PitchServiceTest {
         verify(pitchRepository, never()).save(any(Pitch.class));
     }
 
-    // ================= 7. Test Cases Cho deletePitch (Xóa mềm) =================
+    @Test
+    @DisplayName("UT-13b: Đổi trạng thái sang INACTIVE (Không hoạt động) thành công")
+    void updatePitchStatus_ToInactive_Success() {
+        UpdatePitchStatusRequest request = UpdatePitchStatusRequest.builder()
+                .status(PitchStatus.INACTIVE)
+                .build();
+        pitchResponse1.setStatus(PitchStatus.INACTIVE);
+
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(pitchRepository.save(any(Pitch.class))).thenReturn(pitch1);
+        when(pitchMapper.toPitchResponse(pitch1)).thenReturn(pitchResponse1);
+
+        PitchResponse result = pitchService.updatePitchStatus(10L, request);
+
+        assertNotNull(result);
+        assertEquals(PitchStatus.INACTIVE, pitch1.getStatus());
+        verify(pitchRepository, times(1)).save(pitch1);
+    }
+
+    // ================= 7. Test Cases Cho deletePitch (Xóa mềm có kiểm tra booking) =================
 
     @Test
-    @DisplayName("UT-14: Xóa mềm sân bóng thành công")
+    @DisplayName("UT-14: Xóa mềm sân bóng thành công khi chưa có đơn đặt sân")
     void deletePitch_Success() {
         when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(bookingRepository.existsByPitchId(10L)).thenReturn(false);
 
         pitchService.deletePitch(10L);
 
@@ -382,7 +406,19 @@ class PitchServiceTest {
     }
 
     @Test
-    @DisplayName("UT-15: Bắn ngoại lệ PITCH_NOT_FOUND khi xóa ID không tồn tại")
+    @DisplayName("UT-15: Bắn ngoại lệ PITCH_HAS_BOOKINGS khi sân bóng đã có lịch sử đặt sân")
+    void deletePitch_HasBookings_ThrowsException() {
+        when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
+        when(bookingRepository.existsByPitchId(10L)).thenReturn(true);
+
+        AppException ex = assertThrows(AppException.class, () -> pitchService.deletePitch(10L));
+
+        assertEquals(ErrorCode.PITCH_HAS_BOOKINGS, ex.getErrorCode());
+        verify(pitchRepository, never()).save(any(Pitch.class));
+    }
+
+    @Test
+    @DisplayName("UT-16: Bắn ngoại lệ PITCH_NOT_FOUND khi xóa ID không tồn tại")
     void deletePitch_NotFound_ThrowsException() {
         when(pitchRepository.findByIdAndIsDeletedFalse(99L)).thenReturn(Optional.empty());
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, Edit, Settings, X, Wrench, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Edit, Settings, X, Wrench, Trash2, Loader2, ChevronLeft, ChevronRight, PowerOff } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { pitchService } from '../../services/pitchService';
 import type { Pitch, PitchType, PitchStatus, PitchRequest } from '../../types/pitch';
@@ -78,7 +78,7 @@ const AdminPitches: React.FC = () => {
   // ---------------------------------------------------------------------------------------
   const [searchTerm, setSearchTerm] = useState('');                      // Từ khóa tìm kiếm theo tên sân
   const [typeFilter, setTypeFilter] = useState<number | string>('ALL');  // Lọc theo ID loại sân ('ALL' hoặc số)
-  const [statusFilter, setStatusFilter] = useState<PitchStatus | 'ALL'>('ALL'); // Lọc theo trạng thái ('ALL', 'ACTIVE', 'MAINTENANCE')
+  const [statusFilter, setStatusFilter] = useState<PitchStatus | 'ALL'>('ALL'); // Lọc theo trạng thái ('ALL', 'ACTIVE', 'MAINTENANCE', 'INACTIVE')
   const [page, setPage] = useState(1);                                  // Trang hiện tại (1-indexed theo quy ước Backend)
   const pageSize = 10;                                                  // Số bản ghi cố định trên mỗi trang
 
@@ -292,34 +292,42 @@ const AdminPitches: React.FC = () => {
   };
 
   // ---------------------------------------------------------------------------------------
-  // 10. Handlers: Chuyển đổi trạng thái Bảo trì & Xóa sân (SweetAlert2)
+  // 10. Handlers: Chuyển đổi trạng thái & Xóa sân (SweetAlert2)
   // ---------------------------------------------------------------------------------------
   /**
-   * Đổi trạng thái Hoạt động (ACTIVE) ⇄ Bảo trì (MAINTENANCE)
-   * Sử dụng SweetAlert2 phân biệt màu sắc ngữ cảnh:
-   * - Chuyển sang bảo trì: Màu cam (#f59e0b) cảnh báo khách không thể đặt sân
-   * - Mở khóa hoạt động: Màu xanh (#10b981) thông báo sân đã sẵn sàng nhận lịch
+   * Thay đổi trạng thái hoạt động của sân (Hoạt động, Bảo trì, Ngừng hoạt động)
+   * Sử dụng SweetAlert2 radio options trực quan cho phép Admin lựa chọn linh hoạt
    */
-  const handleToggleStatus = async (pitch: Pitch) => {
-    const isCurrentlyActive = pitch.status === 'ACTIVE';
-    const nextStatus: PitchStatus = isCurrentlyActive ? 'MAINTENANCE' : 'ACTIVE';
+  const handleChangeStatus = async (pitch: Pitch) => {
+    const inputOptions: Record<string, string> = {
+      ACTIVE: '🟢 Đang hoạt động (Mở đón khách đặt sân)',
+      MAINTENANCE: '🟠 Đang bảo trì (Tạm dừng đón khách)',
+      INACTIVE: '⚪ Ngừng hoạt động (Không mở lịch đặt, lưu trữ dữ liệu)',
+    };
 
-    const result = await Swal.fire({
-      title: isCurrentlyActive ? 'Chuyển sân sang Bảo trì?' : 'Mở lại hoạt động sân?',
-      text: isCurrentlyActive
-        ? `Sân "${pitch.name}" sẽ tạm dừng hoạt động và không thể nhận lịch đặt mới. Bạn có chắc chắn muốn chuyển sang trạng thái Bảo trì?`
-        : `Sân "${pitch.name}" sẽ sẵn sàng đón khách và mở lịch đặt trên hệ thống.`,
-      icon: isCurrentlyActive ? 'warning' : 'question',
+    const { value: selectedStatus } = await Swal.fire({
+      title: `Trạng thái: ${pitch.name}`,
+      text: 'Chọn trạng thái hoạt động mới cho sân bóng:',
+      input: 'radio',
+      inputOptions,
+      inputValue: pitch.status,
       showCancelButton: true,
-      confirmButtonColor: isCurrentlyActive ? '#f59e0b' : '#10b981',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: isCurrentlyActive ? 'Đồng ý chuyển' : 'Mở hoạt động',
+      confirmButtonText: 'Cập nhật',
       cancelButtonText: 'Hủy bỏ',
+      confirmButtonColor: '#10b981',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Vui lòng chọn một trạng thái!';
+        }
+        if (value === pitch.status) {
+          return 'Sân bóng hiện đã ở trạng thái này!';
+        }
+      },
     });
 
-    if (result.isConfirmed) {
+    if (selectedStatus) {
       try {
-        await pitchService.updatePitchStatus(pitch.id, nextStatus);
+        await pitchService.updatePitchStatus(pitch.id, selectedStatus as PitchStatus);
         showToast('Cập nhật trạng thái sân bóng thành công!', 'success');
         loadPitches();
       } catch (err: any) {
@@ -329,8 +337,11 @@ const AdminPitches: React.FC = () => {
   };
 
   /**
-   * Xóa mềm sân bóng: Xác nhận bằng SweetAlert2 nút đỏ (#ef4444)
-   * Xử lý ca biên: Nếu xóa bản ghi duy nhất của trang > 1, tự động lùi về trang trước (page - 1)
+   * Xóa mềm sân bóng:
+   * - Xác nhận bằng SweetAlert2 nút đỏ (#ef4444)
+   * - Nếu sân đã có dữ liệu đặt sân trong lịch sử (Backend trả về mã lỗi 3005):
+   *   Chặn xóa và hiển thị hộp thoại gợi ý chuyển trạng thái sang "Ngừng hoạt động" (INACTIVE)
+   * - Xử lý ca biên: Nếu xóa bản ghi duy nhất của trang > 1, tự động lùi về trang trước (page - 1)
    */
   const handleDeletePitch = async (pitch: Pitch) => {
     const result = await Swal.fire({
@@ -355,7 +366,34 @@ const AdminPitches: React.FC = () => {
           loadPitches();
         }
       } catch (err: any) {
-        showToast(err.response?.data?.message || 'Không thể xóa sân bóng', 'error');
+        const errorData = err.response?.data;
+        const msg = errorData?.message || 'Không thể xóa sân bóng';
+
+        // Xử lý ca biên: Sân đã có đơn đặt sân trong lịch sử (Mã lỗi 3005)
+        if (errorData?.code === 3005 || msg.includes('dữ liệu đặt sân') || msg.includes('lịch sử')) {
+          const switchResult = await Swal.fire({
+            title: 'Không thể xóa sân bóng!',
+            text: `${msg}. Bạn có muốn chuyển sân "${pitch.name}" sang trạng thái "Ngừng hoạt động" để lưu trữ dữ liệu lịch sử không?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Chuyển sang Ngừng hoạt động',
+            cancelButtonText: 'Đóng',
+          });
+
+          if (switchResult.isConfirmed) {
+            try {
+              await pitchService.updatePitchStatus(pitch.id, 'INACTIVE');
+              showToast('Đã chuyển sân sang trạng thái Ngừng hoạt động!', 'success');
+              loadPitches();
+            } catch (switchErr: any) {
+              showToast(switchErr.response?.data?.message || 'Không thể đổi trạng thái', 'error');
+            }
+          }
+        } else {
+          showToast(msg, 'error');
+        }
       }
     }
   };
@@ -456,6 +494,7 @@ const AdminPitches: React.FC = () => {
               <option value="ALL">Tất cả trạng thái</option>
               <option value="ACTIVE">Đang hoạt động</option>
               <option value="MAINTENANCE">Đang bảo trì</option>
+              <option value="INACTIVE">Ngừng hoạt động</option>
             </select>
 
             {/* Nút mở Modal thêm sân bóng mới */}
@@ -593,40 +632,54 @@ const AdminPitches: React.FC = () => {
                       </span>
                     </td>
 
-                    {/* Cột Trạng Thái: Badge xanh (Đang hoạt động) hoặc Cam (Bảo trì) */}
+                    {/* Cột Trạng Thái: Badge Xanh (Hoạt động), Cam (Bảo trì), Xám (Ngừng hoạt động) */}
                     <td className="p-4">
                       {pitch.status === 'ACTIVE' ? (
                         <span className="badge badge-success">Đang hoạt động</span>
-                      ) : (
+                      ) : pitch.status === 'MAINTENANCE' ? (
                         <span className="badge badge-warning">Đang bảo trì</span>
+                      ) : (
+                        <span
+                          className="badge"
+                          style={{
+                            backgroundColor: 'var(--color-bg-base)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-muted)',
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: '0.85rem',
+                          }}
+                        >
+                          Ngừng hoạt động
+                        </span>
                       )}
                     </td>
 
-                    {/* Cột Thao Tác: Đổi bảo trì, Sửa, Xóa */}
+                    {/* Cột Thao Tác: Đổi trạng thái, Sửa, Xóa */}
                     <td className="p-4 text-left">
                       <div className="flex gap-2 justify-start items-center">
-                        {/* Nút Đổi trạng thái bảo trì */}
-                        {pitch.status === 'ACTIVE' ? (
-                          <button
-                            type="button"
-                            className="btn btn-secondary text-primary"
-                            style={{ padding: '0.5rem' }}
-                            title="Cài đặt bảo trì"
-                            onClick={() => handleToggleStatus(pitch)}
-                          >
+                        {/* Nút Đổi trạng thái hoạt động */}
+                        <button
+                          type="button"
+                          className={`btn btn-secondary ${
+                            pitch.status === 'ACTIVE'
+                              ? 'text-primary'
+                              : pitch.status === 'MAINTENANCE'
+                              ? 'text-warning'
+                              : 'text-muted'
+                          }`}
+                          style={{ padding: '0.5rem' }}
+                          title="Thay đổi trạng thái sân"
+                          onClick={() => handleChangeStatus(pitch)}
+                        >
+                          {pitch.status === 'ACTIVE' ? (
                             <Settings size={16} />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn btn-secondary text-success"
-                            style={{ padding: '0.5rem' }}
-                            title="Mở khóa sân"
-                            onClick={() => handleToggleStatus(pitch)}
-                          >
+                          ) : pitch.status === 'MAINTENANCE' ? (
                             <Wrench size={16} />
-                          </button>
-                        )}
+                          ) : (
+                            <PowerOff size={16} />
+                          )}
+                        </button>
 
                         {/* Nút Chỉnh sửa thông tin sân */}
                         <button
