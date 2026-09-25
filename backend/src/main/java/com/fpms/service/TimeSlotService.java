@@ -1,6 +1,7 @@
 package com.fpms.service;
 
 import com.fpms.dto.request.TimeSlotRequest;
+import com.fpms.dto.response.PublicTimeSlotResponse;
 import com.fpms.dto.response.TimeSlotResponse;
 
 import java.util.List;
@@ -16,4 +17,6 @@ public interface TimeSlotService {
     TimeSlotResponse updateTimeSlot(Long id, TimeSlotRequest request);
 
     void deleteTimeSlot(Long id);
+
+    List<PublicTimeSlotResponse> getPublicTimeSlots();
 }

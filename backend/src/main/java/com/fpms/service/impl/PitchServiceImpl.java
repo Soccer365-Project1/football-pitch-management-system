@@ -5,6 +5,7 @@ import com.fpms.dto.request.PitchRequest;
 import com.fpms.dto.request.UpdatePitchStatusRequest;
 import com.fpms.dto.response.PitchResponse;
 import com.fpms.dto.response.PitchTypeResponse;
+import com.fpms.dto.response.PublicPitchResponse;
 import com.fpms.entity.Pitch;
 import com.fpms.entity.PitchType;
 import com.fpms.entity.enums.PitchStatus;
@@ -166,5 +167,23 @@ public class PitchServiceImpl implements PitchService {
         log.info("Lấy danh sách các loại sân bóng");
         List<PitchType> pitchTypes = pitchTypeRepository.findAllByIsDeletedFalse();
         return pitchTypeMapper.toPitchTypeResponseList(pitchTypes);
+    }
+
+    @Override
+    public List<PublicPitchResponse> getActivePitches(Long pitchTypeId) {
+        log.info("Lấy danh sách sân bóng cho khách hàng - pitchTypeId: {}", pitchTypeId);
+        
+        Specification<Pitch> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isFalse(root.get("isDeleted")));
+            
+            if (pitchTypeId != null) {
+                predicates.add(cb.equal(root.get("pitchType").get("id"), pitchTypeId));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        
+        List<Pitch> pitches = pitchRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "name"));
+        return pitchMapper.toPublicPitchResponseList(pitches);
     }
 }

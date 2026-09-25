@@ -1,6 +1,7 @@
 package com.fpms.mapper;
 
 import com.fpms.dto.request.TimeSlotRequest;
+import com.fpms.dto.response.PublicTimeSlotResponse;
 import com.fpms.dto.response.TimeSlotResponse;
 import com.fpms.entity.TimeSlot;
 import org.mapstruct.Builder;
@@ -19,7 +20,11 @@ public interface TimeSlotMapper {
 
     TimeSlotResponse toTimeSlotResponse(TimeSlot timeSlot);
 
+    PublicTimeSlotResponse toPublicTimeSlotResponse(TimeSlot timeSlot);
+
     List<TimeSlotResponse> toTimeSlotResponseList(List<TimeSlot> timeSlots);
+
+    List<PublicTimeSlotResponse> toPublicTimeSlotResponseList(List<TimeSlot> timeSlots);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "isActive", ignore = true)

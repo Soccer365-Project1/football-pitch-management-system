@@ -365,13 +365,16 @@ button {
 }
 
 .matrix-cell {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
   padding: 0.5rem 0.1rem;
   border-right: 1px solid var(--color-border);
   text-align: center;
   position: relative;
   font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .matrix-cell:last-child {
@@ -387,16 +390,21 @@ button {
 }
 
 .matrix-pitch-name {
-  flex: 0 0 140px;
-  padding: 0.5rem 1rem;
+  flex: 0 0 150px !important;
+  min-width: 150px;
+  max-width: 150px;
+  padding: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
   display: flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   background-color: var(--color-bg-elevated);
   position: sticky;
   left: 0;
   z-index: 10;
+  border-right: 1px solid var(--color-border);
 }
 
 .matrix-slot {
@@ -481,7 +489,7 @@ button {
 .home-search-bar {
   display: flex;
   flex-direction: column;
-  background-color: white;
+  background-color: var(--color-bg-surface);
   border-radius: var(--radius-lg);
   max-width: 850px;
   margin: 0 auto;
@@ -712,4 +720,10 @@ button {
 }
 .menu-toggle-btn {
   display: none;
+}
+
+/* Fix option background and text color for dark mode */
+option {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-base);
 }

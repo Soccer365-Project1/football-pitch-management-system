@@ -1,6 +1,7 @@
 package com.fpms.service.impl;
 
 import com.fpms.dto.request.TimeSlotRequest;
+import com.fpms.dto.response.PublicTimeSlotResponse;
 import com.fpms.dto.response.TimeSlotResponse;
 import com.fpms.entity.TimeSlot;
 import com.fpms.entity.enums.BookingStatus;
@@ -134,5 +135,12 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         if (startTime == null || endTime == null || !endTime.isAfter(startTime)) {
             throw new AppException(ErrorCode.TIME_SLOT_INVALID_TIME);
         }
+    }
+
+    @Override
+    public List<PublicTimeSlotResponse> getPublicTimeSlots() {
+        log.info("Lấy danh sách khung giờ đang hoạt động cho khách hàng");
+        List<TimeSlot> slots = timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc();
+        return timeSlotMapper.toPublicTimeSlotResponseList(slots);
     }
 }
