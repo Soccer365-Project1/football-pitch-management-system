@@ -717,10 +717,22 @@ button {
 /* ==========================================================================
    Admin Pitches Responsive Styles
    ========================================================================== */
-.admin-pitches-container {
+.admin-pitches-container,
+.admin-timeslots-container {
   height: calc(100vh - 140px);
   display: flex;
   flex-direction: column;
+}
+
+.admin-timeslots-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .admin-pitches-toolbar {
@@ -791,7 +803,8 @@ button {
 }
 
 @media (max-width: 768px) {
-  .admin-pitches-container {
+  .admin-pitches-container,
+  .admin-timeslots-container {
     height: auto;
     min-height: calc(100vh - 100px);
   }
@@ -821,4 +834,33 @@ button {
     gap: 0.75rem;
     padding: 0.75rem 0.5rem;
   }
+  .admin-timeslots-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .admin-timeslots-header button {
+    width: 100% !important;
+  }
 }
+
+/* Tự động căn chỉnh radio của SweetAlert2 xếp dọc, không bị dồn ép cột */
+.swal2-radio {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  margin: 1rem auto !important;
+  padding: 0.5rem 1rem !important;
+  max-width: 380px !important;
+}
+
+.swal2-radio label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  font-size: 0.925rem !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+

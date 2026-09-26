@@ -29,7 +29,7 @@ public class AdminTimeSlotController {
     @Operation(summary = "Lấy danh sách khung giờ", description = "Truy xuất toàn bộ danh sách ca đá trong ngày, sắp xếp tăng dần theo thời gian bắt đầu")
     @GetMapping
     public ResponseEntity<ApiResponse<List<TimeSlotResponse>>> getAllTimeSlots(
-            @RequestParam(required = false) Boolean activeOnly
+            @RequestParam(required = false, defaultValue = "true") Boolean activeOnly
     ) {
         List<TimeSlotResponse> response = timeSlotService.getAllTimeSlots(activeOnly);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách khung giờ thành công", response));

@@ -7,6 +7,7 @@ import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.TimeSlotMapper;
 import com.fpms.repository.BookingRepository;
+import com.fpms.repository.PriceMatrixRepository;
 import com.fpms.repository.TimeSlotRepository;
 import com.fpms.service.impl.TimeSlotServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,9 @@ class TimeSlotServiceTest {
 
     @Mock
     private BookingRepository bookingRepository;
+
+    @Mock
+    private PriceMatrixRepository priceMatrixRepository;
 
     @Mock
     private TimeSlotMapper timeSlotMapper;
@@ -105,6 +109,19 @@ class TimeSlotServiceTest {
         assertEquals(LocalTime.of(6, 0), result.get(0).getStartTime());
         assertEquals(LocalTime.of(17, 30), result.get(1).getStartTime());
         verify(timeSlotRepository).findAllByOrderByStartTimeAsc();
+    }
+
+    @Test
+    @DisplayName("UT-01b: Mặc định chỉ lấy các khung giờ đang hoạt động (activeOnly = true/null)")
+    void getAllTimeSlots_ActiveOnly_Success() {
+        when(timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc()).thenReturn(List.of(slot1, slot2));
+        when(timeSlotMapper.toTimeSlotResponseList(anyList())).thenReturn(List.of(slotResponse1, slotResponse2));
+
+        List<TimeSlotResponse> result = timeSlotService.getAllTimeSlots(null);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        verify(timeSlotRepository).findAllByIsActiveTrueOrderByStartTimeAsc();
     }
 
     // =========================================================================
@@ -226,6 +243,36 @@ class TimeSlotServiceTest {
         AppException exception = assertThrows(AppException.class, () -> timeSlotService.createTimeSlot(overlapRequest));
 
         assertEquals(ErrorCode.TIME_SLOT_OVERLAPPING, exception.getErrorCode());
+        verify(timeSlotRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("UT-08b: Thêm ca đá có thời lượng < 60 phút ném TIME_SLOT_INVALID_DURATION")
+    void createTimeSlot_DurationLessThan60Min_ThrowsException() {
+        TimeSlotRequest tooShortRequest = TimeSlotRequest.builder()
+                .startTime(LocalTime.of(7, 0))
+                .endTime(LocalTime.of(7, 45)) // 45 phút
+                .isPeakHour(false)
+                .build();
+
+        AppException exception = assertThrows(AppException.class, () -> timeSlotService.createTimeSlot(tooShortRequest));
+
+        assertEquals(ErrorCode.TIME_SLOT_INVALID_DURATION, exception.getErrorCode());
+        verify(timeSlotRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("UT-08c: Thêm ca đá có thời lượng > 120 phút ném TIME_SLOT_INVALID_DURATION")
+    void createTimeSlot_DurationGreaterThan120Min_ThrowsException() {
+        TimeSlotRequest tooLongRequest = TimeSlotRequest.builder()
+                .startTime(LocalTime.of(7, 0))
+                .endTime(LocalTime.of(9, 30)) // 150 phút
+                .isPeakHour(false)
+                .build();
+
+        AppException exception = assertThrows(AppException.class, () -> timeSlotService.createTimeSlot(tooLongRequest));
+
+        assertEquals(ErrorCode.TIME_SLOT_INVALID_DURATION, exception.getErrorCode());
         verify(timeSlotRepository, never()).save(any());
     }
 

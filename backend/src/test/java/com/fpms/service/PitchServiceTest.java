@@ -391,22 +391,22 @@ class PitchServiceTest {
         verify(pitchRepository, times(1)).save(pitch1);
     }
 
-    // ================= 7. Test Cases Cho deletePitch (Xóa mềm có kiểm tra booking) =================
+    // ================= 7. Test Cases Cho deletePitch (Xóa cứng sân rác, chặn xóa khi có booking) =================
 
     @Test
-    @DisplayName("UT-14: Xóa mềm sân bóng thành công khi chưa có đơn đặt sân")
+    @DisplayName("UT-14: Xóa hoàn toàn sân bóng rác mới tạo khi chưa có ca đá/đơn đặt sân")
     void deletePitch_Success() {
         when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
         when(bookingRepository.existsByPitchId(10L)).thenReturn(false);
 
         pitchService.deletePitch(10L);
 
-        assertTrue(pitch1.getIsDeleted());
-        verify(pitchRepository, times(1)).save(pitch1);
+        verify(pitchRepository, times(1)).delete(pitch1);
+        verify(pitchRepository, never()).save(any(Pitch.class));
     }
 
     @Test
-    @DisplayName("UT-15: Bắn ngoại lệ PITCH_HAS_BOOKINGS khi sân bóng đã có lịch sử đặt sân")
+    @DisplayName("UT-15: Bắn ngoại lệ PITCH_HAS_BOOKINGS khi sân bóng đã có lịch sử đặt sân / ca đá")
     void deletePitch_HasBookings_ThrowsException() {
         when(pitchRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(pitch1));
         when(bookingRepository.existsByPitchId(10L)).thenReturn(true);
@@ -414,7 +414,7 @@ class PitchServiceTest {
         AppException ex = assertThrows(AppException.class, () -> pitchService.deletePitch(10L));
 
         assertEquals(ErrorCode.PITCH_HAS_BOOKINGS, ex.getErrorCode());
-        verify(pitchRepository, never()).save(any(Pitch.class));
+        verify(pitchRepository, never()).delete(any(Pitch.class));
     }
 
     @Test
