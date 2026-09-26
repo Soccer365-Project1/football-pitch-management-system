@@ -27,6 +27,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import org.springframework.data.domain.Sort;
+import com.fpms.dto.response.PublicPitchResponse;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -390,5 +393,44 @@ class PitchServiceTest {
 
         assertEquals(ErrorCode.PITCH_NOT_FOUND, ex.getErrorCode());
         verify(pitchRepository, never()).save(any(Pitch.class));
+    }
+
+    // ================= 8. Test Cases Cho Public APIs (Khách hàng) =================
+
+    @Test
+    @DisplayName("UT-16: Lấy danh sách sân active không lọc theo loại sân thành công")
+    void getActivePitches_WithoutFilter_Success() {
+        PublicPitchResponse publicResponse = PublicPitchResponse.builder()
+                .id(10L)
+                .name("Sân 5A")
+                .build();
+
+        when(pitchRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(pitch1));
+        when(pitchMapper.toPublicPitchResponseList(anyList())).thenReturn(List.of(publicResponse));
+
+        List<PublicPitchResponse> result = pitchService.getActivePitches(null);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("Sân 5A", result.get(0).getName());
+        verify(pitchRepository, times(1)).findAll(any(Specification.class), any(Sort.class));
+    }
+
+    @Test
+    @DisplayName("UT-18: Lấy danh sách sân active có lọc theo pitchTypeId thành công")
+    void getActivePitches_WithPitchTypeId_Success() {
+        PublicPitchResponse publicResponse = PublicPitchResponse.builder()
+                .id(10L)
+                .name("Sân 5A")
+                .build();
+
+        when(pitchRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(pitch1));
+        when(pitchMapper.toPublicPitchResponseList(anyList())).thenReturn(List.of(publicResponse));
+
+        List<PublicPitchResponse> result = pitchService.getActivePitches(1L);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(pitchRepository, times(1)).findAll(any(Specification.class), any(Sort.class));
     }
 }

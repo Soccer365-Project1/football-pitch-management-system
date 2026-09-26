@@ -83,6 +83,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    /**
+     * 5. Xử lý thiếu param bắt buộc hoặc truyền sai kiểu dữ liệu param (@RequestParam)
+     */
+    @ExceptionHandler({
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ApiResponse<Object>> handleRequestParamException(Exception ex) {
+        log.warn("[RequestParamException] Lỗi tham số truy vấn: {}", ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(400, "Tham số truy vấn không hợp lệ hoặc bị thiếu");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 
     /**
      * 6. Xử lý lỗi không tìm thấy endpoint (404)

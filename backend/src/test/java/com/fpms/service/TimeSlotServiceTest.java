@@ -1,6 +1,7 @@
 package com.fpms.service;
 
 import com.fpms.dto.request.TimeSlotRequest;
+import com.fpms.dto.response.PublicTimeSlotResponse;
 import com.fpms.dto.response.TimeSlotResponse;
 import com.fpms.entity.TimeSlot;
 import com.fpms.exception.AppException;
@@ -388,5 +389,29 @@ class TimeSlotServiceTest {
 
         assertFalse(slot1.getIsActive());
         verify(timeSlotRepository).save(slot1);
+    }
+
+    // =========================================================================
+    // UT-16: Public API lấy danh sách khung giờ đang hoạt động
+    // =========================================================================
+    @Test
+    @DisplayName("UT-16: Lấy danh sách khung giờ công khai (chỉ lấy active và sắp xếp theo startTime)")
+    void getPublicTimeSlots_Success() {
+        PublicTimeSlotResponse publicSlot = PublicTimeSlotResponse.builder()
+                .id(1L)
+                .startTime(LocalTime.of(6, 0))
+                .endTime(LocalTime.of(7, 30))
+                .isPeakHour(false)
+                .build();
+
+        when(timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc()).thenReturn(List.of(slot1, slot2));
+        when(timeSlotMapper.toPublicTimeSlotResponseList(anyList())).thenReturn(List.of(publicSlot));
+
+        List<PublicTimeSlotResponse> result = timeSlotService.getPublicTimeSlots();
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(LocalTime.of(6, 0), result.get(0).getStartTime());
+        verify(timeSlotRepository, times(1)).findAllByIsActiveTrueOrderByStartTimeAsc();
     }
 }
