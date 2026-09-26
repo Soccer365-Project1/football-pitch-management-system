@@ -1,21 +1,31 @@
 package com.fpms.service.impl;
 
+import com.fpms.dto.request.BrevoEmailRequest;
 import com.fpms.service.EmailService;
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
+
+import java.time.Duration;
+import java.util.List;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class BrevoEmailServiceImpl implements EmailService {
 
-    private final JavaMailSender mailSender;
+    private final RestClient restClient;
+
+    @Value("${brevo.api.key:}")
+    private String brevoApiKey;
+
+    @Value("${brevo.api.url:https://api.brevo.com/v3/smtp/email}")
+    private String brevoApiUrl;
 
     @Value("${app.mail.from-email:giapit02012005@gmail.com}")
     private String fromEmail;
@@ -23,24 +33,66 @@ public class BrevoEmailServiceImpl implements EmailService {
     @Value("${app.mail.from-name:Soccer365}")
     private String fromName;
 
+    @Autowired
+    public BrevoEmailServiceImpl() {
+        this(createDefaultRestClient());
+    }
+
+    public BrevoEmailServiceImpl(RestClient restClient) {
+        this.restClient = restClient != null ? restClient : createDefaultRestClient();
+    }
+
+    private static RestClient createDefaultRestClient() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+        requestFactory.setReadTimeout(Duration.ofSeconds(10));
+        return RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
+    }
+
     @Override
     @Async("mailTaskExecutor")
     public void sendOtpEmail(String toEmail, String otpCode, int expirationMinutes) {
         log.info("Đang tiến hành gửi email OTP đặt lại mật khẩu đến: {}", toEmail);
 
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            log.warn("BREVO_API_KEY chưa được cấu hình. Vui lòng thêm BREVO_API_KEY để gửi email.");
+            return;
+        }
+
+        String trimmedKey = brevoApiKey.trim();
+        if (trimmedKey.startsWith("xsmtpsib-")) {
+            log.error("❌ CẢNH BÁO: Key bạn đang dùng là SMTP Key (tiền tố 'xsmtpsib-'), không phải API Key! " +
+                    "Vui lòng vào Brevo Dashboard -> tab 'API keys & MCP' để tạo API Key (tiền tố 'xkeysib-').");
+        }
+
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            BrevoEmailRequest request = BrevoEmailRequest.builder()
+                    .sender(BrevoEmailRequest.Sender.builder()
+                            .name(fromName)
+                            .email(fromEmail)
+                            .build())
+                    .to(List.of(new BrevoEmailRequest.Recipient(toEmail)))
+                    .subject("[Soccer365] Mã xác thực đặt lại mật khẩu của bạn")
+                    .htmlContent(buildHtmlContent(otpCode, expirationMinutes))
+                    .build();
 
-            helper.setFrom(fromEmail, fromName);
-            helper.setTo(toEmail);
-            helper.setSubject("[Soccer365] Mã xác thực đặt lại mật khẩu của bạn");
-            helper.setText(buildHtmlContent(otpCode, expirationMinutes), true); // true = hỗ trợ HTML
+            String response = restClient.post()
+                    .uri(brevoApiUrl)
+                    .header("api-key", brevoApiKey.trim())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(String.class);
 
-            mailSender.send(message);
-            log.info("Đã gửi email OTP thành công qua Brevo tới: {}", toEmail);
+            log.info("Đã gửi email OTP thành công qua Brevo REST API tới: {}, response: {}", toEmail, response);
+        } catch (RestClientResponseException ex) {
+            log.error("Lỗi phản hồi từ Brevo REST API khi gửi tới {}: Status={}, ResponseBody={}",
+                    toEmail, ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
         } catch (Exception ex) {
-            log.error("Lỗi khi gửi email qua Brevo: {}", ex.getMessage(), ex);
+            log.error("Lỗi kết nối khi gọi Brevo REST API tới {}: {}", toEmail, ex.getMessage(), ex);
         }
     }
 
@@ -99,5 +151,22 @@ public class BrevoEmailServiceImpl implements EmailService {
                 "  </table>" +
                 "</body>" +
                 "</html>";
+    }
+
+    // Setter methods for unit testing
+    void setBrevoApiKey(String brevoApiKey) {
+        this.brevoApiKey = brevoApiKey;
+    }
+
+    void setBrevoApiUrl(String brevoApiUrl) {
+        this.brevoApiUrl = brevoApiUrl;
+    }
+
+    void setFromEmail(String fromEmail) {
+        this.fromEmail = fromEmail;
+    }
+
+    void setFromName(String fromName) {
+        this.fromName = fromName;
     }
 }
