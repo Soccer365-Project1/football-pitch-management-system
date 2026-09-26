@@ -16,21 +16,57 @@ const BookPitch: React.FC = () => {
 
   const { data: pitches = [], isLoading: isLoadingPitches } = usePitches(selectedPitchType);
   const { data: timeSlots = [], isLoading: isLoadingSlots } = useTimeSlots();
-  const { data: gridData = [], isFetching: isFetchingGrid } = useScheduleGrid(selectedDate);
+  const { data = { bookings: [], prices: [] }, isFetching: isFetchingGrid } = useScheduleGrid(selectedDate, selectedPitchType);
   const { data: pitchTypes = [], isLoading: isLoadingPitchTypes } = usePitchTypes();
 
   const isLoading = isLoadingPitches || isLoadingSlots || isFetchingGrid || isLoadingPitchTypes;
 
   const formatPrice = (price: number) => {
+    // Rút gọn giá (VD: 250.000đ -> 250k) để giao diện không bị vỡ trên các ô nhỏ
+    if (price >= 1000) {
+      return (price / 1000) + 'k';
+    }
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
-  const getSlotStatus = (pitchId: number, timeSlotId: number) => {
-    const gridItem = gridData.find(g => g.pitchId === pitchId && g.timeSlotId === timeSlotId);
+  const isSlotInPast = (dateStr: string, endTime: string) => {
+    const now = new Date();
+    // Chuyển local time sang string YYYY-MM-DD an toàn hơn (tránh lệch múi giờ)
+    const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    
+    if (dateStr < todayStr) return true;
+    
+    if (dateStr === todayStr) {
+      let [hours, minutes] = endTime.split(':').map(Number);
+      // Sửa lỗi: Nếu giờ kết thúc là 00:00, ta hiểu nó là 24:00 của ngày hôm nay
+      if (hours === 0 && minutes === 0) {
+        hours = 24;
+      }
+      const slotTime = new Date();
+      slotTime.setHours(hours, minutes, 0, 0);
+      return slotTime < now;
+    }
+    
+    return false;
+  };
+
+  const getSlotStatus = (pitch: any, timeSlotId: number) => {
+    if (pitch.status === 'MAINTENANCE') return 'maintenance';
+    
+    const bookings = Array.isArray(data) ? data : (data.bookings || []);
+    const gridItem = bookings.find(g => g.pitchId === pitch.id && g.timeSlotId === timeSlotId);
+    
     if (!gridItem) return 'available';
+    if (gridItem.status === 'PENDING_HOLD') return 'pending_hold';
     if (gridItem.status === 'MAINTENANCE') return 'maintenance';
-    if (gridItem.status === 'BOOKED') return 'booked';
-    return 'available';
+    
+    return 'booked';
+  };
+
+  const getPrice = (pitchTypeId: number, isPeakHour: boolean) => {
+    const prices = Array.isArray(data) ? [] : (data.prices || []);
+    const priceItem = prices.find(p => p.pitchTypeId === pitchTypeId && p.isPeakHour === isPeakHour);
+    return priceItem ? priceItem.price : 0;
   };
 
   return (
@@ -117,6 +153,7 @@ const BookPitch: React.FC = () => {
                 <input
                   id="date-picker-input"
                   type="date"
+                  min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]}
                   value={selectedDate}
                   onChange={(e) => {
                     setSelectedDate(e.target.value);
@@ -159,7 +196,7 @@ const BookPitch: React.FC = () => {
                   </div>
 
                   {timeSlots.map(slot => {
-                    const status = getSlotStatus(pitch.id, slot.id);
+                    const status = getSlotStatus(pitch, slot.id);
 
                     if (status === 'maintenance') {
                       return (
@@ -171,18 +208,45 @@ const BookPitch: React.FC = () => {
                       );
                     }
 
+                    const isPeak = slot.isPeakHour;
+                    const currentPrice = getPrice(pitch.pitchType.id, slot.isPeakHour) || (slot as any).basePrice || (isPeak ? 300000 : 250000);
+                    const isPast = isSlotInPast(selectedDate, slot.endTime);
+
                     if (status === 'booked') {
                       return (
                         <div key={slot.id} className="matrix-cell p-1">
-                          <div className="flex flex-col items-center justify-center font-semibold" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', cursor: 'not-allowed', padding: '0.25rem' }}>
-                            Đã đặt
+                          <div className="flex flex-col items-center justify-center" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', cursor: 'not-allowed', padding: '0.25rem' }}>
+                            <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
+                            <span className="text-[10px] sm:text-xs mt-0.5 opacity-90 font-medium">Đã đặt</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    if (status === 'pending_hold') {
+                      return (
+                        <div key={slot.id} className="matrix-cell p-1">
+                          <div className="flex flex-col items-center justify-center" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b', cursor: 'not-allowed', padding: '0.25rem' }}>
+                            <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
+                            <span className="text-[10px] sm:text-xs mt-0.5 opacity-90 font-medium">Chờ cọc</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Nếu ô trống nhưng đã quá giờ
+                    if (isPast) {
+                      return (
+                        <div key={slot.id} className="matrix-cell p-1">
+                          <div className="flex flex-col items-center justify-center" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'var(--color-bg-base)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'not-allowed', padding: '0.25rem', opacity: 0.7 }}>
+                            <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
+                            <span className="text-[10px] sm:text-xs mt-0.5 opacity-90">Đã qua</span>
                           </div>
                         </div>
                       );
                     }
 
                     // Available
-                    const isPeak = slot.isPeakHour;
                     const baseBg = isPeak ? 'rgba(245, 158, 11, 0.1)' : 'var(--color-primary-light)';
                     const baseBorder = isPeak ? '#f59e0b' : 'var(--color-primary)';
                     const hoverBg = isPeak ? '#f59e0b' : 'var(--color-primary)';
@@ -197,8 +261,8 @@ const BookPitch: React.FC = () => {
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = 'white'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = baseBg; e.currentTarget.style.color = 'inherit'; }}
                         >
-                          <span className="font-bold text-sm">{formatPrice((slot as any).basePrice || (isPeak ? 300000 : 250000))}</span>
-                          <span className="text-xs mt-1 opacity-90">{isPeak ? 'Giờ vàng' : 'Trống'}</span>
+                          <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
+                          <span className="text-[10px] sm:text-xs mt-0.5 opacity-90">{isPeak ? 'Giờ vàng' : 'Trống'}</span>
                         </div>
                       </div>
                     );
@@ -228,8 +292,11 @@ const BookPitch: React.FC = () => {
 
                   <div className="time-pills-grid">
                     {timeSlots.map(slot => {
-                      const status = getSlotStatus(pitch.id, slot.id);
+                      const status = getSlotStatus(pitch, slot.id);
                       const isPeak = slot.isPeakHour;
+
+                      const currentPrice = getPrice(pitch.pitchType.id, slot.isPeakHour) || (slot as any).basePrice || (isPeak ? 300000 : 250000);
+                      const isPast = isSlotInPast(selectedDate, slot.endTime);
 
                       if (status === 'maintenance') {
                         return (
@@ -244,7 +311,31 @@ const BookPitch: React.FC = () => {
                         return (
                           <div key={slot.id} className="time-pill booked">
                             <span className="time-text">{slot.startTime}</span>
-                            <span className="text-xs font-medium mt-1">Đã đặt</span>
+                            <div className="flex flex-col items-center mt-1">
+                               <span className="text-[10px] font-bold">{formatPrice(currentPrice)}</span>
+                               <span className="text-[10px] font-medium opacity-80">Đã đặt</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (status === 'pending_hold') {
+                        return (
+                          <div key={slot.id} className="time-pill booked" style={{ borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <span className="time-text">{slot.startTime}</span>
+                            <div className="flex flex-col items-center mt-1">
+                               <span className="text-[10px] font-bold">{formatPrice(currentPrice)}</span>
+                               <span className="text-[10px] font-medium opacity-80">Chờ cọc</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (isPast) {
+                        return (
+                          <div key={slot.id} className="time-pill maintenance" style={{ opacity: 0.6 }}>
+                            <span className="time-text">{slot.startTime}</span>
+                            <span className="text-xs font-medium mt-1">Đã qua</span>
                           </div>
                         );
                       }
@@ -257,7 +348,7 @@ const BookPitch: React.FC = () => {
                           style={isPeak ? { borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.05)' } : {}}
                         >
                           <span className="time-text">{slot.startTime}</span>
-                          <span className="price-text" style={isPeak ? { color: '#f59e0b' } : {}}>{formatPrice((slot as any).basePrice || (isPeak ? 300000 : 250000))}</span>
+                          <span className="price-text" style={isPeak ? { color: '#f59e0b' } : {}}>{formatPrice(currentPrice)}</span>
                         </div>
                       );
                     })}

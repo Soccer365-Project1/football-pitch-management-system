@@ -16,4 +16,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             LocalDate bookingDate,
             Collection<BookingStatus> statuses
     );
+
+    @org.springframework.data.jpa.repository.Query("SELECT b FROM Booking b WHERE b.bookingDate = :date " +
+       "AND b.status NOT IN ('CANCELLED', 'REFUNDED') " +
+       "AND (:pitchTypeId IS NULL OR b.pitch.pitchType.id = :pitchTypeId)")
+    java.util.List<Booking> findOccupyingBookings(
+            @org.springframework.data.repository.query.Param("date") LocalDate date, 
+            @org.springframework.data.repository.query.Param("pitchTypeId") Long pitchTypeId
+    );
 }

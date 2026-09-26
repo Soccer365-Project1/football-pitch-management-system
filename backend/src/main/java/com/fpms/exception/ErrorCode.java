@@ -40,7 +40,8 @@ public enum ErrorCode {
     TIME_SLOT_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin khung giờ"),
     TIME_SLOT_INVALID_TIME(3012, HttpStatus.BAD_REQUEST, "Giờ kết thúc phải lớn hơn giờ bắt đầu"),
     TIME_SLOT_OVERLAPPING(3013, HttpStatus.BAD_REQUEST, "Khung giờ bị chồng chéo với khung giờ khác đã tồn tại"),
-    TIME_SLOT_HAS_ACTIVE_BOOKINGS(3014, HttpStatus.BAD_REQUEST, "Không thể xóa khung giờ do đang có đơn đặt chưa hoàn tất");
+    TIME_SLOT_HAS_ACTIVE_BOOKINGS(3014, HttpStatus.BAD_REQUEST, "Không thể xóa khung giờ do đang có đơn đặt chưa hoàn tất"),
+    PAST_DATE_NOT_ALLOWED(3015, HttpStatus.BAD_REQUEST, "Không thể xem hoặc đặt lịch cho ngày trong quá khứ");
 
 
     private final int code;

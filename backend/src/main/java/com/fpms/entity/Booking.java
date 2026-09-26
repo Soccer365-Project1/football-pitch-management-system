@@ -49,6 +49,12 @@ public class Booking extends BaseEntity {
     @Column(name = "price_snapshot", precision = 12, scale = 2, nullable = false)
     private BigDecimal priceSnapshot; // Đơn giá chốt tại thời điểm đặt (Bảo toàn lịch sử)
 
+    @Column(name = "time_slot_snapshot", length = 50, nullable = false)
+    private String timeSlotSnapshot; // Khung giờ chốt tại thời điểm đặt (VD: 17:30 - 19:00)
+
+    @Column(name = "pitch_name_snapshot", length = 100, nullable = false)
+    private String pitchNameSnapshot; // Tên sân chốt tại thời điểm đặt
+
     @Column(name = "total_pitch_amount", precision = 12, scale = 2, nullable = false)
     private BigDecimal totalPitchAmount; // Tổng tiền sân
 

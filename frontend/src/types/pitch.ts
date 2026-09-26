@@ -18,13 +18,19 @@ export interface TimeSlot {
   isPeakHour: boolean;
 }
 
-export interface GridSlot {
+export interface ScheduleGridItemResponse {
   pitchId: number;
-  pitchName: string;
   timeSlotId: number;
-  startTime: string;
-  endTime: string;
+  status: string;
+}
+
+export interface PriceItemResponse {
+  pitchTypeId: number;
   isPeakHour: boolean;
-  status: 'AVAILABLE' | 'BOOKED' | 'MAINTENANCE';
-  bookingId?: number;
+  price: number;
+}
+
+export interface ScheduleGridResponse {
+  bookings: ScheduleGridItemResponse[];
+  prices: PriceItemResponse[];
 }

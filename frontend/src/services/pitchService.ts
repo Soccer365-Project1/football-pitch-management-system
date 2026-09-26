@@ -1,6 +1,6 @@
 import api from './api.ts';
 import type { ApiResponse } from '../types/common.ts';
-import type { Pitch, TimeSlot, GridSlot } from '../types/pitch.ts';
+import type { Pitch, PitchType, TimeSlot, ScheduleGridResponse } from '../types/pitch.ts';
 
 export const pitchService = {
   // Lấy danh sách sân hoạt động
@@ -18,11 +18,13 @@ export const pitchService = {
   },
 
   // Lấy lưới trạng thái đặt sân theo ngày
-  getScheduleGrid: async (date: string): Promise<GridSlot[]> => {
-    const res = await api.get<ApiResponse<GridSlot[]>>('/bookings/schedule-grid', { 
-      params: { date } 
-    });
-    return res.data?.data || [];
+  getScheduleGrid: async (date: string, pitchTypeId?: string | number): Promise<ScheduleGridResponse> => {
+    const params: any = { date };
+    if (pitchTypeId && pitchTypeId !== 'all') {
+      params.pitchTypeId = pitchTypeId;
+    }
+    const res = await api.get<ApiResponse<ScheduleGridResponse>>('/bookings/schedule-grid', { params });
+    return res.data?.data || { bookings: [], prices: [] };
   },
 
   // Lấy danh sách loại sân

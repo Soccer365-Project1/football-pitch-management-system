@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Calendar, CreditCard, Smartphone, Search, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { usePitchTypes } from '../hooks/queries/usePitchQueries.ts';
 
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [pitchType, setPitchType] = useState('all');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const { data: pitchTypes = [] } = usePitchTypes();
 
   const handleSearch = () => {
-    navigate(`/book-pitch?type=${pitchType}&date=${date}`);
+    navigate(`/book-pitch?date=${date}&type=${pitchType}`);
   };
 
   return (
@@ -46,8 +48,9 @@ const Home: React.FC = () => {
                 className="home-search-input"
               >
                 <option value="all">Tìm tất cả các sân</option>
-                <option value="5">Sân 5 người</option>
-                <option value="7">Sân 7 người</option>
+                {pitchTypes.map(type => (
+                  <option key={type.id} value={type.id.toString()}>{type.name}</option>
+                ))}
               </select>
             </div>
 
@@ -65,6 +68,7 @@ const Home: React.FC = () => {
               <input
                 id="home-date-picker"
                 type="date"
+                min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]}
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 className="home-search-input"

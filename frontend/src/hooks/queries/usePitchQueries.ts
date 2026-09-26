@@ -15,10 +15,10 @@ export const useTimeSlots = () => {
   });
 };
 
-export const useScheduleGrid = (date: string) => {
+export const useScheduleGrid = (date: string, pitchTypeId: string | number) => {
   return useQuery({
-    queryKey: ['scheduleGrid', date],
-    queryFn: () => pitchService.getScheduleGrid(date),
+    queryKey: ['scheduleGrid', date, pitchTypeId],
+    queryFn: () => pitchService.getScheduleGrid(date, pitchTypeId),
   });
 };
 
