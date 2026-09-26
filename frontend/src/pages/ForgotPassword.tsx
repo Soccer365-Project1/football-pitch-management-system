@@ -124,12 +124,27 @@ const ForgotPassword: React.FC = () => {
       newErrors.otpCode = 'Mã OTP phải gồm chính xác 6 chữ số';
     }
 
+    // Biểu thức chính quy kiểm tra độ mạnh của mật khẩu mới theo chuẩn bảo mật:
+    // - 6 đến 64 ký tự: (?=.{6,64}$)
+    // - Ít nhất 1 chữ cái: (?=.*[A-Za-z])
+    // - Ít nhất 1 chữ số: (?=.*\d)
+    // - Ít nhất 1 ký tự đặc biệt: (?=.*[^A-Za-z0-9\s])
+    // - Chặn hoàn toàn khoảng trắng: \S+$
+    const PASSWORD_REGEX = /^(?=.{6,64}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\S+$/;
+
+    // Kiểm tra trường Mật khẩu mới
     if (!newPassword) {
       newErrors.newPassword = 'Vui lòng nhập mật khẩu mới';
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    } else if (/\s/.test(newPassword)) {
+      // Bắt ca biên chứa khoảng trắng
+      newErrors.newPassword = 'Mật khẩu mới không được chứa khoảng trắng';
+    } else if (newPassword.length < 6 || newPassword.length > 64) {
+      newErrors.newPassword = 'Mật khẩu mới phải từ 6 đến 64 ký tự';
+    } else if (!PASSWORD_REGEX.test(newPassword)) {
+      newErrors.newPassword = 'Mật khẩu mới phải bao gồm ít nhất 1 chữ cái, 1 chữ số và 1 ký tự đặc biệt';
     }
 
+    // Kiểm tra trường Xác nhận mật khẩu mới (phải khớp hoàn toàn với mật khẩu mới)
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Vui lòng xác nhận lại mật khẩu mới';
     } else if (newPassword !== confirmPassword) {
@@ -329,19 +344,23 @@ const ForgotPassword: React.FC = () => {
                     placeholder="Tối thiểu 6 ký tự"
                     disabled={isLoading}
                   />
+                  {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu mới */}
                   <button
                     type="button"
                     onClick={() => setShowNewPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
                     tabIndex={-1}
+                    aria-label={showNewPassword ? "Ẩn mật khẩu mới" : "Hiện mật khẩu mới"}
                   >
                     {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {errors.newPassword && (
+                {errors.newPassword ? (
                   <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>
                     {errors.newPassword}
                   </p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted">Từ 6-64 ký tự, gồm chữ cái, chữ số, ký tự đặc biệt và không dấu cách.</p>
                 )}
               </div>
 
@@ -369,11 +388,13 @@ const ForgotPassword: React.FC = () => {
                     placeholder="Nhập lại mật khẩu mới"
                     disabled={isLoading}
                   />
+                  {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu xác nhận */}
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
                     tabIndex={-1}
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
