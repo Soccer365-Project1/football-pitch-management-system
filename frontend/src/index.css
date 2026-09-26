@@ -843,3 +843,24 @@ button {
     width: 100% !important;
   }
 }
+
+/* Tự động căn chỉnh radio của SweetAlert2 xếp dọc, không bị dồn ép cột */
+.swal2-radio {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  margin: 1rem auto !important;
+  padding: 0.5rem 1rem !important;
+  max-width: 380px !important;
+}
+
+.swal2-radio label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  font-size: 0.925rem !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
