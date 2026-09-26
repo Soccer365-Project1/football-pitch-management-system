@@ -2,12 +2,15 @@ package com.fpms.service.impl;
 
 import com.fpms.dto.request.TimeSlotRequest;
 import com.fpms.dto.response.TimeSlotResponse;
+import com.fpms.entity.PriceMatrix;
 import com.fpms.entity.TimeSlot;
 import com.fpms.entity.enums.BookingStatus;
+import com.fpms.entity.enums.DayType;
 import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.TimeSlotMapper;
 import com.fpms.repository.BookingRepository;
+import com.fpms.repository.PriceMatrixRepository;
 import com.fpms.repository.TimeSlotRepository;
 import com.fpms.service.TimeSlotService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -27,6 +31,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
     private final TimeSlotRepository timeSlotRepository;
     private final BookingRepository bookingRepository;
+    private final PriceMatrixRepository priceMatrixRepository;
     private final TimeSlotMapper timeSlotMapper;
 
     private static final List<BookingStatus> ACTIVE_BOOKING_STATUSES = List.of(
@@ -41,12 +46,16 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     public List<TimeSlotResponse> getAllTimeSlots(Boolean activeOnly) {
         log.info("Lấy danh sách khung giờ - activeOnly: {}", activeOnly);
         List<TimeSlot> slots;
-        if (Boolean.TRUE.equals(activeOnly)) {
-            slots = timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc();
-        } else {
+        // Nếu activeOnly là false (truy vấn cả các ca đã xóa mềm), lấy toàn bộ. Mặc định chỉ lấy các ca đang hoạt động (isActive = true)
+        if (activeOnly != null && !activeOnly) {
             slots = timeSlotRepository.findAllByOrderByStartTimeAsc();
+        } else {
+            slots = timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc();
         }
-        return timeSlotMapper.toTimeSlotResponseList(slots);
+        List<TimeSlotResponse> responses = timeSlotMapper.toTimeSlotResponseList(slots);
+        List<PriceMatrix> weekdayPrices = priceMatrixRepository.findAllByDayType(DayType.WEEKDAY);
+        responses.forEach(res -> populatePrices(res, weekdayPrices));
+        return responses;
     }
 
     @Override
@@ -54,7 +63,10 @@ public class TimeSlotServiceImpl implements TimeSlotService {
         log.info("Lấy thông tin chi tiết khung giờ ID: {}", id);
         TimeSlot timeSlot = timeSlotRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TIME_SLOT_NOT_FOUND));
-        return timeSlotMapper.toTimeSlotResponse(timeSlot);
+        TimeSlotResponse response = timeSlotMapper.toTimeSlotResponse(timeSlot);
+        List<PriceMatrix> weekdayPrices = priceMatrixRepository.findAllByDayType(DayType.WEEKDAY);
+        populatePrices(response, weekdayPrices);
+        return response;
     }
 
     @Override
@@ -78,7 +90,10 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
         TimeSlot savedSlot = timeSlotRepository.save(timeSlot);
         log.info("Tạo khung giờ thành công với ID: {}", savedSlot.getId());
-        return timeSlotMapper.toTimeSlotResponse(savedSlot);
+        TimeSlotResponse response = timeSlotMapper.toTimeSlotResponse(savedSlot);
+        List<PriceMatrix> weekdayPrices = priceMatrixRepository.findAllByDayType(DayType.WEEKDAY);
+        populatePrices(response, weekdayPrices);
+        return response;
     }
 
     @Override
@@ -106,7 +121,10 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
         TimeSlot updatedSlot = timeSlotRepository.save(timeSlot);
         log.info("Cập nhật khung giờ ID: {} thành công", id);
-        return timeSlotMapper.toTimeSlotResponse(updatedSlot);
+        TimeSlotResponse response = timeSlotMapper.toTimeSlotResponse(updatedSlot);
+        List<PriceMatrix> weekdayPrices = priceMatrixRepository.findAllByDayType(DayType.WEEKDAY);
+        populatePrices(response, weekdayPrices);
+        return response;
     }
 
     @Override
@@ -133,6 +151,29 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     private void validateTimeSlot(LocalTime startTime, LocalTime endTime) {
         if (startTime == null || endTime == null || !endTime.isAfter(startTime)) {
             throw new AppException(ErrorCode.TIME_SLOT_INVALID_TIME);
+        }
+        long durationMinutes = Duration.between(startTime, endTime).toMinutes();
+        if (durationMinutes < 60 || durationMinutes > 120) {
+            throw new AppException(ErrorCode.TIME_SLOT_INVALID_DURATION);
+        }
+    }
+
+    private void populatePrices(TimeSlotResponse response, List<PriceMatrix> weekdayPrices) {
+        if (response == null || weekdayPrices == null || weekdayPrices.isEmpty()) {
+            return;
+        }
+        boolean isPeak = Boolean.TRUE.equals(response.getIsPeakHour());
+        for (PriceMatrix pm : weekdayPrices) {
+            if (pm.getPitchType() != null && Boolean.valueOf(isPeak).equals(pm.getIsPeakHour())) {
+                Long typeId = pm.getPitchType().getId();
+                if (typeId != null) {
+                    if (typeId.equals(1L)) {
+                        response.setPricePitch5(pm.getPrice());
+                    } else if (typeId.equals(2L)) {
+                        response.setPricePitch7(pm.getPrice());
+                    }
+                }
+            }
         }
     }
 }

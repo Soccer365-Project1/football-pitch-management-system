@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @Table(
     name = "price_matrices",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uq_price_matrix", columnNames = {"pitch_type_id", "time_slot_id", "day_type"})
+        @UniqueConstraint(name = "uq_price_matrix", columnNames = {"pitch_type_id", "is_peak_hour", "day_type"})
     }
 )
 public class PriceMatrix extends BaseEntity {
@@ -24,9 +24,8 @@ public class PriceMatrix extends BaseEntity {
     @JoinColumn(name = "pitch_type_id", nullable = false)
     private PitchType pitchType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "time_slot_id", nullable = false)
-    private TimeSlot timeSlot;
+    @Column(name = "is_peak_hour", nullable = false)
+    private Boolean isPeakHour;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "day_type", length = 20, nullable = false)
