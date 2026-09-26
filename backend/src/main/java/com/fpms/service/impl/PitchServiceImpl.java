@@ -158,15 +158,15 @@ public class PitchServiceImpl implements PitchService {
         Pitch pitch = pitchRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PITCH_NOT_FOUND));
 
-        // Ràng buộc nghiệp vụ: Nếu sân đã từng phát sinh đơn đặt sân (Booking), không cho phép xóa
+        // Ràng buộc nghiệp vụ: Nếu sân đã từng phát sinh đơn đặt sân / ca đá, không cho phép xóa
         if (bookingRepository.existsByPitchId(id)) {
-            log.warn("Chặn xóa sân bóng ID: {} do đã có dữ liệu đặt sân trong lịch sử", id);
+            log.warn("Chặn xóa sân bóng ID: {} do đã có dữ liệu ca đá / đặt sân trong lịch sử", id);
             throw new AppException(ErrorCode.PITCH_HAS_BOOKINGS);
         }
 
-        pitch.setIsDeleted(true);
-        pitchRepository.save(pitch);
-        log.info("Xóa mềm sân bóng ID: {} thành công", id);
+        // Sân tạo rác mới tinh (chưa từng có ca đá / đặt sân) -> Xóa cứng hoàn toàn khỏi CSDL
+        pitchRepository.delete(pitch);
+        log.info("Xóa hoàn toàn sân bóng rác ID: {} khỏi CSDL thành công", id);
     }
 
     @Override

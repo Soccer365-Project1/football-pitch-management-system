@@ -218,18 +218,20 @@ const AdminPitches: React.FC = () => {
   };
 
   /**
-   * Xóa mềm sân bóng với thông báo xác nhận an toàn:
-   * - Nếu sân đã có dữ liệu đặt sân (Mã lỗi 3005): Gợi ý chuyển sang "Ngừng hoạt động"
+   * Xử lý xóa sân bóng:
+   * - Nếu là sân rác mới tạo (chưa từng có ca đá / đặt sân): Xóa vĩnh viễn trực tiếp khỏi CSDL.
+   * - Nếu sân đã hoặc đang có ca đá / đặt sân (Mã lỗi 3005): Chặn xóa và hiển thị cảnh báo,
+   *   gợi ý chuyển trạng thái sang "Ngừng hoạt động".
    */
   const handleDeletePitch = async (pitch: Pitch) => {
     const result = await Swal.fire({
       title: 'Xác nhận xóa sân bóng?',
-      text: `Bạn có chắc chắn muốn xóa sân "${pitch.name}"? Dữ liệu sân sẽ bị ẩn khỏi hệ thống.`,
+      text: `Bạn có chắc chắn muốn xóa sân "${pitch.name}"? Nếu là sân mới tạo chưa phát sinh ca đá nào, sân sẽ được xóa vĩnh viễn khỏi hệ thống.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Xóa vĩnh viễn',
+      confirmButtonText: 'Xác nhận Xóa',
       cancelButtonText: 'Hủy bỏ',
     });
 
@@ -247,10 +249,11 @@ const AdminPitches: React.FC = () => {
         const errorData = err.response?.data;
         const msg = errorData?.message || 'Không thể xóa sân bóng';
 
-        if (errorData?.code === 3005 || msg.includes('dữ liệu đặt sân') || msg.includes('lịch sử')) {
+        // Nếu sân đã hoặc đang có ca đá / đặt sân (Mã lỗi 3005 từ Backend)
+        if (errorData?.code === 3005 || msg.includes('ca đá') || msg.includes('đặt sân') || msg.includes('lịch sử')) {
           const switchResult = await Swal.fire({
             title: 'Không thể xóa sân bóng!',
-            text: `${msg}. Bạn có muốn chuyển sân "${pitch.name}" sang trạng thái "Ngừng hoạt động" để lưu trữ dữ liệu lịch sử không?`,
+            html: `Sân <strong>"${pitch.name}"</strong> đã từng phát sinh ca đá hoặc có lịch đặt trong hệ thống nên không thể xóa.<br/><br/>Bạn có muốn chuyển sân sang trạng thái <strong>"Ngừng hoạt động"</strong> không?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#10b981',
