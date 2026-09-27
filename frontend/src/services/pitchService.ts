@@ -1,58 +1,97 @@
-import api from './api';
-import type { ApiResponse } from '../types/common';
+import api from './api.ts';
+import type { ApiResponse } from '../types/common.ts';
 import type { 
   Pitch, 
   PitchType, 
-  PitchStatus,
+  PitchStatus, 
+  TimeSlot, 
+  ScheduleGridResponse, 
   PitchFilterParams, 
   PitchRequest, 
   PageResponse 
-} from '../types/pitch';
+} from '../types/pitch.ts';
 
 /**
  * Service quản lý các yêu cầu API liên quan đến sân bóng (Pitch Service)
- * Dành cho phân hệ Quản trị viên (Admin Dashboard)
+ * Hỗ trợ cả người dùng đặt sân và phân hệ Quản trị viên (Admin Dashboard)
  */
 export const pitchService = {
+  // ==========================================
+  // 1. Phân hệ Người dùng (Customer / Booking)
+  // ==========================================
+
   /**
-   * Lấy danh sách sân bóng hỗ trợ tìm kiếm, lọc và phân trang từ Backend
-   * @param params Bộ lọc gồm: từ khóa (keyword), loại sân (pitchTypeId), trạng thái (status), trang (page), số lượng (size)
-   * @returns PageResponse chứa danh sách sân bóng (items) và thông tin phân trang (totalPages, totalElements...)
+   * Lấy danh sách sân hoạt động (dành cho người dùng đặt sân)
+   * Hoặc lấy danh sách sân bóng hỗ trợ tìm kiếm, lọc và phân trang (dành cho Admin)
    */
-  getPitches: async (params: PitchFilterParams): Promise<PageResponse<Pitch>> => {
-    // Làm sạch params: Chỉ gửi lên các tham số hợp lệ, loại bỏ các giá trị mặc định 'ALL' hoặc chuỗi rỗng
-    const cleanParams: Record<string, any> = {
-      page: params.page || 1,
-      size: params.size || 10,
-    };
-    if (params.keyword?.trim()) {
-      cleanParams.keyword = params.keyword.trim();
-    }
-    if (params.pitchTypeId && params.pitchTypeId !== 'ALL') {
-      cleanParams.pitchTypeId = params.pitchTypeId;
-    }
-    if (params.status && params.status !== 'ALL') {
-      cleanParams.status = params.status;
+  getPitches: (async (paramsOrPitchTypeId?: PitchFilterParams | string | number): Promise<any> => {
+    // Nếu tham số là một object (PitchFilterParams) -> Gọi API Admin có phân trang
+    if (typeof paramsOrPitchTypeId === 'object' && paramsOrPitchTypeId !== null) {
+      const cleanParams: Record<string, any> = {
+        page: paramsOrPitchTypeId.page || 1,
+        size: paramsOrPitchTypeId.size || 10,
+      };
+      if (paramsOrPitchTypeId.keyword?.trim()) {
+        cleanParams.keyword = paramsOrPitchTypeId.keyword.trim();
+      }
+      if (paramsOrPitchTypeId.pitchTypeId && paramsOrPitchTypeId.pitchTypeId !== 'ALL') {
+        cleanParams.pitchTypeId = paramsOrPitchTypeId.pitchTypeId;
+      }
+      if (paramsOrPitchTypeId.status && paramsOrPitchTypeId.status !== 'ALL') {
+        cleanParams.status = paramsOrPitchTypeId.status;
+      }
+
+      const response = await api.get<ApiResponse<PageResponse<Pitch>>>('/admin/pitches', { 
+        params: cleanParams 
+      });
+      return response.data.data!;
     }
 
-    const response = await api.get<ApiResponse<PageResponse<Pitch>>>('/admin/pitches', { 
-      params: cleanParams 
+    // Ngược lại -> Gọi API công khai lấy danh sách sân bóng hoạt động
+    const pitchTypeId = paramsOrPitchTypeId;
+    const res = await api.get<ApiResponse<Pitch[]>>('/pitches', { 
+      params: { pitchTypeId: pitchTypeId && pitchTypeId !== 'all' ? pitchTypeId : undefined } 
     });
-    return response.data.data!;
+    return res.data?.data || [];
+  }) as {
+    (params: PitchFilterParams): Promise<PageResponse<Pitch>>;
+    (pitchTypeId?: number | string): Promise<Pitch[]>;
+  },
+
+  /**
+   * Lấy danh sách khung giờ hoạt động
+   */
+  getTimeSlots: async (): Promise<TimeSlot[]> => {
+    const res = await api.get<ApiResponse<TimeSlot[]>>('/timeslots');
+    return res.data?.data || [];
+  },
+
+  /**
+   * Lấy lưới trạng thái đặt sân theo ngày
+   */
+  getScheduleGrid: async (date: string, pitchTypeId?: string | number): Promise<ScheduleGridResponse> => {
+    const params: any = { date };
+    if (pitchTypeId && pitchTypeId !== 'all') {
+      params.pitchTypeId = pitchTypeId;
+    }
+    const res = await api.get<ApiResponse<ScheduleGridResponse>>('/bookings/schedule-grid', { params });
+    return res.data?.data || { bookings: [], prices: [] };
   },
 
   /**
    * Lấy danh mục tất cả loại sân bóng (Sân 5 người, Sân 7 người...)
-   * Phục vụ hiển thị dropdown bộ lọc và select trong modal thêm/sửa
    */
   getPitchTypes: async (): Promise<PitchType[]> => {
-    const response = await api.get<ApiResponse<PitchType[]>>('/admin/pitches/types');
-    return response.data.data!;
+    const res = await api.get<ApiResponse<PitchType[]>>('/pitches/types');
+    return res.data?.data || [];
   },
+
+  // ==========================================
+  // 2. Phân hệ Quản trị viên (Admin Management)
+  // ==========================================
 
   /**
    * Lấy thông tin chi tiết một sân bóng theo ID
-   * @param id Mã định danh sân bóng
    */
   getPitchById: async (id: number): Promise<Pitch> => {
     const response = await api.get<ApiResponse<Pitch>>(`/admin/pitches/${id}`);
@@ -61,7 +100,6 @@ export const pitchService = {
 
   /**
    * Tạo mới một sân bóng
-   * @param data Dữ liệu sân mới gồm: name (bắt buộc), pitchTypeId (bắt buộc), description (tùy chọn)
    */
   createPitch: async (data: PitchRequest): Promise<Pitch> => {
     const response = await api.post<ApiResponse<Pitch>>('/admin/pitches', data);
@@ -70,8 +108,6 @@ export const pitchService = {
 
   /**
    * Cập nhật thông tin sân bóng (Tên sân, Loại sân, Mô tả)
-   * @param id Mã sân bóng cần cập nhật
-   * @param data Dữ liệu cập nhật
    */
   updatePitch: async (id: number, data: PitchRequest): Promise<Pitch> => {
     const response = await api.put<ApiResponse<Pitch>>(`/admin/pitches/${id}`, data);
@@ -80,8 +116,6 @@ export const pitchService = {
 
   /**
    * Chuyển đổi trạng thái hoạt động của sân (ACTIVE, MAINTENANCE, INACTIVE)
-   * @param id Mã sân bóng
-   * @param status Trạng thái mới: 'ACTIVE' (Hoạt động), 'MAINTENANCE' (Bảo trì) hoặc 'INACTIVE' (Ngừng hoạt động)
    */
   updatePitchStatus: async (id: number, status: PitchStatus): Promise<Pitch> => {
     const response = await api.patch<ApiResponse<Pitch>>(`/admin/pitches/${id}/status`, { status });
@@ -90,7 +124,6 @@ export const pitchService = {
 
   /**
    * Xóa mềm sân bóng khỏi hệ thống (Đánh dấu isDeleted = true)
-   * @param id Mã sân bóng cần xóa
    */
   deletePitch: async (id: number): Promise<void> => {
     await api.delete<ApiResponse<void>>(`/admin/pitches/${id}`);

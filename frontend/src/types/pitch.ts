@@ -3,7 +3,7 @@ export type PitchStatus = 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
 export interface PitchType {
   id: number;
   name: string;
-  playerCapacity: number;
+  playerCapacity?: number;
   description?: string;
 }
 
@@ -13,8 +13,32 @@ export interface Pitch {
   pitchType: PitchType;
   status: PitchStatus;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TimeSlot {
+  id: number;
+  startTime: string;
+  endTime: string;
+  isPeakHour: boolean;
+}
+
+export interface ScheduleGridItemResponse {
+  pitchId: number;
+  timeSlotId: number;
+  status: string;
+}
+
+export interface PriceItemResponse {
+  pitchTypeId: number;
+  isPeakHour: boolean;
+  price: number;
+}
+
+export interface ScheduleGridResponse {
+  bookings: ScheduleGridItemResponse[];
+  prices: PriceItemResponse[];
 }
 
 export interface PageResponse<T> {

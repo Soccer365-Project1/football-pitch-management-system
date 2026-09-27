@@ -5,6 +5,7 @@ import com.fpms.dto.request.PitchRequest;
 import com.fpms.dto.request.UpdatePitchStatusRequest;
 import com.fpms.dto.response.PitchResponse;
 import com.fpms.dto.response.PitchTypeResponse;
+import com.fpms.dto.response.PublicPitchResponse;
 import com.fpms.entity.enums.PitchStatus;
 
 import java.util.List;
@@ -24,4 +25,6 @@ public interface PitchService {
     void deletePitch(Long id);
 
     List<PitchTypeResponse> getAllPitchTypes();
+
+    List<PublicPitchResponse> getActivePitches(Long pitchTypeId);
 }

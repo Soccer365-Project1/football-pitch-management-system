@@ -2,7 +2,9 @@ package com.fpms.mapper;
 
 import com.fpms.dto.request.PitchRequest;
 import com.fpms.dto.response.PitchResponse;
+import com.fpms.dto.response.PublicPitchResponse;
 import com.fpms.entity.Pitch;
+import java.util.List;
 import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -22,6 +24,10 @@ public interface PitchMapper {
     Pitch toPitch(PitchRequest request);
 
     PitchResponse toPitchResponse(Pitch pitch);
+
+    PublicPitchResponse toPublicPitchResponse(Pitch pitch);
+
+    List<PublicPitchResponse> toPublicPitchResponseList(List<Pitch> pitches);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "pitchType", ignore = true)
