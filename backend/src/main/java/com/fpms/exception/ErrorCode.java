@@ -31,17 +31,20 @@ public enum ErrorCode {
     OTP_COOLDOWN_ACTIVE(2014, HttpStatus.TOO_MANY_REQUESTS, "Vui lòng chờ 60 giây trước khi yêu cầu gửi lại mã OTP mới"),
     EMAIL_SEND_FAILED(2015, HttpStatus.INTERNAL_SERVER_ERROR, "Không thể gửi email xác thực, vui lòng thử lại sau"),
     OLD_PASSWORD_INCORRECT(2016, HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không chính xác"),
+    NEW_PASSWORD_SAME_AS_OLD(2017, HttpStatus.BAD_REQUEST, "Mật khẩu mới không được trùng với mật khẩu hiện tại"),
 
     // 3. Nhóm Lỗi Phân Hệ Sân Bóng & Khung Giờ (3000 - 3999)
     PITCH_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin sân bóng"),
     PITCH_NAME_ALREADY_EXISTS(3002, HttpStatus.BAD_REQUEST, "Tên sân bóng đã tồn tại trên hệ thống"),
     PITCH_TYPE_NOT_FOUND(3003, HttpStatus.NOT_FOUND, "Không tìm thấy loại sân bóng yêu cầu"),
     PITCH_STATUS_INVALID(3004, HttpStatus.BAD_REQUEST, "Trạng thái sân bóng không hợp lệ"),
+    PITCH_HAS_BOOKINGS(3005, HttpStatus.BAD_REQUEST, "Sân bóng đã có ca đá hoặc lịch đặt trong hệ thống, không thể xóa. Vui lòng chuyển trạng thái sang Ngừng hoạt động"),
     TIME_SLOT_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin khung giờ"),
     TIME_SLOT_INVALID_TIME(3012, HttpStatus.BAD_REQUEST, "Giờ kết thúc phải lớn hơn giờ bắt đầu"),
     TIME_SLOT_OVERLAPPING(3013, HttpStatus.BAD_REQUEST, "Khung giờ bị chồng chéo với khung giờ khác đã tồn tại"),
     TIME_SLOT_HAS_ACTIVE_BOOKINGS(3014, HttpStatus.BAD_REQUEST, "Không thể xóa khung giờ do đang có đơn đặt chưa hoàn tất"),
-    PAST_DATE_NOT_ALLOWED(3015, HttpStatus.BAD_REQUEST, "Không thể xem hoặc đặt lịch cho ngày trong quá khứ");
+    PAST_DATE_NOT_ALLOWED(3999, HttpStatus.BAD_REQUEST, "Không thể xem hoặc đặt lịch cho ngày trong quá khứ"),
+    TIME_SLOT_INVALID_DURATION(3015, HttpStatus.BAD_REQUEST, "Thời lượng ca đá phải từ 1 giờ (60 phút) đến 2 giờ (120 phút)");
 
 
     private final int code;

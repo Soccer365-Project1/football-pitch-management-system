@@ -190,8 +190,8 @@ class UserControllerTest {
     void changePassword_Success() throws Exception {
         ChangePasswordRequest request = ChangePasswordRequest.builder()
                 .currentPassword("oldPassword123")
-                .newPassword("newPassword123")
-                .confirmPassword("newPassword123")
+                .newPassword("NewPassword@123")
+                .confirmPassword("NewPassword@123")
                 .build();
 
         try {
@@ -236,8 +236,8 @@ class UserControllerTest {
     void changePassword_WrongOldPassword_ReturnsBadRequest() throws Exception {
         ChangePasswordRequest request = ChangePasswordRequest.builder()
                 .currentPassword("wrongOldPassword")
-                .newPassword("newPassword123")
-                .confirmPassword("newPassword123")
+                .newPassword("NewPassword@123")
+                .confirmPassword("NewPassword@123")
                 .build();
 
         try {
@@ -263,8 +263,8 @@ class UserControllerTest {
     void changePassword_PasswordConfirmNotMatch_ReturnsBadRequest() throws Exception {
         ChangePasswordRequest request = ChangePasswordRequest.builder()
                 .currentPassword("oldPassword123")
-                .newPassword("newPassword123")
-                .confirmPassword("differentPassword")
+                .newPassword("NewPassword@123")
+                .confirmPassword("differentPassword@123")
                 .build();
 
         try {
@@ -283,5 +283,26 @@ class UserControllerTest {
         } finally {
             org.springframework.security.core.context.SecurityContextHolder.clearContext();
         }
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/change-password - Mật khẩu mới chứa khoảng trắng trả về 400 Bad Request")
+    void changePassword_PasswordContainsWhitespace_ReturnsBadRequest() throws Exception {
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("oldPassword123")
+                .newPassword("New Pass@123")
+                .confirmPassword("New Pass@123")
+                .build();
+
+        mockMvc.perform(post("/api/v1/users/change-password")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.errors[0].field").value("newPassword"));
+
+        verify(userService, never()).changePassword(any(), any());
     }
 }

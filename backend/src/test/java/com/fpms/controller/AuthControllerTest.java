@@ -65,8 +65,8 @@ class AuthControllerTest {
                 .fullName("Nguyễn Văn A")
                 .phoneNumber("0912345678")
                 .email("nguyenvana@gmail.com")
-                .password("password123")
-                .confirmPassword("password123")
+                .password("Password@123")
+                .confirmPassword("Password@123")
                 .build();
 
         doNothing().when(authService).register(any(RegisterRequest.class));
@@ -105,8 +105,8 @@ class AuthControllerTest {
                 .fullName("Nguyễn Văn A")
                 .phoneNumber("12345") // không đúng định dạng 10 số bắt đầu bằng 0
                 .email("nguyenvana@gmail.com")
-                .password("password123")
-                .confirmPassword("password123")
+                .password("Password@123")
+                .confirmPassword("Password@123")
                 .build();
 
         mockMvc.perform(post("/api/v1/auth/register")
@@ -127,8 +127,8 @@ class AuthControllerTest {
                 .fullName("Nguyễn Văn A")
                 .phoneNumber("0912345678")
                 .email("invalid-email-format")
-                .password("password123")
-                .confirmPassword("password123")
+                .password("Password@123")
+                .confirmPassword("Password@123")
                 .build();
 
         mockMvc.perform(post("/api/v1/auth/register")
@@ -149,8 +149,8 @@ class AuthControllerTest {
                 .fullName("Nguyễn Văn A")
                 .phoneNumber("0912345678")
                 .email("nguyenvana@gmail.com")
-                .password("password123")
-                .confirmPassword("password123")
+                .password("Password@123")
+                .confirmPassword("Password@123")
                 .build();
 
         doThrow(new AppException(ErrorCode.EMAIL_ALREADY_EXISTS))
@@ -163,6 +163,72 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value(2003))
                 .andExpect(jsonPath("$.message").value(ErrorCode.EMAIL_ALREADY_EXISTS.getMessage()));
+    }
+
+    @Test
+    @DisplayName("TC-02b: POST /api/v1/auth/register - Mật khẩu chứa khoảng trắng trả về 400 Bad Request")
+    void register_PasswordContainsWhitespace_ReturnsBadRequest() throws Exception {
+        RegisterRequest request = RegisterRequest.builder()
+                .fullName("Nguyễn Văn A")
+                .phoneNumber("0912345678")
+                .email("nguyenvana@gmail.com")
+                .password("Pass@ 123")
+                .confirmPassword("Pass@ 123")
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+
+        verify(authService, never()).register(any());
+    }
+
+    @Test
+    @DisplayName("TC-02c: POST /api/v1/auth/register - Mật khẩu thiếu ký tự đặc biệt trả về 400 Bad Request")
+    void register_PasswordMissingSpecialChar_ReturnsBadRequest() throws Exception {
+        RegisterRequest request = RegisterRequest.builder()
+                .fullName("Nguyễn Văn A")
+                .phoneNumber("0912345678")
+                .email("nguyenvana@gmail.com")
+                .password("Password123")
+                .confirmPassword("Password123")
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+
+        verify(authService, never()).register(any());
+    }
+
+    @Test
+    @DisplayName("TC-02d: POST /api/v1/auth/register - Mật khẩu dưới 6 ký tự trả về 400 Bad Request")
+    void register_PasswordUnder6Chars_ReturnsBadRequest() throws Exception {
+        RegisterRequest request = RegisterRequest.builder()
+                .fullName("Nguyễn Văn A")
+                .phoneNumber("0912345678")
+                .email("nguyenvana@gmail.com")
+                .password("P@1a")
+                .confirmPassword("P@1a")
+                .build();
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+
+        verify(authService, never()).register(any());
     }
 
     // ================= Test Cases Cho POST /api/v1/auth/login =================
@@ -476,8 +542,8 @@ class AuthControllerTest {
         ResetPasswordRequest request = ResetPasswordRequest.builder()
                 .email("nguyenvana@gmail.com")
                 .otpCode("849201")
-                .newPassword("newPassword123")
-                .confirmPassword("newPassword123")
+                .newPassword("NewPassword@123")
+                .confirmPassword("NewPassword@123")
                 .build();
 
         doNothing().when(authService).resetPassword(any(ResetPasswordRequest.class));
@@ -519,8 +585,8 @@ class AuthControllerTest {
         ResetPasswordRequest request = ResetPasswordRequest.builder()
                 .email("nguyenvana@gmail.com")
                 .otpCode("849201")
-                .newPassword("newPassword123")
-                .confirmPassword("differentPassword")
+                .newPassword("NewPassword@123")
+                .confirmPassword("differentPassword@123")
                 .build();
 
         doThrow(new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH))

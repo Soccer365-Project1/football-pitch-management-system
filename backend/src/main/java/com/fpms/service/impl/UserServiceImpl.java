@@ -98,7 +98,12 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ErrorCode.OLD_PASSWORD_INCORRECT);
         }
 
-        // 3. Băm mật khẩu mới bằng BCrypt và cập nhật người dùng
+        // 3. Kiểm tra mật khẩu mới không được trùng với mật khẩu hiện tại
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+        }
+
+        // 4. Băm mật khẩu mới bằng BCrypt và cập nhật người dùng
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 

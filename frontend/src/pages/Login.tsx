@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { showToast } from '../utils/toast';
 
@@ -17,6 +18,9 @@ const Login: React.FC = () => {
     password: '',
     rememberMe: false,
   });
+
+  // Trạng thái hiển thị mật khẩu (Ẩn / Hiện với icon con mắt)
+  const [showPassword, setShowPassword] = useState(false);
 
   // 2. Trạng thái lỗi và Loading
   const [errors, setErrors] = useState<{ loginId?: string; password?: string }>({});
@@ -230,21 +234,34 @@ const Login: React.FC = () => {
           {/* Ô Mật khẩu */}
           <div>
             <label className="font-semibold text-sm">Mật khẩu</label>
-            <input 
-              type="password" 
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-2 w-full outline-none" 
-              style={{ 
-                padding: '0.75rem', 
-                borderRadius: 'var(--radius-md)', 
-                border: errors.password ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
-                backgroundColor: 'var(--color-bg-base)', 
-                color: 'var(--color-text-base)' 
-              }}
-              placeholder="••••••••"
-            />
+            <div className="relative mt-2">
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full outline-none pr-10" 
+                style={{ 
+                  padding: '0.75rem', 
+                  paddingRight: '2.5rem',
+                  borderRadius: 'var(--radius-md)', 
+                  border: errors.password ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)' 
+                }}
+                placeholder="••••••••"
+              />
+              {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu (icon con mắt) */}
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                tabIndex={-1}
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {errors.password && (
               <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{errors.password}</p>
             )}

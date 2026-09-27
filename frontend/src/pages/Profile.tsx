@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, User, Loader2 } from 'lucide-react';
+import { Save, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
 import { showToast, showConfirm } from '../utils/toast';
@@ -32,6 +32,11 @@ const Profile: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
+
+  // Quản lý trạng thái ẩn / hiện mật khẩu cho form Đổi mật khẩu (icon con mắt)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -97,27 +102,49 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Xử lý Đổi mật khẩu
+  // Biểu thức chính quy kiểm tra độ mạnh của mật khẩu mới theo chuẩn bảo mật:
+  // - 6 đến 64 ký tự: (?=.{6,64}$)
+  // - Ít nhất 1 chữ cái: (?=.*[A-Za-z])
+  // - Ít nhất 1 chữ số: (?=.*\d)
+  // - Ít nhất 1 ký tự đặc biệt: (?=.*[^A-Za-z0-9\s])
+  // - Chặn hoàn toàn khoảng trắng: \S+$
+  const PASSWORD_REGEX = /^(?=.{6,64}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\S+$/;
+
+  // Xử lý sự kiện gửi form Đổi mật khẩu
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: PasswordErrors = {};
 
+    // 1. Kiểm tra trường Mật khẩu hiện tại
     if (!currentPassword) {
       errors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
     }
 
+    // 2. Kiểm tra tính hợp lệ và độ bảo mật của Mật khẩu mới
     if (!newPassword) {
       errors.newPassword = 'Vui lòng nhập mật khẩu mới';
-    } else if (newPassword.length < 6) {
-      errors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    } else if (/\s/.test(newPassword)) {
+      // Bắt ca biên: Mật khẩu mới chứa khoảng trắng
+      errors.newPassword = 'Mật khẩu mới không được chứa khoảng trắng';
+    } else if (newPassword.length < 6 || newPassword.length > 64) {
+      // Giới hạn độ dài an toàn 6 đến 64 ký tự
+      errors.newPassword = 'Mật khẩu mới phải từ 6 đến 64 ký tự';
+    } else if (!PASSWORD_REGEX.test(newPassword)) {
+      // Bắt buộc có chữ, số, ký tự đặc biệt
+      errors.newPassword = 'Mật khẩu mới phải bao gồm ít nhất 1 chữ cái, 1 chữ số và 1 ký tự đặc biệt';
+    } else if (currentPassword && newPassword === currentPassword) {
+      // Ca biên bảo mật: Chặn người dùng đặt mật khẩu mới trùng với mật khẩu hiện tại
+      errors.newPassword = 'Mật khẩu mới không được trùng với mật khẩu hiện tại';
     }
 
+    // 3. Kiểm tra Xác nhận mật khẩu mới (phải khớp chính xác với mật khẩu mới)
     if (!confirmPassword) {
       errors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới';
     } else if (newPassword && confirmPassword && newPassword !== confirmPassword) {
       errors.confirmPassword = 'Mật khẩu xác nhận không khớp với mật khẩu mới';
     }
 
+    // Nếu có lỗi validation client-side thì dừng lại và hiển thị lỗi
     if (Object.keys(errors).length > 0) {
       setPasswordErrors(errors);
       return;
@@ -125,7 +152,7 @@ const Profile: React.FC = () => {
 
     setPasswordErrors({});
 
-    // Hiển thị hộp thoại xác nhận trước khi đổi mật khẩu
+    // Hiển thị hộp thoại xác nhận trước khi gọi API đổi mật khẩu
     const isConfirmed = await showConfirm(
       'Xác nhận đổi mật khẩu',
       'Bạn có chắc chắn muốn cập nhật mật khẩu mới không?',
@@ -135,6 +162,7 @@ const Profile: React.FC = () => {
 
     setPasswordLoading(true);
     try {
+      // Gọi API đổi mật khẩu lên server
       await userService.changePasswordApi({
         currentPassword,
         newPassword,
@@ -142,14 +170,20 @@ const Profile: React.FC = () => {
       });
 
       showToast('Đổi mật khẩu thành công!', 'success');
+      // Reset form sau khi đổi mật khẩu thành công
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
       const code = err.response?.data?.code;
       const message = err.response?.data?.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại!';
+      
+      // Xử lý các mã lỗi nghiệp vụ từ backend trả về
       if (code === 2016 || message.toLowerCase().includes('hiện tại') || message.toLowerCase().includes('current password')) {
         setPasswordErrors({ currentPassword: 'Mật khẩu hiện tại không chính xác' });
+      } else if (code === 2017 || message.toLowerCase().includes('trùng')) {
+        // Mã lỗi 2017: Mật khẩu mới không được trùng với mật khẩu hiện tại
+        setPasswordErrors({ newPassword: 'Mật khẩu mới không được trùng với mật khẩu hiện tại' });
       } else if (code === 2007 || message.toLowerCase().includes('khớp') || message.toLowerCase().includes('confirm')) {
         setPasswordErrors({ confirmPassword: 'Mật khẩu xác nhận không khớp' });
       } else {
@@ -298,73 +332,117 @@ const Profile: React.FC = () => {
           </h2>
 
           <form onSubmit={handleChangePassword} className="flex flex-col gap-4 h-full">
+            {/* 1. Ô Mật khẩu hiện tại */}
             <div>
               <label className="font-semibold text-sm">Mật khẩu hiện tại</label>
-              <input 
-                type="password" 
-                value={currentPassword}
-                onChange={(e) => {
-                  setCurrentPassword(e.target.value);
-                  if (passwordErrors.currentPassword) setPasswordErrors(prev => ({ ...prev, currentPassword: undefined }));
-                }}
-                placeholder="••••••••"
-                className="mt-2 w-full block outline-none" 
-                style={{ 
-                  padding: '0.75rem', 
-                  borderRadius: 'var(--radius-md)', 
-                  border: passwordErrors.currentPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
-                  backgroundColor: 'var(--color-bg-base)', 
-                  color: 'var(--color-text-base)' 
-                }} 
-              />
+              <div className="relative mt-2">
+                <input 
+                  type={showCurrentPassword ? 'text' : 'password'} 
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (passwordErrors.currentPassword) setPasswordErrors(prev => ({ ...prev, currentPassword: undefined }));
+                  }}
+                  placeholder="••••••••"
+                  className="w-full block outline-none pr-10" 
+                  style={{ 
+                    padding: '0.75rem', 
+                    paddingRight: '2.5rem',
+                    borderRadius: 'var(--radius-md)', 
+                    border: passwordErrors.currentPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                    backgroundColor: 'var(--color-bg-base)', 
+                    color: 'var(--color-text-base)' 
+                  }} 
+                />
+                {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu hiện tại */}
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                  tabIndex={-1}
+                  aria-label={showCurrentPassword ? "Ẩn mật khẩu hiện tại" : "Hiện mật khẩu hiện tại"}
+                >
+                  {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {passwordErrors.currentPassword && (
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.currentPassword}</p>
               )}
             </div>
 
+            {/* 2. Ô Mật khẩu mới */}
             <div>
               <label className="font-semibold text-sm">Mật khẩu mới</label>
-              <input 
-                type="password" 
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  if (passwordErrors.newPassword) setPasswordErrors(prev => ({ ...prev, newPassword: undefined }));
-                }}
-                placeholder="••••••••"
-                className="mt-2 w-full block outline-none" 
-                style={{ 
-                  padding: '0.75rem', 
-                  borderRadius: 'var(--radius-md)', 
-                  border: passwordErrors.newPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
-                  backgroundColor: 'var(--color-bg-base)', 
-                  color: 'var(--color-text-base)' 
-                }} 
-              />
-              {passwordErrors.newPassword && (
+              <div className="relative mt-2">
+                <input 
+                  type={showNewPassword ? 'text' : 'password'} 
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordErrors.newPassword) setPasswordErrors(prev => ({ ...prev, newPassword: undefined }));
+                  }}
+                  placeholder="••••••••"
+                  className="w-full block outline-none pr-10" 
+                  style={{ 
+                    padding: '0.75rem', 
+                    paddingRight: '2.5rem',
+                    borderRadius: 'var(--radius-md)', 
+                    border: passwordErrors.newPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                    backgroundColor: 'var(--color-bg-base)', 
+                    color: 'var(--color-text-base)' 
+                  }} 
+                />
+                {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu mới */}
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                  tabIndex={-1}
+                  aria-label={showNewPassword ? "Ẩn mật khẩu mới" : "Hiện mật khẩu mới"}
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {passwordErrors.newPassword ? (
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.newPassword}</p>
+              ) : (
+                <p className="mt-1 text-xs text-muted">Từ 6-64 ký tự, gồm chữ cái, chữ số, ký tự đặc biệt và không dấu cách.</p>
               )}
             </div>
 
+            {/* 3. Ô Xác nhận mật khẩu mới */}
             <div>
               <label className="font-semibold text-sm">Xác nhận mật khẩu mới</label>
-              <input 
-                type="password" 
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  if (passwordErrors.confirmPassword) setPasswordErrors(prev => ({ ...prev, confirmPassword: undefined }));
-                }}
-                placeholder="••••••••"
-                className="mt-2 w-full block outline-none" 
-                style={{ 
-                  padding: '0.75rem', 
-                  borderRadius: 'var(--radius-md)', 
-                  border: passwordErrors.confirmPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
-                  backgroundColor: 'var(--color-bg-base)', 
-                  color: 'var(--color-text-base)' 
-                }} 
-              />
+              <div className="relative mt-2">
+                <input 
+                  type={showConfirmPassword ? 'text' : 'password'} 
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (passwordErrors.confirmPassword) setPasswordErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                  }}
+                  placeholder="••••••••"
+                  className="w-full block outline-none pr-10" 
+                  style={{ 
+                    padding: '0.75rem', 
+                    paddingRight: '2.5rem',
+                    borderRadius: 'var(--radius-md)', 
+                    border: passwordErrors.confirmPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                    backgroundColor: 'var(--color-bg-base)', 
+                    color: 'var(--color-text-base)' 
+                  }} 
+                />
+                {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu xác nhận */}
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {passwordErrors.confirmPassword && (
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{passwordErrors.confirmPassword}</p>
               )}

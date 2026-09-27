@@ -1,7 +1,7 @@
 package com.fpms.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,7 +19,10 @@ public class ChangePasswordRequest {
     private String currentPassword;
 
     @NotBlank(message = "Mật khẩu mới không được để trống")
-    @Size(min = 6, message = "Mật khẩu mới phải có tối thiểu 6 ký tự")
+    @Pattern(
+            regexp = "^(?=.{6,64}$)(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9\\s])\\S+$",
+            message = "Mật khẩu mới phải từ 6 đến 64 ký tự, bao gồm ít nhất 1 chữ cái, 1 chữ số, 1 ký tự đặc biệt và không chứa khoảng trắng"
+    )
     private String newPassword;
 
     @NotBlank(message = "Mật khẩu xác nhận không được để trống")

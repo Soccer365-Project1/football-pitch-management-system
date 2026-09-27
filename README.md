@@ -154,12 +154,12 @@ Lệnh này sẽ khởi động 2 containers:
    ```bash
    cd backend
    ```
-2. *(Tùy chọn)* Cấu hình tài khoản Brevo SMTP để gửi email thật trong `backend/src/main/resources/application.properties` hoặc truyền biến môi trường:
+2. *(Tùy chọn)* Cấu hình tài khoản Brevo gửi email xác thực OTP (dùng chung 1 chuẩn REST API HTTPS 443 cho cả Local và Production/Render):
    ```properties
-   spring.mail.username=your-brevo-login-email@example.com
-   spring.mail.password=your-brevo-smtp-key
+   BREVO_API_KEY=xkeysib-your-brevo-api-key-here
    app.mail.from-email=your-verified-email@example.com
    ```
+   > 💡 **Lưu ý**: Lấy API Key tại Brevo Dashboard -> *SMTP & API* -> Tab *API keys & MCP* -> *Generate a new API key*. Dùng chuẩn HTTPS cổng 443 đảm bảo không bao giờ bị chặn trên Render.com hay bất kỳ nền tảng Cloud nào.
 3. Chạy ứng dụng Spring Boot:
    - **Trên Windows (PowerShell / CMD)**:
      ```powershell

@@ -257,4 +257,22 @@ class UserServiceTest {
         assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
         verify(userRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("TC-08b: Ném NEW_PASSWORD_SAME_AS_OLD khi mật khẩu mới trùng với mật khẩu hiện tại")
+    void changePassword_NewPasswordSameAsOld_ThrowsException() {
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("oldPassword123")
+                .newPassword("oldPassword123")
+                .confirmPassword("oldPassword123")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("oldPassword123", "$2a$10$oldHashedPassword")).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class, () -> userService.changePassword(validPrincipal, request));
+
+        assertEquals(ErrorCode.NEW_PASSWORD_SAME_AS_OLD, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+    }
 }

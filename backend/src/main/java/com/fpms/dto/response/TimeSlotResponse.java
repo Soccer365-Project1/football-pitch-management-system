@@ -2,6 +2,7 @@ package com.fpms.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
+import java.math.BigDecimal;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -24,6 +25,10 @@ public class TimeSlotResponse {
     private Boolean isPeakHour;
 
     private Boolean isActive;
+
+    private BigDecimal pricePitch5;
+
+    private BigDecimal pricePitch7;
 
     public String getFormattedTime() {
         if (startTime != null && endTime != null) {

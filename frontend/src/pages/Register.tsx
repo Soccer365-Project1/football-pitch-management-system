@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { authService } from '../services/authService';
 
 interface FormErrors {
@@ -30,6 +31,10 @@ const Register: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // 3. Quản lý trạng thái ẩn / hiện mật khẩu (Icon con mắt)
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   // Xử lý khi người dùng nhập liệu
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -45,38 +50,59 @@ const Register: React.FC = () => {
     if (serverError) setServerError(null);
   };
 
-  // Kiểm tra hợp lệ phía Client
+  // 3. Biểu thức chính quy kiểm tra độ mạnh của mật khẩu theo chuẩn bảo mật:
+  // - Độ dài từ 6 đến 64 ký tự: (?=.{6,64}$)
+  // - Chứa ít nhất 1 chữ cái: (?=.*[A-Za-z])
+  // - Chứa ít nhất 1 chữ số: (?=.*\d)
+  // - Chứa ít nhất 1 ký tự đặc biệt: (?=.*[^A-Za-z0-9\s])
+  // - Chặn triệt để 100% khoảng trắng ở mọi vị trí (đầu, giữa, cuối): \S+$
+  const PASSWORD_REGEX = /^(?=.{6,64}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\S+$/;
+
+  // Kiểm tra hợp lệ phía Client cho toàn bộ các trường của form đăng ký
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
+    // Kiểm tra trường Họ và tên (không được để trống sau khi cắt khoảng trắng thừa)
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Họ và tên không được để trống';
     }
 
+    // Kiểm tra trường Số điện thoại (bắt buộc đúng định dạng 10 chữ số nhà mạng Việt Nam)
     if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Số điện thoại không được để trống';
     } else if (!/^(0[35789])[0-9]{8}$/.test(formData.phoneNumber.trim())) {
       newErrors.phoneNumber = 'Số điện thoại không hợp lệ (phải gồm 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09)';
     }
 
+    // Kiểm tra định dạng Email hợp lệ theo RFC
     if (!formData.email.trim()) {
       newErrors.email = 'Email không được để trống';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Email không đúng định dạng';
     }
 
+    // Kiểm tra tính hợp lệ và độ bảo mật của Mật khẩu (Fix TC_REG_20, TC_REG_21)
     if (!formData.password) {
       newErrors.password = 'Mật khẩu không được để trống';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Mật khẩu phải có tối thiểu 6 ký tự';
+    } else if (/\s/.test(formData.password)) {
+      // Bắt ca biên chứa khoảng trắng ở bất kỳ vị trí nào (TC_REG_20, TC_REG_21)
+      newErrors.password = 'Mật khẩu không được chứa khoảng trắng';
+    } else if (formData.password.length < 6 || formData.password.length > 64) {
+      // Giới hạn độ dài an toàn từ 6 đến 64 ký tự
+      newErrors.password = 'Mật khẩu phải từ 6 đến 64 ký tự';
+    } else if (!PASSWORD_REGEX.test(formData.password)) {
+      // Yêu cầu bắt buộc phải có chữ cái, chữ số và ký tự đặc biệt
+      newErrors.password = 'Mật khẩu phải bao gồm ít nhất 1 chữ cái, 1 chữ số và 1 ký tự đặc biệt';
     }
 
+    // Kiểm tra trường Xác nhận mật khẩu (phải trùng khớp chính xác với mật khẩu)
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Vui lòng xác nhận lại mật khẩu';
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không trùng khớp';
     }
 
+    // Kiểm tra người dùng đã tích chọn đồng ý điều khoản hay chưa
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = 'Bạn cần đồng ý với Điều khoản & Chính sách bảo mật';
     }
@@ -226,44 +252,72 @@ const Register: React.FC = () => {
           {/* Hàng 3: Mật khẩu */}
           <div>
             <label className="font-semibold text-sm">Mật khẩu</label>
-            <input 
-              type="password" 
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-2 w-full outline-none" 
-              style={{ 
-                padding: '0.75rem', 
-                borderRadius: 'var(--radius-md)', 
-                border: errors.password ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
-                backgroundColor: 'var(--color-bg-base)', 
-                color: 'var(--color-text-base)' 
-              }}
-              placeholder="••••••••"
-            />
-            {errors.password && (
+            <div className="relative mt-2">
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full outline-none pr-10" 
+                style={{ 
+                  padding: '0.75rem', 
+                  paddingRight: '2.5rem',
+                  borderRadius: 'var(--radius-md)', 
+                  border: errors.password ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)' 
+                }}
+                placeholder="••••••••"
+              />
+              {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu */}
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                tabIndex={-1}
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.password ? (
               <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{errors.password}</p>
+            ) : (
+              <p className="mt-1 text-xs text-muted">Từ 6-64 ký tự, gồm chữ cái, chữ số, ký tự đặc biệt và không dấu cách.</p>
             )}
           </div>
 
           {/* Hàng 4: Xác nhận mật khẩu */}
           <div>
             <label className="font-semibold text-sm">Xác nhận mật khẩu</label>
-            <input 
-              type="password" 
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="mt-2 w-full outline-none" 
-              style={{ 
-                padding: '0.75rem', 
-                borderRadius: 'var(--radius-md)', 
-                border: errors.confirmPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
-                backgroundColor: 'var(--color-bg-base)', 
-                color: 'var(--color-text-base)' 
-              }}
-              placeholder="••••••••"
-            />
+            <div className="relative mt-2">
+              <input 
+                type={showConfirmPassword ? 'text' : 'password'} 
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full outline-none pr-10" 
+                style={{ 
+                  padding: '0.75rem', 
+                  paddingRight: '2.5rem',
+                  borderRadius: 'var(--radius-md)', 
+                  border: errors.confirmPassword ? '1px solid var(--color-danger)' : '1px solid var(--color-border)', 
+                  backgroundColor: 'var(--color-bg-base)', 
+                  color: 'var(--color-text-base)' 
+                }}
+                placeholder="••••••••"
+              />
+              {/* Nút bấm chuyển đổi ẩn/hiện mật khẩu xác nhận */}
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                tabIndex={-1}
+                aria-label={showConfirmPassword ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {errors.confirmPassword && (
               <p className="mt-1 text-xs" style={{ color: 'var(--color-danger)' }}>{errors.confirmPassword}</p>
             )}
