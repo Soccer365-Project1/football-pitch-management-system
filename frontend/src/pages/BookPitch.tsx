@@ -4,12 +4,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePitches, useTimeSlots, useScheduleGrid, usePitchTypes } from '../hooks/queries/usePitchQueries.ts';
 
 
+const getLocalDateString = (d: Date = new Date()) => {
+  return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+};
+
 const BookPitch: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedDate, setSelectedDate] = useState<string>(
-    searchParams.get('date') || new Date().toISOString().split('T')[0]
+    searchParams.get('date') || getLocalDateString()
   );
   const [selectedPitchType, setSelectedPitchType] = useState<string>(
     searchParams.get('type') || 'all'
@@ -33,7 +37,7 @@ const BookPitch: React.FC = () => {
   const isSlotInPast = (dateStr: string, endTime: string) => {
     const now = new Date();
     // Chuyển local time sang string YYYY-MM-DD an toàn hơn (tránh lệch múi giờ)
-    const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const todayStr = getLocalDateString(now);
     
     if (dateStr < todayStr) return true;
     
@@ -154,7 +158,7 @@ const BookPitch: React.FC = () => {
                 <input
                   id="date-picker-input"
                   type="date"
-                  min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]}
+                  min={getLocalDateString()}
                   value={selectedDate}
                   onChange={(e) => {
                     setSelectedDate(e.target.value);
@@ -256,7 +260,7 @@ const BookPitch: React.FC = () => {
                       <div key={slot.id} className="matrix-cell p-1">
                         <div
                           className="flex flex-col items-center justify-center transition-all matrix-slot-inner"
-                          onClick={() => navigate(`/checkout/${slot.id}/${pitch.id}`)}
+                          onClick={() => navigate(`/checkout/${slot.id}/${pitch.id}?date=${selectedDate}`)}
                           style={{ height: '100%', borderRadius: '6px', backgroundColor: baseBg, border: `1px solid ${baseBorder}`, cursor: 'pointer', padding: '0.25rem' }}
                           title="Nhấn để đặt sân"
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = 'white'; }}
@@ -345,7 +349,7 @@ const BookPitch: React.FC = () => {
                         <div
                           key={slot.id}
                           className={`time-pill ${isPeak ? 'is-peak' : ''}`}
-                          onClick={() => navigate(`/checkout/${slot.id}/${pitch.id}`)}
+                          onClick={() => navigate(`/checkout/${slot.id}/${pitch.id}?date=${selectedDate}`)}
                           style={isPeak ? { borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.05)' } : {}}
                         >
                           <span className="time-text">{slot.startTime}</span>

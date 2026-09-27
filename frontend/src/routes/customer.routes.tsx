@@ -44,10 +44,7 @@ export const customerRoutes: RouteObject[] = [
         path: 'my-bookings',
         element: <MyBookings />,
       },
-      {
-        path: 'checkout/:timeSlotId/:pitchId',
-        element: <Checkout />,
-      },
+
 
       // 2. CÁC TRANG YÊU CẦU ĐĂNG NHẬP (Bảo vệ bằng ProtectedRoute)
       {
@@ -56,6 +53,10 @@ export const customerRoutes: RouteObject[] = [
           {
             path: 'profile',
             element: <Profile />,
+          },
+          {
+            path: 'checkout/:timeSlotId/:pitchId',
+            element: <Checkout />,
           },
         ],
       },

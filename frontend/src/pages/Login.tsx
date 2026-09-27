@@ -74,9 +74,9 @@ const Login: React.FC = () => {
       showToast('Đăng nhập thành công!', 'success');
 
       // Điều hướng thông minh sau khi đăng nhập thành công
-      const fromPath = (location.state as any)?.from?.pathname;
-      if (fromPath) {
-        navigate(fromPath, { replace: true });
+      const fromObj = (location.state as any)?.from;
+      if (fromObj) {
+        navigate(fromObj.pathname + (fromObj.search || ''), { replace: true });
       } else if (user.role === 'ROLE_ADMIN') {
         navigate('/admin', { replace: true });
       } else if (user.role === 'ROLE_STAFF') {
@@ -117,9 +117,9 @@ const Login: React.FC = () => {
         showToast('Đăng nhập thành công!', 'success');
 
         // Điều hướng thông minh sau khi đăng nhập thành công
-        const fromPath = (location.state as any)?.from?.pathname;
-        if (fromPath) {
-          navigate(fromPath, { replace: true });
+        const fromObj = (location.state as any)?.from;
+        if (fromObj) {
+          navigate(fromObj.pathname + (fromObj.search || ''), { replace: true });
         } else if (user.role === 'ROLE_ADMIN') {
           navigate('/admin', { replace: true });
         } else if (user.role === 'ROLE_STAFF') {
