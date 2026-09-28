@@ -8,6 +8,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -48,9 +49,11 @@ public class Booking extends BaseEntity {
 
     @Column(name = "price_snapshot", precision = 12, scale = 2, nullable = false)
     private BigDecimal priceSnapshot; // Đơn giá chốt tại thời điểm đặt (Bảo toàn lịch sử)
-
-    @Column(name = "time_slot_snapshot", length = 50, nullable = false)
-    private String timeSlotSnapshot; // Khung giờ chốt tại thời điểm đặt (VD: 17:30 - 19:00)
+    @Column(name = "start_time_snapshot", nullable = false)
+    private LocalTime startTimeSnapshot;
+    
+    @Column(name = "end_time_snapshot", nullable = false)
+    private LocalTime endTimeSnapshot;
 
     @Column(name = "pitch_name_snapshot", length = 100, nullable = false)
     private String pitchNameSnapshot; // Tên sân chốt tại thời điểm đặt

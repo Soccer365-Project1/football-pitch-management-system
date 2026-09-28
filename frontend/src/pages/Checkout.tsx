@@ -8,6 +8,8 @@ import PaymentFailed from '../components/checkout/PaymentFailed.tsx';
 import CheckoutHeader from '../components/checkout/CheckoutHeader.tsx';
 import CheckoutInvoice from '../components/checkout/CheckoutInvoice.tsx';
 import CheckoutForm from '../components/checkout/CheckoutForm.tsx';
+import { bookingService } from '../services/bookingService.ts';
+import { showToast } from '../utils/toast.ts';
 
 const Checkout: React.FC = () => {
   const { pitchId, timeSlotId } = useParams<{ pitchId: string, timeSlotId: string }>();
@@ -52,12 +54,24 @@ const Checkout: React.FC = () => {
   const depositAmount = basePrice * depositRatio;
   const remainingAmount = basePrice - depositAmount;
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async (formData: { guestName: string; guestPhone: string; customerNote: string }) => {
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      await bookingService.createBooking({
+        pitchId: Number(pitchId),
+        timeSlotId: Number(timeSlotId),
+        bookingDate: selectedDate,
+        ...formData
+      });
       setPaymentStatus('SUCCESS');
-    }, 1200);
+      showToast('Đặt sân thành công!', 'success');
+    } catch (error: any) {
+      console.error('Lỗi khi đặt sân:', error);
+      showToast(error.response?.data?.message || 'Có lỗi xảy ra khi đặt sân. Vui lòng thử lại.', 'error');
+      setPaymentStatus('FAILED');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handlePaymentFailed = () => {
@@ -117,7 +131,7 @@ const Checkout: React.FC = () => {
         <CheckoutForm
           depositAmount={depositAmount}
           isProcessing={isProcessing}
-          onPaymentSuccess={handlePaymentSuccess}
+          onSubmit={handlePaymentSuccess}
           onPaymentFailed={handlePaymentFailed}
         />
       </div>
