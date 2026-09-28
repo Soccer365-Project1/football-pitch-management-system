@@ -39,9 +39,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleValidationException(MethodArgumentNotValidException ex) {
         List<FieldErrorDetail> errors = new ArrayList<>();
         ex.getBindingResult().getFieldErrors().forEach(error -> {
+            String defaultMessage = error.getDefaultMessage();
+            String resolvedMessage = defaultMessage;
+            if (defaultMessage != null) {
+                try {
+                    ErrorCode errorCode = ErrorCode.valueOf(defaultMessage);
+                    resolvedMessage = errorCode.getMessage();
+                } catch (IllegalArgumentException ignored) {
+                    // Không phải tên ErrorCode enum, giữ nguyên defaultMessage
+                }
+            }
             errors.add(FieldErrorDetail.builder()
                     .field(error.getField())
-                    .message(error.getDefaultMessage())
+                    .message(resolvedMessage)
                     .rejectedValue(error.getRejectedValue())
                     .build());
         });

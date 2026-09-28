@@ -44,7 +44,14 @@ public enum ErrorCode {
     TIME_SLOT_OVERLAPPING(3013, HttpStatus.BAD_REQUEST, "Khung giờ bị chồng chéo với khung giờ khác đã tồn tại"),
     TIME_SLOT_HAS_ACTIVE_BOOKINGS(3014, HttpStatus.BAD_REQUEST, "Không thể xóa khung giờ do đang có đơn đặt chưa hoàn tất"),
     PAST_DATE_NOT_ALLOWED(3999, HttpStatus.BAD_REQUEST, "Không thể xem hoặc đặt lịch cho ngày trong quá khứ"),
-    TIME_SLOT_INVALID_DURATION(3015, HttpStatus.BAD_REQUEST, "Thời lượng ca đá phải từ 1 giờ (60 phút) đến 2 giờ (120 phút)");
+    TIME_SLOT_INVALID_DURATION(3015, HttpStatus.BAD_REQUEST, "Thời lượng ca đá phải từ 1 giờ (60 phút) đến 2 giờ (120 phút)"),
+
+    // Holiday Error Codes (3020 - 3029)
+    HOLIDAY_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin ngày lễ"),
+    HOLIDAY_DATE_ALREADY_EXISTS(3022, HttpStatus.CONFLICT, "Ngày lễ này đã tồn tại trong hệ thống"),
+    HOLIDAY_DATE_REQUIRED(3023, HttpStatus.BAD_REQUEST, "Ngày lễ không được để trống"),
+    HOLIDAY_NAME_REQUIRED(3024, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được để trống"),
+    HOLIDAY_NAME_MAX_LENGTH(3025, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được vượt quá 150 ký tự");
 
 
     private final int code;
