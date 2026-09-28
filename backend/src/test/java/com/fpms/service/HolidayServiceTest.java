@@ -321,4 +321,43 @@ class HolidayServiceTest {
         verify(holidayRepository, times(1)).existsById(999L);
         verify(holidayRepository, never()).deleteById(anyLong());
     }
+
+    @Test
+    @DisplayName("TC12: Thêm ngày lễ có khoảng trắng thừa - Tự động trim trước khi lưu")
+    void createHoliday_WithUntrimmedStrings_ShouldTrimBeforeSave() {
+        // Arrange
+        HolidayRequest untrimmedRequest = HolidayRequest.builder()
+                .holidayDate(LocalDate.of(2026, 12, 25))
+                .name("   Giáng Sinh Noel   ")
+                .description("   Nghỉ lễ Giáng Sinh   ")
+                .build();
+
+        Holiday savedHoliday = Holiday.builder()
+                .id(4L)
+                .holidayDate(LocalDate.of(2026, 12, 25))
+                .name("Giáng Sinh Noel")
+                .description("Nghỉ lễ Giáng Sinh")
+                .build();
+
+        HolidayResponse expectedResponse = HolidayResponse.builder()
+                .id(4L)
+                .holidayDate(LocalDate.of(2026, 12, 25))
+                .name("Giáng Sinh Noel")
+                .description("Nghỉ lễ Giáng Sinh")
+                .build();
+
+        when(holidayRepository.existsByHolidayDate(untrimmedRequest.getHolidayDate())).thenReturn(false);
+        when(holidayMapper.toHoliday(any(HolidayRequest.class))).thenReturn(savedHoliday);
+        when(holidayRepository.save(savedHoliday)).thenReturn(savedHoliday);
+        when(holidayMapper.toHolidayResponse(savedHoliday)).thenReturn(expectedResponse);
+
+        // Act
+        HolidayResponse response = holidayService.createHoliday(untrimmedRequest);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("Giáng Sinh Noel", untrimmedRequest.getName());
+        assertEquals("Nghỉ lễ Giáng Sinh", untrimmedRequest.getDescription());
+        verify(holidayRepository, times(1)).save(savedHoliday);
+    }
 }

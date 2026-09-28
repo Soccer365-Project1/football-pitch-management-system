@@ -47,6 +47,7 @@ public class HolidayServiceImpl implements HolidayService {
     @Override
     @Transactional
     public HolidayResponse createHoliday(HolidayRequest request) {
+        sanitizeRequest(request);
         log.info("Tạo mới ngày lễ: {} - {}", request.getHolidayDate(), request.getName());
 
         if (holidayRepository.existsByHolidayDate(request.getHolidayDate())) {
@@ -64,6 +65,7 @@ public class HolidayServiceImpl implements HolidayService {
     @Override
     @Transactional
     public HolidayResponse updateHoliday(Long id, HolidayRequest request) {
+        sanitizeRequest(request);
         log.info("Cập nhật ngày lễ ID: {} - {} - {}", id, request.getHolidayDate(), request.getName());
 
         Holiday holiday = holidayRepository.findById(id)
@@ -93,5 +95,17 @@ public class HolidayServiceImpl implements HolidayService {
 
         holidayRepository.deleteById(id);
         log.info("Xóa thành công ngày lễ ID: {}", id);
+    }
+
+    private void sanitizeRequest(HolidayRequest request) {
+        if (request != null) {
+            if (request.getName() != null) {
+                request.setName(request.getName().trim());
+            }
+            if (request.getDescription() != null) {
+                String trimmed = request.getDescription().trim();
+                request.setDescription(trimmed.isEmpty() ? null : trimmed);
+            }
+        }
     }
 }
