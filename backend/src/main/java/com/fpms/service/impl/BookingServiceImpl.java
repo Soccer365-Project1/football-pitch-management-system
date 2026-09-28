@@ -1,6 +1,7 @@
 package com.fpms.service.impl;
 
 import com.fpms.dto.request.BookingCreationRequest;
+import com.fpms.dto.response.BookingEventDto;
 import com.fpms.dto.response.BookingResponse;
 import com.fpms.dto.response.ScheduleGridResponse;
 import com.fpms.dto.response.ScheduleGridItemResponse;
@@ -19,6 +20,9 @@ import com.fpms.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -38,6 +42,7 @@ public class BookingServiceImpl implements BookingService {
     private final PriceMatrixRepository priceMatrixRepository;
     private final BookingMapper bookingMapper;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private DayType determineDayType(LocalDate date) {
         if (holidayRepository.existsByHolidayDate(date)) {
@@ -114,6 +119,21 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.CONFIRMED); // Force confirm right away
 
         booking = bookingRepository.save(booking);
+
+        // Notify clients about the new booking ONLY AFTER transaction commits
+        BookingEventDto event = BookingEventDto.builder()
+                .action("BOOKING_CREATED")
+                .pitchId(booking.getPitch().getId())
+                .timeSlotId(booking.getTimeSlot().getId())
+                .date(booking.getBookingDate().toString())
+                .build();
+                
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend("/topic/schedule", event);
+            }
+        });
 
         // 5. Map to Response
         return bookingMapper.toBookingResponse(booking);
