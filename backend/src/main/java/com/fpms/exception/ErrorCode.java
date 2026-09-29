@@ -54,7 +54,15 @@ public enum ErrorCode {
     BOOKING_GUEST_NAME_TOO_LONG(3993, HttpStatus.BAD_REQUEST, "Tên khách hàng không được vượt quá 100 ký tự"),
     BOOKING_GUEST_PHONE_REQUIRED(3992, HttpStatus.BAD_REQUEST, "Vui lòng nhập số điện thoại"),
     BOOKING_GUEST_PHONE_INVALID(3991, HttpStatus.BAD_REQUEST, "Số điện thoại không đúng định dạng"),
-    BOOKING_TIME_SLOT_ALREADY_BOOKED(3990, HttpStatus.BAD_REQUEST, "Ca đá này đã có người đặt, vui lòng chọn khung giờ khác");
+    BOOKING_TIME_SLOT_ALREADY_BOOKED(3990, HttpStatus.BAD_REQUEST, "Ca đá này đã có người đặt, vui lòng chọn khung giờ khác"),
+
+    // Holiday Error Codes (3020 - 3029)
+    HOLIDAY_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin ngày lễ"),
+    HOLIDAY_DATE_ALREADY_EXISTS(3022, HttpStatus.CONFLICT, "Ngày lễ này đã tồn tại trong hệ thống"),
+    HOLIDAY_DATE_REQUIRED(3023, HttpStatus.BAD_REQUEST, "Ngày lễ không được để trống"),
+    HOLIDAY_NAME_REQUIRED(3024, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được để trống"),
+    HOLIDAY_NAME_MAX_LENGTH(3025, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được vượt quá 150 ký tự");
+
 
     private final int code;
     private final HttpStatus httpStatus;
