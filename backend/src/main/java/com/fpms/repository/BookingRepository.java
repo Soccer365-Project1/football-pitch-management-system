@@ -24,5 +24,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @org.springframework.data.repository.query.Param("date") LocalDate date, 
             @org.springframework.data.repository.query.Param("pitchTypeId") Long pitchTypeId
     );
+    boolean existsByPitchIdAndTimeSlotIdAndBookingDateAndStatusNotIn(
+            Long pitchId,
+            Long timeSlotId,
+            LocalDate bookingDate,
+            Collection<BookingStatus> statuses
+    );
+
     boolean existsByPitchId(Long pitchId);
 }

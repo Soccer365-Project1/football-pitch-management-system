@@ -44,8 +44,17 @@ public enum ErrorCode {
     TIME_SLOT_OVERLAPPING(3013, HttpStatus.BAD_REQUEST, "Khung giờ bị chồng chéo với khung giờ khác đã tồn tại"),
     TIME_SLOT_HAS_ACTIVE_BOOKINGS(3014, HttpStatus.BAD_REQUEST, "Không thể xóa khung giờ do đang có đơn đặt chưa hoàn tất"),
     PAST_DATE_NOT_ALLOWED(3999, HttpStatus.BAD_REQUEST, "Không thể xem hoặc đặt lịch cho ngày trong quá khứ"),
-    TIME_SLOT_INVALID_DURATION(3015, HttpStatus.BAD_REQUEST, "Thời lượng ca đá phải từ 1 giờ (60 phút) đến 2 giờ (120 phút)");
+    TIME_SLOT_INVALID_DURATION(3015, HttpStatus.BAD_REQUEST, "Thời lượng ca đá phải từ 1 giờ (60 phút) đến 2 giờ (120 phút)"),
 
+    BOOKING_PITCH_ID_REQUIRED(3998, HttpStatus.BAD_REQUEST, "Vui lòng chọn sân bóng"),
+    BOOKING_TIME_SLOT_ID_REQUIRED(3997, HttpStatus.BAD_REQUEST, "Vui lòng chọn khung giờ"),
+    BOOKING_DATE_REQUIRED(3996, HttpStatus.BAD_REQUEST, "Vui lòng chọn ngày đặt sân"),
+    BOOKING_DATE_INVALID(3995, HttpStatus.BAD_REQUEST, "Ngày đặt sân phải là hôm nay hoặc trong tương lai"),
+    BOOKING_GUEST_NAME_REQUIRED(3994, HttpStatus.BAD_REQUEST, "Vui lòng nhập tên khách hàng"),
+    BOOKING_GUEST_NAME_TOO_LONG(3993, HttpStatus.BAD_REQUEST, "Tên khách hàng không được vượt quá 100 ký tự"),
+    BOOKING_GUEST_PHONE_REQUIRED(3992, HttpStatus.BAD_REQUEST, "Vui lòng nhập số điện thoại"),
+    BOOKING_GUEST_PHONE_INVALID(3991, HttpStatus.BAD_REQUEST, "Số điện thoại không đúng định dạng"),
+    BOOKING_TIME_SLOT_ALREADY_BOOKED(3990, HttpStatus.BAD_REQUEST, "Ca đá này đã có người đặt, vui lòng chọn khung giờ khác");
 
     private final int code;
     private final HttpStatus httpStatus;
