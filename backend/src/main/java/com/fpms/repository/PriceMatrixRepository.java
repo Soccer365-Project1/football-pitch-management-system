@@ -16,5 +16,13 @@ public interface PriceMatrixRepository extends JpaRepository<PriceMatrix, Long> 
             DayType dayType
     );
 
+    List<PriceMatrix> findAllByPitchTypeIdOrderByDayTypeAscIsPeakHourAsc(Long pitchTypeId);
+
+    List<PriceMatrix> findAllByOrderByPitchTypeIdAscDayTypeAscIsPeakHourAsc();
+
+    boolean existsByPitchTypeIdAndIsPeakHourAndDayType(Long pitchTypeId, Boolean isPeakHour, DayType dayType);
+
     List<PriceMatrix> findAllByDayType(DayType dayType);
+
+    void deleteAllByPitchTypeId(Long pitchTypeId);
 }

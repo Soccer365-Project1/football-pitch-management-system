@@ -61,7 +61,17 @@ public enum ErrorCode {
     HOLIDAY_DATE_ALREADY_EXISTS(3022, HttpStatus.CONFLICT, "Ngày lễ này đã tồn tại trong hệ thống"),
     HOLIDAY_DATE_REQUIRED(3023, HttpStatus.BAD_REQUEST, "Ngày lễ không được để trống"),
     HOLIDAY_NAME_REQUIRED(3024, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được để trống"),
-    HOLIDAY_NAME_MAX_LENGTH(3025, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được vượt quá 150 ký tự");
+    HOLIDAY_NAME_MAX_LENGTH(3025, HttpStatus.BAD_REQUEST, "Tên ngày lễ không được vượt quá 150 ký tự"),
+
+    // Pricing Matrix Error Codes (3030 - 3039)
+    PRICE_MATRIX_NOT_FOUND(3031, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin cấu hình giá"),
+    PRICE_INVALID(3032, HttpStatus.BAD_REQUEST, "Giá thuê sân phải là số dương tối thiểu từ 1.000 VNĐ"),
+    PRICE_REQUIRED(3033, HttpStatus.BAD_REQUEST, "Mức giá không được để trống"),
+    PRICE_ITEMS_REQUIRED(3034, HttpStatus.BAD_REQUEST, "Danh sách các mức giá cấu hình không được để trống"),
+    PRICE_MATRIX_DUPLICATE(3035, HttpStatus.CONFLICT, "Cấu hình giá cho loại sân, khung giờ và loại ngày này đã tồn tại"),
+    DAY_TYPE_REQUIRED(3036, HttpStatus.BAD_REQUEST, "Loại ngày không được để trống"),
+    PITCH_TYPE_ID_REQUIRED(3006, HttpStatus.BAD_REQUEST, "Loại sân không được để trống"),
+    IS_PEAK_HOUR_REQUIRED(3016, HttpStatus.BAD_REQUEST, "Vui lòng xác định khung giờ vàng hay thường");
 
 
     private final int code;
