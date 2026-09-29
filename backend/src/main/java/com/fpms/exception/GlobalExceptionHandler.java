@@ -121,6 +121,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 7. Xử lý lỗi từ chối truy cập (403 Forbidden / Access Denied từ @PreAuthorize)
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        log.warn("[AccessDenied] Người dùng không có quyền truy cập tài nguyên này: {}", ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.UNAUTHORIZED.getCode(),
+                ErrorCode.UNAUTHORIZED.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    /**
      * 8. Bắt toàn bộ lỗi bất ngờ khác (Unhandled 500) - Che giấu Stacktrace, sinh Trace ID
      */
     @ExceptionHandler(Exception.class)
