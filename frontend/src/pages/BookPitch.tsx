@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePitches, useTimeSlots, useScheduleGrid, usePitchTypes } from '../hooks/queries/usePitchQueries.ts';
+import { useScheduleWebSocket } from '../hooks/useScheduleWebSocket.ts';
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -22,6 +23,9 @@ const BookPitch: React.FC = () => {
   const { data: pitches = [], isLoading: isLoadingPitches } = usePitches(selectedPitchType);
   const { data: timeSlots = [], isLoading: isLoadingSlots } = useTimeSlots();
   const { data = { bookings: [], prices: [] }, isFetching: isFetchingGrid } = useScheduleGrid(selectedDate, selectedPitchType);
+
+  // Lắng nghe WebSocket để realtime update
+  useScheduleWebSocket(selectedDate);
   const { data: pitchTypes = [], isLoading: isLoadingPitchTypes } = usePitchTypes();
 
   const isLoading = isLoadingPitches || isLoadingSlots || isFetchingGrid || isLoadingPitchTypes;

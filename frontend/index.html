@@ -8,6 +8,12 @@
     <title>Soccer365 - Quản Lý & Đặt Sân Bóng Đá</title>
     <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Polyfill global for sockjs-client -->
+    <script>
+      if (typeof global === 'undefined') {
+        window.global = window;
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
