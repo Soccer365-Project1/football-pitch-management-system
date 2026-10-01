@@ -17,7 +17,7 @@ import lombok.Setter;
 public class PitchRequest {
 
     @NotBlank(message = "Tên sân bóng không được để trống")
-    @Size(max = 100, message = "Tên sân không được vượt quá 100 ký tự")
+    @Size(max = 100, message = "Tên sân bóng không được vượt quá 100 ký tự")
     private String name;
 
     @NotNull(message = "Vui lòng chọn loại sân bóng")
