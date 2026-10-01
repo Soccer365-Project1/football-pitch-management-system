@@ -3,6 +3,8 @@ package com.fpms.exception;
 import com.fpms.common.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -144,7 +146,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 8. Bắt toàn bộ lỗi bất ngờ khác (Unhandled 500) - Che giấu Stacktrace, sinh Trace ID
+     * 8. Xử lý vi phạm ràng buộc toàn vẹn CSDL (DataIntegrityViolationException / numeric overflow)
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("[DataIntegrityViolation] Dữ liệu vi phạm ràng buộc CSDL: {}", ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(400, "Dữ liệu nhập vào vượt quá giới hạn lưu trữ của hệ thống hoặc vi phạm ràng buộc dữ liệu");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
+     * 9. Bắt toàn bộ lỗi bất ngờ khác (Unhandled 500) - Che giấu Stacktrace, sinh Trace ID
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
