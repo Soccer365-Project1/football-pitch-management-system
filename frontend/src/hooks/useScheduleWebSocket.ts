@@ -22,6 +22,7 @@ export const useScheduleWebSocket = (selectedDate: string) => {
           
           // Invalidate the schedule grid cache to refetch
           queryClient.invalidateQueries({ queryKey: ['scheduleGrid'] });
+          queryClient.invalidateQueries({ queryKey: ['pitches'] });
         });
       },
       onStompError: (frame) => {
