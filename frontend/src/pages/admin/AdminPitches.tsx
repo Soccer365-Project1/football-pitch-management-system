@@ -389,10 +389,10 @@ const AdminPitches: React.FC = () => {
             {/* Header cố định bằng position sticky */}
             <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-bg-surface)', zIndex: 10 }}>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th className="p-4 font-semibold text-muted text-sm">TÊN SÂN</th>
-                <th className="p-4 font-semibold text-muted text-sm">LOẠI SÂN</th>
-                <th className="p-4 font-semibold text-muted text-sm">TRẠNG THÁI</th>
-                <th className="p-4 font-semibold text-muted text-sm text-left">THAO TÁC</th>
+                <th className="p-4 font-semibold text-muted text-sm" style={{ width: '45%', minWidth: '220px' }}>TÊN SÂN</th>
+                <th className="p-4 font-semibold text-muted text-sm" style={{ width: '18%', minWidth: '130px', whiteSpace: 'nowrap' }}>LOẠI SÂN</th>
+                <th className="p-4 font-semibold text-muted text-sm" style={{ width: '20%', minWidth: '140px', whiteSpace: 'nowrap' }}>TRẠNG THÁI</th>
+                <th className="p-4 font-semibold text-muted text-sm text-left" style={{ width: '17%', minWidth: '140px', whiteSpace: 'nowrap' }}>THAO TÁC</th>
               </tr>
             </thead>
             <tbody style={{ height: pitches.length === 0 || loading ? '100%' : 'auto' }}>
@@ -429,13 +429,15 @@ const AdminPitches: React.FC = () => {
                     className="hover:bg-[var(--color-bg-base)]/50 transition-colors"
                   >
                     {/* Cột Tên Sân */}
-                    <td className="p-4 font-semibold">
-                      <div>{pitch.name}</div>
+                    <td className="p-4 font-semibold" style={{ maxWidth: '380px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      <div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: '1.4' }}>
+                        {pitch.name}
+                      </div>
                       <div className="text-xs text-muted font-normal mt-1">Mã: {pitch.id}</div>
                     </td>
 
                     {/* Cột Loại Sân */}
-                    <td className="p-4">
+                    <td className="p-4" style={{ whiteSpace: 'nowrap' }}>
                       <span
                         className="badge"
                         style={{
@@ -444,6 +446,7 @@ const AdminPitches: React.FC = () => {
                           padding: '0.25rem 0.6rem',
                           borderRadius: 'var(--radius-md)',
                           fontSize: '0.85rem',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {pitch.pitchType?.name || 'Sân tiêu chuẩn'}
@@ -451,11 +454,11 @@ const AdminPitches: React.FC = () => {
                     </td>
 
                     {/* Cột Trạng Thái */}
-                    <td className="p-4">
+                    <td className="p-4" style={{ whiteSpace: 'nowrap' }}>
                       {pitch.status === 'ACTIVE' ? (
-                        <span className="badge badge-success">Đang hoạt động</span>
+                        <span className="badge badge-success" style={{ whiteSpace: 'nowrap' }}>Đang hoạt động</span>
                       ) : pitch.status === 'MAINTENANCE' ? (
-                        <span className="badge badge-warning">Đang bảo trì</span>
+                        <span className="badge badge-warning" style={{ whiteSpace: 'nowrap' }}>Đang bảo trì</span>
                       ) : (
                         <span
                           className="badge"
@@ -466,6 +469,7 @@ const AdminPitches: React.FC = () => {
                             padding: '0.25rem 0.6rem',
                             borderRadius: 'var(--radius-md)',
                             fontSize: '0.85rem',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           Ngừng hoạt động
@@ -474,8 +478,8 @@ const AdminPitches: React.FC = () => {
                     </td>
 
                     {/* Cột Nút bấm thao tác */}
-                    <td className="p-4 text-left">
-                      <div className="flex gap-2 justify-start items-center">
+                    <td className="p-4 text-left" style={{ whiteSpace: 'nowrap' }}>
+                      <div className="flex gap-2 justify-start items-center" style={{ flexWrap: 'nowrap' }}>
                         {/* Nút Đổi trạng thái */}
                         <button
                           type="button"
