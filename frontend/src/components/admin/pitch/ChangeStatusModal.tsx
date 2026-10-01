@@ -103,7 +103,7 @@ export const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({
       <div className="flex justify-between items-center mb-5 shrink-0">
         <div>
           <h2 className="text-xl font-bold tracking-tight">Cập Nhật Trạng Thái</h2>
-          <p className="text-xs text-muted mt-1">
+          <p className="text-xs text-muted mt-1" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
             Sân bóng: <strong className="text-[var(--color-text-base)]">{pitch.name}</strong>
           </p>
         </div>

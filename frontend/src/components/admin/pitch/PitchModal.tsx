@@ -96,6 +96,8 @@ export const PitchModal: React.FC<PitchModalProps> = ({
     // Ca biên 1: Kiểm tra không được để trống tên sân bóng
     if (!name.trim()) {
       newErrors.name = 'Vui lòng nhập tên sân bóng';
+    } else if (name.trim().length > 100) {
+      newErrors.name = 'Tên sân bóng không được vượt quá 100 ký tự';
     }
 
     // Ca biên 2: Kiểm tra phải chọn một loại sân hợp lệ
@@ -155,16 +157,22 @@ export const PitchModal: React.FC<PitchModalProps> = ({
               className="w-full"
               placeholder="Ví dụ: Sân 5 số 1, Sân VIP..."
               value={name}
-              maxLength={100}
               disabled={submitting}
               onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                const val = e.target.value;
+                setName(val);
+                if (val.trim().length > 100) {
+                  setErrors((prev) => ({ ...prev, name: 'Tên sân bóng không được vượt quá 100 ký tự' }));
+                } else if (errors.name) {
+                  setErrors((prev) => ({ ...prev, name: undefined }));
+                }
               }}
               style={{
                 height: '44px',
                 padding: '0.6rem 1rem',
-                border: '1px solid var(--color-border)',
+                border: (errors.name || serverError)
+                  ? '1px solid var(--color-danger, #ef4444)'
+                  : '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--color-bg-base)',
                 color: 'var(--color-text-base)',
