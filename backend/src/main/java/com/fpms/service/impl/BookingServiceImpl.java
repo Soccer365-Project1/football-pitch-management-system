@@ -65,6 +65,16 @@ public class BookingServiceImpl implements BookingService {
         TimeSlot timeSlot = timeSlotRepository.findById(request.getTimeSlotId())
                 .orElseThrow(() -> new AppException(ErrorCode.TIME_SLOT_NOT_FOUND));
 
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (request.getBookingDate().isBefore(today)) {
+            throw new AppException(ErrorCode.BOOKING_DATE_INVALID);
+        }
+        if (request.getBookingDate().isEqual(today)) {
+            if (timeSlot.getEndTime().isBefore(java.time.LocalTime.now())) {
+                throw new AppException(ErrorCode.TIME_SLOT_ALREADY_PASSED);
+            }
+        }
+
         // 2. Check for overlapping bookings
         boolean isOccupied = bookingRepository.existsByPitchIdAndTimeSlotIdAndBookingDateAndStatusNotIn(
                 pitch.getId(),
