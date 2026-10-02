@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePitches, useTimeSlots, useScheduleGrid, usePitchTypes } from '../hooks/queries/usePitchQueries.ts';
+import { useScheduleWebSocket } from '../hooks/useScheduleWebSocket.ts';
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -22,6 +23,9 @@ const BookPitch: React.FC = () => {
   const { data: pitches = [], isLoading: isLoadingPitches } = usePitches(selectedPitchType);
   const { data: timeSlots = [], isLoading: isLoadingSlots } = useTimeSlots();
   const { data = { bookings: [], prices: [] }, isFetching: isFetchingGrid } = useScheduleGrid(selectedDate, selectedPitchType);
+
+  // Lắng nghe WebSocket để realtime update
+  useScheduleWebSocket(selectedDate);
   const { data: pitchTypes = [], isLoading: isLoadingPitchTypes } = usePitchTypes();
 
   const isLoading = isLoadingPitches || isLoadingSlots || isFetchingGrid || isLoadingPitchTypes;
@@ -193,9 +197,20 @@ const BookPitch: React.FC = () => {
             ) : (
               pitches.map(pitch => (
                 <div key={pitch.id} className="matrix-row">
-                  <div className="matrix-cell matrix-pitch-name">
-                    <div>
-                      <div>{pitch.name}</div>
+                  <div className="matrix-cell matrix-pitch-name" style={{ overflow: 'hidden' }}>
+                    <div style={{ width: '100%' }}>
+                      <div 
+                        title={pitch.name}
+                        style={{ 
+                          display: '-webkit-box', 
+                          WebkitLineClamp: 2, 
+                          WebkitBoxOrient: 'vertical', 
+                          overflow: 'hidden',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        {pitch.name}
+                      </div>
                       <div className="text-sm text-muted font-normal mt-1">{pitch.pitchType?.name || 'Sân bóng'}</div>
                     </div>
                   </div>
@@ -206,7 +221,7 @@ const BookPitch: React.FC = () => {
                     if (status === 'maintenance') {
                       return (
                         <div key={slot.id} className="matrix-cell p-1">
-                          <div className="flex flex-col items-center justify-center font-medium" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'var(--color-bg-base)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'not-allowed', padding: '0.25rem' }}>
+                          <div className="flex flex-col items-center justify-center font-medium" style={{ height: '48px', borderRadius: '6px', backgroundColor: 'var(--color-bg-base)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'not-allowed', padding: '0.25rem' }}>
                             Bảo trì
                           </div>
                         </div>
@@ -220,7 +235,7 @@ const BookPitch: React.FC = () => {
                     if (status === 'booked') {
                       return (
                         <div key={slot.id} className="matrix-cell p-1">
-                          <div className="flex flex-col items-center justify-center" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', cursor: 'not-allowed', padding: '0.25rem' }}>
+                          <div className="flex flex-col items-center justify-center" style={{ height: '48px', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', cursor: 'not-allowed', padding: '0.25rem' }}>
                             <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
                             <span className="text-[10px] sm:text-xs mt-0.5 opacity-90 font-medium">Đã đặt</span>
                           </div>
@@ -231,7 +246,7 @@ const BookPitch: React.FC = () => {
                     if (status === 'pending_hold') {
                       return (
                         <div key={slot.id} className="matrix-cell p-1">
-                          <div className="flex flex-col items-center justify-center" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b', cursor: 'not-allowed', padding: '0.25rem' }}>
+                          <div className="flex flex-col items-center justify-center" style={{ height: '48px', borderRadius: '6px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b', cursor: 'not-allowed', padding: '0.25rem' }}>
                             <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
                             <span className="text-[10px] sm:text-xs mt-0.5 opacity-90 font-medium">Chờ cọc</span>
                           </div>
@@ -243,7 +258,7 @@ const BookPitch: React.FC = () => {
                     if (isPast) {
                       return (
                         <div key={slot.id} className="matrix-cell p-1">
-                          <div className="flex flex-col items-center justify-center" style={{ height: '100%', borderRadius: '6px', backgroundColor: 'var(--color-bg-base)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'not-allowed', padding: '0.25rem', opacity: 0.7 }}>
+                          <div className="flex flex-col items-center justify-center" style={{ height: '48px', borderRadius: '6px', backgroundColor: 'var(--color-bg-base)', border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)', cursor: 'not-allowed', padding: '0.25rem', opacity: 0.7 }}>
                             <span className="font-bold text-xs whitespace-nowrap">{formatPrice(currentPrice)}</span>
                             <span className="text-[10px] sm:text-xs mt-0.5 opacity-90">Đã qua</span>
                           </div>
@@ -261,7 +276,7 @@ const BookPitch: React.FC = () => {
                         <div
                           className="flex flex-col items-center justify-center transition-all matrix-slot-inner"
                           onClick={() => navigate(`/checkout/${slot.id}/${pitch.id}?date=${selectedDate}`)}
-                          style={{ height: '100%', borderRadius: '6px', backgroundColor: baseBg, border: `1px solid ${baseBorder}`, cursor: 'pointer', padding: '0.25rem' }}
+                          style={{ height: '48px', borderRadius: '6px', backgroundColor: baseBg, border: `1px solid ${baseBorder}`, cursor: 'pointer', padding: '0.25rem' }}
                           title="Nhấn để đặt sân"
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.color = 'white'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = baseBg; e.currentTarget.style.color = 'inherit'; }}
@@ -290,9 +305,23 @@ const BookPitch: React.FC = () => {
             ) : (
               pitches.map(pitch => (
                 <div key={`mobile-${pitch.id}`} className="pitch-card">
-                  <div className="flex justify-between items-center mb-4 border-b pb-3" style={{ borderBottomColor: 'var(--color-border)' }}>
-                    <h3 className="font-bold text-lg" style={{ color: 'var(--color-primary)' }}>{pitch.name}</h3>
-                    <span className="badge badge-success text-sm">{pitch.pitchType?.name || 'Sân bóng'}</span>
+                  <div className="flex justify-between items-start mb-4 border-b pb-3 gap-3" style={{ borderBottomColor: 'var(--color-border)' }}>
+                    <h3 
+                      className="font-bold text-lg flex-1" 
+                      style={{ 
+                        color: 'var(--color-primary)',
+                        display: '-webkit-box', 
+                        WebkitLineClamp: 2, 
+                        WebkitBoxOrient: 'vertical', 
+                        overflow: 'hidden',
+                        wordBreak: 'break-word',
+                        lineHeight: '1.3'
+                      }}
+                      title={pitch.name}
+                    >
+                      {pitch.name}
+                    </h3>
+                    <span className="badge badge-success text-sm whitespace-nowrap flex-shrink-0 mt-1">{pitch.pitchType?.name || 'Sân bóng'}</span>
                   </div>
 
                   <div className="time-pills-grid">
@@ -306,7 +335,7 @@ const BookPitch: React.FC = () => {
                       if (status === 'maintenance') {
                         return (
                           <div key={slot.id} className="time-pill maintenance">
-                            <span className="time-text">{slot.startTime}</span>
+                            <span className="time-text">{slot.startTime} - {slot.endTime}</span>
                             <span className="text-xs font-medium mt-1">Bảo trì</span>
                           </div>
                         );
@@ -315,7 +344,7 @@ const BookPitch: React.FC = () => {
                       if (status === 'booked') {
                         return (
                           <div key={slot.id} className="time-pill booked">
-                            <span className="time-text">{slot.startTime}</span>
+                            <span className="time-text">{slot.startTime} - {slot.endTime}</span>
                             <div className="flex flex-col items-center mt-1">
                                <span className="text-[10px] font-bold">{formatPrice(currentPrice)}</span>
                                <span className="text-[10px] font-medium opacity-80">Đã đặt</span>
@@ -327,7 +356,7 @@ const BookPitch: React.FC = () => {
                       if (status === 'pending_hold') {
                         return (
                           <div key={slot.id} className="time-pill booked" style={{ borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-                            <span className="time-text">{slot.startTime}</span>
+                            <span className="time-text">{slot.startTime} - {slot.endTime}</span>
                             <div className="flex flex-col items-center mt-1">
                                <span className="text-[10px] font-bold">{formatPrice(currentPrice)}</span>
                                <span className="text-[10px] font-medium opacity-80">Chờ cọc</span>
@@ -339,21 +368,25 @@ const BookPitch: React.FC = () => {
                       if (isPast) {
                         return (
                           <div key={slot.id} className="time-pill maintenance" style={{ opacity: 0.6 }}>
-                            <span className="time-text">{slot.startTime}</span>
+                            <span className="time-text">{slot.startTime} - {slot.endTime}</span>
                             <span className="text-xs font-medium mt-1">Đã qua</span>
                           </div>
                         );
                       }
+
+                      const mobileBaseBg = isPeak ? 'rgba(245, 158, 11, 0.05)' : 'var(--color-primary-light)';
+                      const mobileBorder = isPeak ? '#f59e0b' : 'var(--color-primary)';
+                      const mobileTextColor = isPeak ? '#f59e0b' : 'var(--color-primary)';
 
                       return (
                         <div
                           key={slot.id}
                           className={`time-pill ${isPeak ? 'is-peak' : ''}`}
                           onClick={() => navigate(`/checkout/${slot.id}/${pitch.id}?date=${selectedDate}`)}
-                          style={isPeak ? { borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.05)' } : {}}
+                          style={{ borderColor: mobileBorder, backgroundColor: mobileBaseBg }}
                         >
-                          <span className="time-text">{slot.startTime}</span>
-                          <span className="price-text" style={isPeak ? { color: '#f59e0b' } : {}}>{formatPrice(currentPrice)}</span>
+                          <span className="time-text">{slot.startTime} - {slot.endTime}</span>
+                          <span className="price-text" style={{ color: mobileTextColor }}>{formatPrice(currentPrice)}</span>
                         </div>
                       );
                     })}

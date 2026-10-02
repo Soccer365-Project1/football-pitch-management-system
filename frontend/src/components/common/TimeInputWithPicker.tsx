@@ -19,6 +19,7 @@ export interface TimeInputWithPickerProps {
   onChange: (val: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  hasError?: boolean;
 }
 
 /**
@@ -28,8 +29,9 @@ export interface TimeInputWithPickerProps {
  * Giải quyết trải nghiệm người dùng cực kỳ linh hoạt:
  * 1. "Vừa cho nhập tay": Người dùng có thể gõ bàn phím bình thường.
  *    - CHẶN HOÀN TOÀN chữ cái (a-z, A-Z), chỉ cho phép gõ số (0-9) và dấu hai chấm (:).
- *    - Tự động chuẩn hóa khi gõ 4 chữ số (ví dụ: gõ "1730" tự thành "17:30").
- *    - Tự động bù số 0 khi rời ô (blur) (ví dụ: gõ "6" tự chuyển thành "06:00").
+ *    - Hỗ trợ người dùng gõ nhanh 4 chữ số: tự động chèn dấu ":" vào giữa (vd: "0600" -> "06:00").
+ *    - GIỮ NGUYÊN giá trị người dùng nhập, tuyệt đối KHÔNG tự ý ép/sửa số sai khi blur
+ *      (để hệ thống hiển thị thông báo lỗi rõ ràng theo ticket TC_TIMESLOT_28).
  * 2. "Vừa cho chọn đồng hồ": Có nút icon chiếc đồng hồ bên phải. Bấm vào sẽ mở popup
  *    chọn giờ gốc của trình duyệt (HTML5 Time Picker).
  */
@@ -39,6 +41,7 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
   onChange,
   placeholder = 'HH:mm (VD: 06:00)',
   disabled = false,
+  hasError = false,
 }) => {
   // Tham chiếu đến thẻ input type="time" ẩn, dùng để kích hoạt popup đồng hồ
   const hiddenTimePickerRef = useRef<HTMLInputElement>(null);
@@ -48,6 +51,7 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
    * - Dùng regex loại bỏ ngay lập tức bất kỳ ký tự nào không phải là số (0-9) hoặc dấu hai chấm (:).
    * - Hỗ trợ người dùng gõ nhanh 4 chữ số: tự động chèn dấu ":" vào giữa.
    * - Giới hạn tối đa 5 ký tự (chuẩn độ dài "HH:mm").
+   * - Không tự ý can thiệp hay ép số sai, giữ nguyên chuỗi người dùng nhập.
    */
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Lọc bỏ chữ cái và ký tự đặc biệt
@@ -64,36 +68,6 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
     }
 
     onChange(raw);
-  };
-
-  /**
-   * Hàm tự động làm đẹp định dạng giờ khi người dùng rời chuột khỏi ô nhập (sự kiện onBlur):
-   * - Nếu người dùng chỉ gõ 1 hoặc 2 số (VD: gõ "6" hoặc "17") -> tự thêm ":00" thành "06:00" hoặc "17:00".
-   * - Nếu gõ "6:30" -> tự bù thêm số 0 đằng trước thành "06:30".
-   */
-  const handleBlur = () => {
-    if (!value) return;
-    const trimmed = value.trim();
-
-    // Trường hợp 1: Người dùng chỉ gõ 1 hoặc 2 số
-    if (/^\d{1,2}$/.test(trimmed)) {
-      const h = Math.min(23, Math.max(0, parseInt(trimmed, 10)));
-      onChange(`${h.toString().padStart(2, '0')}:00`);
-      return;
-    }
-
-    // Trường hợp 2: Người dùng gõ dạng "h:mm" hoặc "hh:m"
-    const parts = trimmed.split(':');
-    if (parts.length === 2) {
-      let h = parseInt(parts[0], 10);
-      let m = parseInt(parts[1], 10);
-      if (!isNaN(h) && !isNaN(m)) {
-        h = Math.min(23, Math.max(0, h));
-        m = Math.min(59, Math.max(0, m));
-        const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        onChange(formatted);
-      }
-    }
   };
 
   /**
@@ -125,13 +99,12 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
           placeholder={placeholder}
           value={value}
           onChange={handleTextChange}
-          onBlur={handleBlur}
           disabled={disabled}
           maxLength={5}
           style={{
             height: '46px',
             padding: '0.65rem 2.85rem 0.65rem 1rem', // Chừa 2.85rem bên phải để không bị chữ đè lên icon
-            border: '1px solid var(--color-border)',
+            border: hasError ? '1.5px solid var(--color-danger, #ef4444)' : '1px solid var(--color-border)',
             borderRadius: 'var(--radius-md)',
             background: 'var(--color-bg-base)',
             color: 'var(--color-text-base)',

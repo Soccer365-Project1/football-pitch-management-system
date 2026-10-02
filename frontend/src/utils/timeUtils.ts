@@ -67,3 +67,32 @@ export const formatDuration = (minutes: number): string => {
   }
   return `${remainingMins} phút`;
 };
+
+/**
+ * Hàm cộng thêm số phút vào chuỗi giờ "HH:mm".
+ * Phục vụ tự động tính Giờ kết thúc từ Giờ bắt đầu và Thời lượng đã chọn (60p, 90p, 120p).
+ * 
+ * @param time Chuỗi giờ gốc "HH:mm" (ví dụ: "17:00")
+ * @param minutes Số phút muốn cộng thêm (ví dụ: 60, 90, 120)
+ * @returns { endTime: string; isNextDay: boolean } hoặc null nếu giờ bắt đầu sai định dạng
+ */
+export const addMinutesToTime = (
+  time: string,
+  minutes: number
+): { endTime: string; isNextDay: boolean } | null => {
+  if (!isValidTimeFormat(time)) return null;
+
+  const [h, m] = time.trim().split(':').map(Number);
+  const totalMinutes = h * 60 + m + minutes;
+  const isNextDay = totalMinutes >= 24 * 60;
+  const nextH = Math.floor(totalMinutes / 60) % 24;
+  const nextM = totalMinutes % 60;
+
+  const formattedH = nextH.toString().padStart(2, '0');
+  const formattedM = nextM.toString().padStart(2, '0');
+  return {
+    endTime: `${formattedH}:${formattedM}`,
+    isNextDay,
+  };
+};
+
