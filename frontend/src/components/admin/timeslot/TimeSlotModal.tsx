@@ -105,7 +105,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
 
     // Ca biên 2: Định dạng phải đúng chuẩn HH:mm
     if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) {
-      setError('Định dạng giờ không hợp lệ! Vui lòng nhập định dạng HH:mm (ví dụ: 06:00, 17:30).');
+      setError('Định dạng thời gian không hợp lệ.');
       return;
     }
 
@@ -204,6 +204,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 label="Giờ bắt đầu"
                 value={startTime}
                 disabled={submitting}
+                hasError={Boolean(error && startTime && !isValidTimeFormat(startTime))}
                 onChange={(val) => {
                   setStartTime(val);
                   if (error) setError(null); // Tự động xóa banner lỗi khi người dùng sửa
@@ -215,6 +216,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 label="Giờ kết thúc"
                 value={endTime}
                 disabled={submitting}
+                hasError={Boolean(error && endTime && !isValidTimeFormat(endTime))}
                 onChange={(val) => {
                   setEndTime(val);
                   if (error) setError(null);
