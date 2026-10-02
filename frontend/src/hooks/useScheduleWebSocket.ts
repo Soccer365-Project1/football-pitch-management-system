@@ -3,7 +3,7 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useQueryClient } from '@tanstack/react-query';
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const useScheduleWebSocket = (selectedDate: string) => {
   const queryClient = useQueryClient();
@@ -15,11 +15,11 @@ export const useScheduleWebSocket = (selectedDate: string) => {
       onConnect: () => {
         setIsConnected(true);
         console.log('Connected to WebSocket');
-        
+
         // Subscribe to schedule topic
         client.subscribe('/topic/schedule', (message) => {
           console.log('Received WebSocket message:', message.body);
-          
+
           // Invalidate the schedule grid cache to refetch
           queryClient.invalidateQueries({ queryKey: ['scheduleGrid'] });
           queryClient.invalidateQueries({ queryKey: ['pitches'] });
