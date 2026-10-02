@@ -16,6 +16,7 @@ import com.fpms.repository.BookingRepository;
 import com.fpms.repository.PitchRepository;
 import com.fpms.repository.PitchTypeRepository;
 import com.fpms.service.impl.PitchServiceImpl;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import org.springframework.data.domain.Sort;
 import com.fpms.dto.response.PublicPitchResponse;
@@ -69,6 +71,7 @@ class PitchServiceTest {
 
     @BeforeEach
     void setUp() {
+        TransactionSynchronizationManager.initSynchronization();
         pitchType5 = PitchType.builder()
                 .name("Sân 5 người")
                 .playerCapacity(10)
@@ -468,5 +471,12 @@ class PitchServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         verify(pitchRepository, times(1)).findAll(any(Specification.class), any(Sort.class));
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }
