@@ -71,7 +71,8 @@ public enum ErrorCode {
     PRICE_MATRIX_DUPLICATE(3035, HttpStatus.CONFLICT, "Cấu hình giá cho loại sân, khung giờ và loại ngày này đã tồn tại"),
     DAY_TYPE_REQUIRED(3036, HttpStatus.BAD_REQUEST, "Loại ngày không được để trống"),
     PITCH_TYPE_ID_REQUIRED(3006, HttpStatus.BAD_REQUEST, "Loại sân không được để trống"),
-    IS_PEAK_HOUR_REQUIRED(3016, HttpStatus.BAD_REQUEST, "Vui lòng xác định khung giờ vàng hay thường");
+    IS_PEAK_HOUR_REQUIRED(3016, HttpStatus.BAD_REQUEST, "Vui lòng xác định khung giờ vàng hay thường"),
+    PRICE_MAX_EXCEEDED(3037, HttpStatus.BAD_REQUEST, "Giá thuê sân không được vượt quá 50.000.000 VNĐ");
 
 
     private final int code;

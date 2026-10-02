@@ -2,6 +2,7 @@ package com.fpms.dto.request;
 
 import com.fpms.entity.enums.DayType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -26,6 +27,7 @@ public class PriceRateItemRequest {
 
     @NotNull(message = "PRICE_REQUIRED")
     @DecimalMin(value = "1000", message = "PRICE_INVALID")
-    @Schema(description = "Mức giá thuê (VNĐ, tối thiểu 1.000)", example = "200000.00", requiredMode = Schema.RequiredMode.REQUIRED)
+    @DecimalMax(value = "50000000", message = "PRICE_MAX_EXCEEDED")
+    @Schema(description = "Mức giá thuê (VNĐ, tối thiểu 1.000, tối đa 50.000.000)", example = "200000.00", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal price;
 }
