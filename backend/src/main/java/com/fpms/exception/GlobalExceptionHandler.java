@@ -134,6 +134,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Xử lý lỗi khi vi phạm ràng buộc Unique Constraint dưới Database (ví dụ: Double booking)
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("[DataIntegrityViolation] Vi phạm ràng buộc dữ liệu: {}", ex.getMessage());
+        
+        // Kiểm tra xem có phải lỗi do cái index unique_active_booking gây ra không
+        String message = ex.getMessage();
+        if (message != null && message.contains("unique_active_booking")) {
+            ApiResponse<Object> response = ApiResponse.error(
+                    ErrorCode.TIME_SLOT_OVERLAPPING.getCode(),
+                    "Rất tiếc! Ca sân này vừa có người nhanh tay đặt mất. Vui lòng chọn ca khác."
+            );
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        }
+        
+        // Các lỗi DataIntegrity khác (vd thiếu khóa ngoại, duplicate key khác...)
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
+                "Dữ liệu không hợp lệ hoặc đã tồn tại"
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
      * 8. Bắt toàn bộ lỗi bất ngờ khác (Unhandled 500) - Che giấu Stacktrace, sinh Trace ID
      */
     @ExceptionHandler(Exception.class)
