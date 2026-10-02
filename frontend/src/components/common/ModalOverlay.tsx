@@ -14,6 +14,8 @@ export interface ModalOverlayProps {
   children: React.ReactNode;
   onClose: () => void;
   maxWidth?: string;
+  zIndex?: number;
+  closeOnClickOutside?: boolean;
 }
 
 /**
@@ -27,11 +29,14 @@ export interface ModalOverlayProps {
  * 1. Tránh hoàn toàn lỗi bị che khuất hoặc cắt góc (overflow clipping) bởi các khối container cha.
  * 2. Phủ một lớp nền đen mờ (`rgba(0, 0, 0, 0.55)`) toàn màn hình, tạo hiệu ứng tập trung cho người dùng.
  * 3. Hộp thoại ở giữa có chiều cao tối đa `90vh`, tự động cuộn dọc (`overflowY: auto`) nếu form dài.
+ * 4. closeOnClickOutside: Cho phép bật/tắt hành vi đóng khi click vào backdrop ngoài hộp thoại.
  */
 export const ModalOverlay: React.FC<ModalOverlayProps> = ({
   children,
   onClose,
   maxWidth = '520px',
+  zIndex = 9999,
+  closeOnClickOutside = true,
 }) => {
   return createPortal(
     <div
@@ -45,24 +50,26 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999, // Đảm bảo luôn nằm trên tất cả các thành phần khác
+        zIndex, // Đảm bảo luôn nằm trên các thành phần khác, hỗ trợ xếp tầng (stacking) khi có popup lồng
         padding: '1.25rem',
       }}
     >
       {/* 
         Vùng nhấn backdrop trong suốt bao phủ toàn màn hình.
-        Khi người dùng click chuột ra ngoài hộp thoại, sự kiện onClick này sẽ gọi onClose để đóng modal.
+        Chỉ gọi onClose khi closeOnClickOutside = true.
       */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
-        onClick={onClose}
-      />
+      {closeOnClickOutside && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+          onClick={onClose}
+        />
+      )}
 
       {/* 
         Khung chứa nội dung chính của Modal (Hộp thoại màu trắng nổi ở giữa màn hình):
