@@ -31,6 +31,10 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.fpms.dto.response.BookingEventDto;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -43,6 +47,7 @@ public class PitchServiceImpl implements PitchService {
     private final BookingRepository bookingRepository;
     private final PitchMapper pitchMapper;
     private final PitchTypeMapper pitchTypeMapper;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public PageResponse<PitchResponse> getPitches(String keyword, Long pitchTypeId, PitchStatus status, int page, int size) {
@@ -148,6 +153,19 @@ public class PitchServiceImpl implements PitchService {
 
         pitch.setStatus(request.getStatus());
         Pitch updatedPitch = pitchRepository.save(pitch);
+        
+        BookingEventDto event = BookingEventDto.builder()
+                .action("PITCH_STATUS_UPDATED")
+                .pitchId(updatedPitch.getId())
+                .build();
+                
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend("/topic/schedule", event);
+            }
+        });
+
         log.info("Đổi trạng thái sân bóng ID: {} sang {} thành công", id, updatedPitch.getStatus());
         return pitchMapper.toPitchResponse(updatedPitch);
     }
@@ -184,6 +202,7 @@ public class PitchServiceImpl implements PitchService {
         Specification<Pitch> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isFalse(root.get("isDeleted")));
+            predicates.add(cb.notEqual(root.get("status"), PitchStatus.INACTIVE));
             
             if (pitchTypeId != null) {
                 predicates.add(cb.equal(root.get("pitchType").get("id"), pitchTypeId));
