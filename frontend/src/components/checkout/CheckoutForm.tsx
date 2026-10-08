@@ -7,10 +7,9 @@ interface CheckoutFormProps {
   depositAmount: number;
   isProcessing: boolean;
   onSubmit: (formData: { guestName: string; guestPhone: string; customerNote: string }) => void;
-  onPaymentFailed: () => void;
 }
 
-const CheckoutForm: React.FC<CheckoutFormProps> = ({ depositAmount, isProcessing, onSubmit, onPaymentFailed }) => {
+const CheckoutForm: React.FC<CheckoutFormProps> = ({ depositAmount, isProcessing, onSubmit }) => {
   const { user } = useAuth();
   
   const [guestName, setGuestName] = React.useState(user?.fullName || '');
@@ -100,17 +99,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ depositAmount, isProcessing
           style={{ padding: '1rem', fontSize: '1rem' }}
           disabled={isProcessing}
         >
-          {isProcessing ? 'Đang kết nối cổng thanh toán...' : <><CreditCard size={20} /> Thanh toán cọc {formatPrice(depositAmount)}</>}
-        </button>
-
-        <button
-          type="button"
-          className="btn btn-secondary w-full text-xs py-2"
-          onClick={onPaymentFailed}
-          disabled={isProcessing}
-          title="Mô phỏng trường hợp cổng thanh toán trả về lỗi"
-        >
-          [ Mô phỏng: Thanh toán thất bại / Lỗi ]
+          {isProcessing ? 'Đang xử lý...' : <><CreditCard size={20} /> Đặt sân & Thanh toán cọc {formatPrice(depositAmount)}</>}
         </button>
       </div>
 

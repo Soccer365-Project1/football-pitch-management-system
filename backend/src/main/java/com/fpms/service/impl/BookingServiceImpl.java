@@ -123,10 +123,16 @@ public class BookingServiceImpl implements BookingService {
         booking.setEndTimeSnapshot(timeSlot.getEndTime());
         booking.setPitchNameSnapshot(pitch.getName());
         booking.setTotalPitchAmount(priceMatrix.getPrice());
-        booking.setDepositAmount(BigDecimal.ZERO); // Vì confirm luôn chưa có thanh toán VNPay
+        booking.setDepositAmount(priceMatrix.getPrice().multiply(new BigDecimal("0.3")));
         booking.setAdditionalFee(BigDecimal.ZERO);
-        booking.setRemainingAmount(priceMatrix.getPrice());
-        booking.setStatus(BookingStatus.CONFIRMED); // Force confirm right away
+        booking.setRemainingAmount(priceMatrix.getPrice().subtract(booking.getDepositAmount()));
+
+        if (booking.getBookingType() == BookingType.AT_COUNTER) {
+            booking.setStatus(BookingStatus.CONFIRMED);
+        } else {
+            booking.setStatus(BookingStatus.PENDING_HOLD);
+            booking.setHoldExpiresAt(java.time.LocalDateTime.now().plusMinutes(10));
+        }
 
         booking = bookingRepository.save(booking);
 
@@ -136,6 +142,7 @@ public class BookingServiceImpl implements BookingService {
                 .pitchId(booking.getPitch().getId())
                 .timeSlotId(booking.getTimeSlot().getId())
                 .date(booking.getBookingDate().toString())
+                .status(booking.getStatus().name())
                 .build();
                 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

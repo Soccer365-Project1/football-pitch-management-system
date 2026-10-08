@@ -14,9 +14,9 @@ const CheckoutInvoice: React.FC<CheckoutInvoiceProps> = ({ pitch, slot, depositA
   <div className="card flex flex-col justify-between checkout-invoice">
     <h2 className="text-xl font-semibold mb-4 pb-2" style={{ borderBottom: '1px solid var(--color-border)' }}>Chi tiết đơn đặt sân</h2>
 
-    <div className="flex flex-col gap-2 mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--color-bg-base)' }}>
-      <h3 className="font-bold text-lg" style={{ color: 'var(--color-primary)' }}>{pitch.name}</h3>
-      <span className="text-muted text-sm">{pitch.pitchType?.name || 'Sân bóng'}</span>
+    <div className="flex flex-col gap-2 mb-6 p-4 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--color-bg-base)' }}>
+      <h3 className="font-bold text-lg truncate" style={{ color: 'var(--color-primary)' }} title={pitch.name}>{pitch.name}</h3>
+      <span className="text-muted text-sm truncate">{pitch.pitchType?.name || 'Sân bóng'}</span>
     </div>
 
     <div className="flex justify-between mb-3 text-sm items-center">
