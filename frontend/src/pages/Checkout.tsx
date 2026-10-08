@@ -22,12 +22,6 @@ const Checkout: React.FC = () => {
   const { data: timeSlots = [], isLoading: isLoadingSlots } = useTimeSlots();
   const { data: scheduleData = { bookings: [], prices: [] }, isLoading: isLoadingSchedule } = useScheduleGrid(selectedDate, 'all');
 
-  const [paymentStatus, setPaymentStatus] = useState<'IDLE' | 'SUCCESS' | 'FAILED'>(() => {
-    const statusParam = searchParams.get('status');
-    if (statusParam === 'failed' || statusParam === 'error') return 'FAILED';
-    if (statusParam === 'success') return 'SUCCESS';
-    return 'IDLE';
-  });
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (isLoadingPitches || isLoadingSlots || isLoadingSchedule) {
@@ -54,7 +48,7 @@ const Checkout: React.FC = () => {
   const depositAmount = basePrice * depositRatio;
   const remainingAmount = basePrice - depositAmount;
 
-  const handlePaymentSuccess = async (formData: { guestName: string; guestPhone: string; customerNote: string }) => {
+  const handleBookingSubmit = async (formData: { guestName: string; guestPhone: string; customerNote: string }) => {
     setIsProcessing(true);
     try {
       await bookingService.createBooking({
@@ -63,49 +57,15 @@ const Checkout: React.FC = () => {
         bookingDate: selectedDate,
         ...formData
       });
-      setPaymentStatus('SUCCESS');
-      showToast('Đặt sân thành công!', 'success');
+      showToast('Giữ chỗ thành công! Vui lòng thanh toán cọc trong vòng 10 phút.', 'success');
+      navigate('/my-bookings');
     } catch (error: any) {
       console.error('Lỗi khi đặt sân:', error);
       showToast(error.response?.data?.message || 'Có lỗi xảy ra khi đặt sân. Vui lòng thử lại.', 'error');
-      setPaymentStatus('FAILED');
     } finally {
       setIsProcessing(false);
     }
   };
-
-  const handlePaymentFailed = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentStatus('FAILED');
-    }, 1200);
-  };
-
-  if (paymentStatus === 'SUCCESS') {
-    return (
-      <PaymentSuccess
-        pitch={pitch}
-        slot={slot}
-        depositAmount={depositAmount}
-        remainingAmount={remainingAmount}
-        onViewBookings={() => navigate('/my-bookings')}
-        onBookMore={() => navigate('/book-pitch')}
-      />
-    );
-  }
-
-  if (paymentStatus === 'FAILED') {
-    return (
-      <PaymentFailed
-        pitch={pitch}
-        slot={slot}
-        depositAmount={depositAmount}
-        onRetry={() => setPaymentStatus('IDLE')}
-        onBookMore={() => navigate('/')}
-      />
-    );
-  }
 
   return (
     <div className="max-w-[1400px] mx-auto pt-8 px-4 pb-12">
@@ -131,8 +91,7 @@ const Checkout: React.FC = () => {
         <CheckoutForm
           depositAmount={depositAmount}
           isProcessing={isProcessing}
-          onSubmit={handlePaymentSuccess}
-          onPaymentFailed={handlePaymentFailed}
+          onSubmit={handleBookingSubmit}
         />
       </div>
     </div>

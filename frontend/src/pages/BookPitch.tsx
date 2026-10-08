@@ -119,6 +119,10 @@ const BookPitch: React.FC = () => {
                 <span>Đã đặt</span>
               </div>
               <div className="flex items-center gap-2 whitespace-nowrap">
+                <div style={{ width: 16, height: 16, flexShrink: 0, borderRadius: 4, backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid #f59e0b' }}></div>
+                <span>Chờ cọc</span>
+              </div>
+              <div className="flex items-center gap-2 whitespace-nowrap">
                 <div style={{ width: 16, height: 16, flexShrink: 0, borderRadius: 4, backgroundColor: 'var(--color-bg-base)', border: '1px dashed var(--color-border)' }}></div>
                 <span>Bảo trì</span>
               </div>

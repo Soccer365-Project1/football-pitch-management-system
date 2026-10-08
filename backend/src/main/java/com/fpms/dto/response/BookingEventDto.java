@@ -14,4 +14,5 @@ public class BookingEventDto {
     private Long pitchId;
     private Long timeSlotId;
     private String date;
+    private String status;
 }

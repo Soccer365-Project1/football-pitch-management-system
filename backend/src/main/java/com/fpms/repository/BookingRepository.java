@@ -32,4 +32,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     );
 
     boolean existsByPitchId(Long pitchId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Booking b SET b.status = 'CANCELLED' WHERE b.status = 'PENDING_HOLD' AND b.holdExpiresAt <= :now")
+    int cancelExpiredHolds(@org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
 }
