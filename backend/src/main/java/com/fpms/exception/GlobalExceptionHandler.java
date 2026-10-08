@@ -146,7 +146,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 8. Xử lý vi phạm ràng buộc toàn vẹn CSDL (DataIntegrityViolationException / numeric overflow)
+     * 8. Xử lý lỗi khi vi phạm ràng buộc Unique Constraint dưới Database (ví dụ: Double booking)
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
@@ -164,7 +164,7 @@ public class GlobalExceptionHandler {
         
         // Các lỗi DataIntegrity khác (vd thiếu khóa ngoại, duplicate key khác...)
         ApiResponse<Object> response = ApiResponse.error(
-                ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
+                ErrorCode.DATA_INTEGRITY_VIOLATION.getCode(),
                 "Dữ liệu không hợp lệ hoặc đã tồn tại"
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
