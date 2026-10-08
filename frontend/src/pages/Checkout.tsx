@@ -3,8 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { usePitches, useTimeSlots, useScheduleGrid } from '../hooks/queries/usePitchQueries.ts';
 
-import PaymentSuccess from '../components/checkout/PaymentSuccess.tsx';
-import PaymentFailed from '../components/checkout/PaymentFailed.tsx';
 import CheckoutHeader from '../components/checkout/CheckoutHeader.tsx';
 import CheckoutInvoice from '../components/checkout/CheckoutInvoice.tsx';
 import CheckoutForm from '../components/checkout/CheckoutForm.tsx';
