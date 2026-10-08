@@ -3,6 +3,8 @@ package com.fpms.exception;
 import com.fpms.common.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -39,9 +41,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleValidationException(MethodArgumentNotValidException ex) {
         List<FieldErrorDetail> errors = new ArrayList<>();
         ex.getBindingResult().getFieldErrors().forEach(error -> {
+            String defaultMessage = error.getDefaultMessage();
+            String resolvedMessage = defaultMessage;
+            if (defaultMessage != null) {
+                try {
+                    ErrorCode errorCode = ErrorCode.valueOf(defaultMessage);
+                    resolvedMessage = errorCode.getMessage();
+                } catch (IllegalArgumentException ignored) {
+                    // Không phải tên ErrorCode enum, giữ nguyên defaultMessage
+                }
+            }
             errors.add(FieldErrorDetail.builder()
                     .field(error.getField())
-                    .message(error.getDefaultMessage())
+                    .message(resolvedMessage)
                     .rejectedValue(error.getRejectedValue())
                     .build());
         });
@@ -134,10 +146,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Xử lý lỗi khi vi phạm ràng buộc Unique Constraint dưới Database (ví dụ: Double booking)
+     * 8. Xử lý lỗi khi vi phạm ràng buộc Unique Constraint dưới Database (ví dụ: Double booking)
      */
-    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
-    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("[DataIntegrityViolation] Vi phạm ràng buộc dữ liệu: {}", ex.getMessage());
         
         // Kiểm tra xem có phải lỗi do cái index unique_active_booking gây ra không
@@ -152,14 +164,14 @@ public class GlobalExceptionHandler {
         
         // Các lỗi DataIntegrity khác (vd thiếu khóa ngoại, duplicate key khác...)
         ApiResponse<Object> response = ApiResponse.error(
-                ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
+                ErrorCode.DATA_INTEGRITY_VIOLATION.getCode(),
                 "Dữ liệu không hợp lệ hoặc đã tồn tại"
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     /**
-     * 8. Bắt toàn bộ lỗi bất ngờ khác (Unhandled 500) - Che giấu Stacktrace, sinh Trace ID
+     * 9. Bắt toàn bộ lỗi bất ngờ khác (Unhandled 500) - Che giấu Stacktrace, sinh Trace ID
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
