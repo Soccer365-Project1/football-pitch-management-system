@@ -32,6 +32,11 @@ public enum ErrorCode {
     EMAIL_SEND_FAILED(2015, HttpStatus.INTERNAL_SERVER_ERROR, "Không thể gửi email xác thực, vui lòng thử lại sau"),
     OLD_PASSWORD_INCORRECT(2016, HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không chính xác"),
     NEW_PASSWORD_SAME_AS_OLD(2017, HttpStatus.BAD_REQUEST, "Mật khẩu mới không được trùng với mật khẩu hiện tại"),
+    CANNOT_LOCK_SELF(2018, HttpStatus.BAD_REQUEST, "Bạn không thể tự khóa tài khoản của chính mình"),
+    CANNOT_LOCK_ADMIN(2019, HttpStatus.BAD_REQUEST, "Không thể khóa tài khoản của Quản trị viên khác"),
+    CANNOT_CHANGE_OWN_ROLE(2020, HttpStatus.BAD_REQUEST, "Bạn không thể tự thay đổi vai trò của chính mình"),
+    CANNOT_MODIFY_ADMIN(2021, HttpStatus.BAD_REQUEST, "Không thể thay đổi vai trò của Quản trị viên khác"),
+    INVALID_ROLE_ASSIGNMENT(2022, HttpStatus.BAD_REQUEST, "Chỉ được phép phân quyền Khách hàng (ROLE_CUSTOMER) hoặc Nhân viên (ROLE_STAFF)"),
 
     // 3. Nhóm Lỗi Phân Hệ Sân Bóng & Khung Giờ (3000 - 3999)
     PITCH_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin sân bóng"),
