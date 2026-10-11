@@ -123,7 +123,7 @@ class BookingServiceTest {
         savedBooking.setPitch(pitch);
         savedBooking.setTimeSlot(timeSlot);
         savedBooking.setBookingDate(request.getBookingDate());
-        savedBooking.setStatus(BookingStatus.CONFIRMED);
+        savedBooking.setStatus(BookingStatus.PENDING_HOLD);
         savedBooking.setBookingType(BookingType.ONLINE);
         when(bookingRepository.save(any(Booking.class))).thenReturn(savedBooking);
 
@@ -144,8 +144,9 @@ class BookingServiceTest {
             assertNotNull(response);
             assertEquals(1L, response.getId());
             verify(bookingRepository, times(1)).save(any(Booking.class));
-            assertEquals(BookingStatus.CONFIRMED, bookingToSave.getStatus());
+            assertEquals(BookingStatus.PENDING_HOLD, bookingToSave.getStatus());
             assertEquals(BookingType.ONLINE, bookingToSave.getBookingType());
+            assertNotNull(bookingToSave.getHoldExpiresAt());
         } finally {
             TransactionSynchronizationManager.clear();
         }
@@ -186,6 +187,7 @@ class BookingServiceTest {
         try {
             bookingService.createBooking(request, userPrincipal);
             assertEquals(BookingType.AT_COUNTER, bookingToSave.getBookingType());
+            assertEquals(BookingStatus.CONFIRMED, bookingToSave.getStatus());
         } finally {
             TransactionSynchronizationManager.clear();
         }
