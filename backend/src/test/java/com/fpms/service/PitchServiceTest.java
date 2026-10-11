@@ -29,6 +29,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.fpms.dto.response.BookingEventDto;
 import com.fpms.dto.response.PublicPitchResponse;
 
 import java.time.LocalDateTime;
@@ -38,6 +40,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +60,9 @@ class PitchServiceTest {
 
     @Mock
     private PitchTypeMapper pitchTypeMapper;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private PitchServiceImpl pitchService;
@@ -341,6 +347,7 @@ class PitchServiceTest {
         assertNotNull(result);
         assertEquals(PitchStatus.MAINTENANCE, pitch1.getStatus());
         verify(pitchRepository, times(1)).save(pitch1);
+        verify(messagingTemplate, times(1)).convertAndSend(eq("/topic/schedule"), any(BookingEventDto.class));
     }
 
     @Test
@@ -362,6 +369,7 @@ class PitchServiceTest {
         assertNotNull(result);
         assertEquals(PitchStatus.ACTIVE, pitch1.getStatus());
         verify(pitchRepository, times(1)).save(pitch1);
+        verify(messagingTemplate, times(1)).convertAndSend(eq("/topic/schedule"), any(BookingEventDto.class));
     }
 
     @Test
@@ -392,6 +400,7 @@ class PitchServiceTest {
         assertNotNull(result);
         assertEquals(PitchStatus.INACTIVE, pitch1.getStatus());
         verify(pitchRepository, times(1)).save(pitch1);
+        verify(messagingTemplate, times(1)).convertAndSend(eq("/topic/schedule"), any(BookingEventDto.class));
     }
 
     // ================= 7. Test Cases Cho deletePitch (Xóa cứng sân rác, chặn xóa khi có booking) =================
