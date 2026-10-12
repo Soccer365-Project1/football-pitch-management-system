@@ -41,4 +41,14 @@ public class BookingController {
         BookingResponse response = bookingService.createBooking(request, userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Đặt sân thành công", response));
     }
+
+    @PostMapping("/deposit-checkout")
+    public ResponseEntity<ApiResponse<com.fpms.dto.response.BookingDepositResponse>> checkoutDeposit(
+            @Valid @RequestBody BookingCreationRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        com.fpms.dto.response.BookingDepositResponse response = bookingService.createBookingWithDepositPayment(request, userPrincipal, httpRequest);
+        return ResponseEntity.ok(ApiResponse.success("Khởi tạo đặt sân và thanh toán cọc thành công", response));
+    }
 }
