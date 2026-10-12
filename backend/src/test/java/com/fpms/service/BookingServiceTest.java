@@ -52,6 +52,12 @@ class BookingServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private PaymentMethodRepository paymentMethodRepository;
+    @Mock
+    private PaymentTransactionRepository paymentTransactionRepository;
+    @Mock
+    private com.fpms.config.VNPayConfig vnPayConfig;
+    @Mock
     private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
@@ -220,5 +226,79 @@ class BookingServiceTest {
 
         assertEquals(ErrorCode.BOOKING_TIME_SLOT_ALREADY_BOOKED, exception.getErrorCode());
         verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-S05: Đặt cọc 30% thành công & Sinh URL thanh toán VNPay đúng chuẩn")
+    void createBookingWithDepositPayment_Success() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.initSynchronization();
+        }
+        try {
+            when(pitchRepository.findById(1L)).thenReturn(Optional.of(pitch));
+            when(timeSlotRepository.findById(1L)).thenReturn(Optional.of(timeSlot));
+            when(bookingRepository.existsByPitchIdAndTimeSlotIdAndBookingDateAndStatusNotIn(
+                    eq(1L), eq(1L), eq(request.getBookingDate()), anyList())).thenReturn(false);
+            when(holidayRepository.existsByHolidayDate(any())).thenReturn(false);
+            when(priceMatrixRepository.findByPitchTypeIdAndIsPeakHourAndDayType(eq(1L), eq(true), any(DayType.class)))
+                    .thenReturn(Optional.of(priceMatrix));
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            Booking bookingToSave = new Booking();
+            bookingToSave.setId(10L);
+            bookingToSave.setBookingCode("#B123456");
+            bookingToSave.setPitch(pitch);
+            bookingToSave.setTimeSlot(timeSlot);
+            bookingToSave.setBookingDate(request.getBookingDate());
+            bookingToSave.setTotalPitchAmount(BigDecimal.valueOf(200000));
+            bookingToSave.setDepositAmount(BigDecimal.valueOf(60000));
+            bookingToSave.setStatus(BookingStatus.PENDING_HOLD);
+
+            when(bookingMapper.toBooking(request)).thenReturn(bookingToSave);
+            when(bookingRepository.save(any(Booking.class))).thenReturn(bookingToSave);
+
+            when(bookingMapper.toBookingResponse(any(Booking.class))).thenAnswer(invocation -> {
+                Booking b = invocation.getArgument(0);
+                return BookingResponse.builder()
+                        .bookingCode(b.getBookingCode())
+                        .build();
+            });
+            when(bookingRepository.findByBookingCode(anyString())).thenAnswer(invocation -> {
+                String code = invocation.getArgument(0);
+                bookingToSave.setBookingCode(code);
+                return Optional.of(bookingToSave);
+            });
+
+            PaymentMethod vnpayMethod = PaymentMethod.builder()
+                    .code(com.fpms.entity.enums.PaymentMethodCode.VNPAY)
+                    .name("VNPAY")
+                    .build();
+            when(paymentMethodRepository.findByCode(com.fpms.entity.enums.PaymentMethodCode.VNPAY))
+                    .thenReturn(Optional.of(vnpayMethod));
+
+            when(vnPayConfig.getVersion()).thenReturn("2.1.0");
+            when(vnPayConfig.getCommand()).thenReturn("pay");
+            when(vnPayConfig.getTmnCode()).thenReturn("TMNTEST");
+            when(vnPayConfig.getReturnUrl()).thenReturn("http://localhost:5173/payment-result");
+            when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+            when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
+
+            org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+            httpRequest.setRemoteAddr("127.0.0.1");
+
+            com.fpms.dto.response.BookingDepositResponse depositResponse =
+                    bookingService.createBookingWithDepositPayment(request, userPrincipal, httpRequest);
+
+            assertNotNull(depositResponse);
+            assertNotNull(depositResponse.getBookingCode());
+            assertTrue(depositResponse.getBookingCode().startsWith("#B"));
+            assertNotNull(depositResponse.getPaymentUrl());
+            assertTrue(depositResponse.getPaymentUrl().contains("vnp_Amount=6000000"), "vnp_Amount phải nhân 100 thành 6000000 (cọc 60.000)");
+            assertTrue(depositResponse.getPaymentUrl().contains("vnp_SecureHash="), "URL phải chứa chữ ký SHA512");
+
+            verify(paymentTransactionRepository, times(1)).save(any(PaymentTransaction.class));
+        } finally {
+            TransactionSynchronizationManager.clear();
+        }
     }
 }

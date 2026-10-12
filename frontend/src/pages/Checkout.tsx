@@ -49,18 +49,23 @@ const Checkout: React.FC = () => {
   const handleBookingSubmit = async (formData: { guestName: string; guestPhone: string; customerNote: string }) => {
     setIsProcessing(true);
     try {
-      await bookingService.createBooking({
+      const response = await bookingService.checkoutDeposit({
         pitchId: Number(pitchId),
         timeSlotId: Number(timeSlotId),
         bookingDate: selectedDate,
         ...formData
       });
-      showToast('Giữ chỗ thành công! Vui lòng thanh toán cọc trong vòng 10 phút.', 'success');
-      navigate('/my-bookings');
+
+      const paymentUrl = response?.data?.paymentUrl;
+      if (paymentUrl) {
+        showToast('Đang chuyển hướng sang cổng thanh toán VNPAY...', 'info');
+        window.location.href = paymentUrl;
+      } else {
+        showToast('Không tìm thấy đường dẫn thanh toán từ máy chủ.', 'error');
+        setIsProcessing(false);
+      }
     } catch (error: any) {
-      console.error('Lỗi khi đặt sân:', error);
-      showToast(error.response?.data?.message || 'Có lỗi xảy ra khi đặt sân. Vui lòng thử lại.', 'error');
-    } finally {
+      console.error('Lỗi khi đặt sân và chuyển hướng VNPAY:', error);
       setIsProcessing(false);
     }
   };

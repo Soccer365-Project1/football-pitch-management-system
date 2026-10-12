@@ -78,7 +78,13 @@ public enum ErrorCode {
     DAY_TYPE_REQUIRED(3036, HttpStatus.BAD_REQUEST, "Loại ngày không được để trống"),
     PITCH_TYPE_ID_REQUIRED(3006, HttpStatus.BAD_REQUEST, "Loại sân không được để trống"),
     IS_PEAK_HOUR_REQUIRED(3016, HttpStatus.BAD_REQUEST, "Vui lòng xác định khung giờ vàng hay thường"),
-    PRICE_MAX_EXCEEDED(3037, HttpStatus.BAD_REQUEST, "Giá thuê sân không được vượt quá 50.000.000 VNĐ");
+    PRICE_MAX_EXCEEDED(3037, HttpStatus.BAD_REQUEST, "Giá thuê sân không được vượt quá 50.000.000 VNĐ"),
+
+    // Payment & Booking Error Codes (3040 - 3050)
+    BOOKING_NOT_FOUND(3040, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin đơn đặt sân"),
+    PAYMENT_METHOD_NOT_FOUND(3041, HttpStatus.NOT_FOUND, "Không tìm thấy phương thức thanh toán"),
+    PAYMENT_TRANSACTION_NOT_FOUND(3042, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin giao dịch thanh toán"),
+    PAYMENT_FAILED(3043, HttpStatus.BAD_REQUEST, "Thanh toán thất bại");
 
 
     private final int code;

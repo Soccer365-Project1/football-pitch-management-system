@@ -16,6 +16,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fpms.entity.PaymentMethod;
+import com.fpms.entity.enums.PaymentMethodCode;
+import com.fpms.repository.PaymentMethodRepository;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PitchTypeRepository pitchTypeRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -32,6 +37,29 @@ public class DataInitializer implements CommandLineRunner {
         initRoles();
         initDefaultAdmin();
         initPitchTypes();
+        initPaymentMethods();
+    }
+
+    private void initPaymentMethods() {
+        createPaymentMethodIfNotFound(PaymentMethodCode.VNPAY, "Cổng thanh toán VNPAY (QR / ATM / Visa)", true, 1);
+        createPaymentMethodIfNotFound(PaymentMethodCode.CASH, "Tiền mặt tại quầy", true, 2);
+        createPaymentMethodIfNotFound(PaymentMethodCode.VIETQR, "Chuyển khoản VietQR", true, 3);
+        createPaymentMethodIfNotFound(PaymentMethodCode.MOMO, "Ví điện tử MoMo", false, 4);
+    }
+
+    private void createPaymentMethodIfNotFound(PaymentMethodCode code, String name, boolean isActive, int order) {
+        if (!paymentMethodRepository.existsByCode(code)) {
+            PaymentMethod method = PaymentMethod.builder()
+                    .code(code)
+                    .name(name)
+                    .isActive(isActive)
+                    .isMaintenance(false)
+                    .displayOrder(order)
+                    .description("Phương thức thanh toán " + name)
+                    .build();
+            paymentMethodRepository.save(method);
+            log.info("Khởi tạo phương thức thanh toán mặc định: {}", code);
+        }
     }
 
     private void initRoles() {

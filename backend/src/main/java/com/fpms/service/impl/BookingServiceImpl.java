@@ -31,6 +31,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.fpms.config.VNPayConfig;
+import com.fpms.dto.response.BookingDepositResponse;
+import com.fpms.entity.enums.PaymentMethodCode;
+import com.fpms.entity.enums.PaymentType;
+import com.fpms.entity.enums.TransactionStatus;
+import com.fpms.util.VNPayUtil;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
@@ -42,6 +55,9 @@ public class BookingServiceImpl implements BookingService {
     private final PriceMatrixRepository priceMatrixRepository;
     private final BookingMapper bookingMapper;
     private final UserRepository userRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final VNPayConfig vnPayConfig;
     private final SimpMessagingTemplate messagingTemplate;
 
     private DayType determineDayType(LocalDate date) {
@@ -154,6 +170,87 @@ public class BookingServiceImpl implements BookingService {
 
         // 5. Map to Response
         return bookingMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingDepositResponse createBookingWithDepositPayment(
+            BookingCreationRequest request,
+            UserPrincipal userPrincipal,
+            HttpServletRequest httpRequest
+    ) {
+        // 1. Tạo đơn booking (giữ chỗ tạm 10 phút, tính cọc 30%)
+        BookingResponse bookingResponse = createBooking(request, userPrincipal);
+        Booking booking = bookingRepository.findByBookingCode(bookingResponse.getBookingCode())
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        // 2. Lấy phương thức VNPAY
+        PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
+
+        // 3. Khởi tạo PaymentTransaction PENDING
+        String txnCode = "TXN_" + System.currentTimeMillis() + "_" + booking.getId();
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .transactionCode(txnCode)
+                .booking(booking)
+                .paymentMethod(vnpayMethod)
+                .amount(booking.getDepositAmount())
+                .paymentType(PaymentType.DEPOSIT_30)
+                .status(TransactionStatus.PENDING)
+                .note("Đặt cọc 30% đơn " + booking.getBookingCode())
+                .build();
+        paymentTransactionRepository.save(transaction);
+
+        // 4. Sinh URL thanh toán VNPAY
+        long amountInVnpay = booking.getDepositAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        Map<String, String> vnpParams = new HashMap<>();
+        vnpParams.put("vnp_Version", vnPayConfig.getVersion());
+        vnpParams.put("vnp_Command", vnPayConfig.getCommand());
+        vnpParams.put("vnp_TmnCode", vnPayConfig.getTmnCode());
+        vnpParams.put("vnp_Amount", String.valueOf(amountInVnpay));
+        vnpParams.put("vnp_CurrCode", "VND");
+        vnpParams.put("vnp_TxnRef", txnCode);
+        vnpParams.put("vnp_OrderInfo", "Dat coc san bong don " + booking.getBookingCode());
+        vnpParams.put("vnp_OrderType", "other");
+        vnpParams.put("vnp_Locale", "vn");
+        vnpParams.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
+        vnpParams.put("vnp_IpAddr", VNPayUtil.getIpAddress(httpRequest));
+
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+        vnpParams.put("vnp_CreateDate", formatter.format(cld.getTime()));
+
+        cld.add(Calendar.MINUTE, 10);
+        vnpParams.put("vnp_ExpireDate", formatter.format(cld.getTime()));
+
+        List<String> fieldNames = new ArrayList<>(vnpParams.keySet());
+        Collections.sort(fieldNames);
+        StringBuilder hashData = new StringBuilder();
+        StringBuilder query = new StringBuilder();
+        for (String fieldName : fieldNames) {
+            String fieldValue = vnpParams.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                hashData.append(fieldName).append('=').append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII)).append('&');
+                query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII)).append('=')
+                     .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII)).append('&');
+            }
+        }
+        if (!hashData.isEmpty()) {
+            hashData.setLength(hashData.length() - 1);
+        }
+        if (!query.isEmpty()) {
+            query.setLength(query.length() - 1);
+        }
+
+        String secureHash = VNPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
+        String paymentUrl = vnPayConfig.getPayUrl() + "?" + query.toString() + "&vnp_SecureHash=" + secureHash;
+
+        return BookingDepositResponse.builder()
+                .bookingCode(booking.getBookingCode())
+                .bookingId(booking.getId())
+                .depositAmount(booking.getDepositAmount())
+                .paymentUrl(paymentUrl)
+                .build();
     }
 
     @Override

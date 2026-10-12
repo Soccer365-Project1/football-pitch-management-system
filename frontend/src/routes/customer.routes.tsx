@@ -13,6 +13,7 @@ import ForgotPassword from '../pages/ForgotPassword';
 import Profile from '../pages/Profile';
 import MyBookings from '../pages/MyBookings';
 import Checkout from '../pages/Checkout';
+import PaymentResult from '../pages/PaymentResult';
 
 export const customerRoutes: RouteObject[] = [
   {
@@ -43,6 +44,10 @@ export const customerRoutes: RouteObject[] = [
       {
         path: 'my-bookings',
         element: <MyBookings />,
+      },
+      {
+        path: 'payment-result',
+        element: <PaymentResult />,
       },
 
 
