@@ -50,4 +50,6 @@ jobs:
           cache: maven
 
       - name: Run backend tests
-        run: ./mvnw test -Dtest=!BookingWebSocketIntegrationTest
+        run: |
+          chmod +x mvnw
+          ./mvnw test -Dtest=!BookingWebSocketIntegrationTest
