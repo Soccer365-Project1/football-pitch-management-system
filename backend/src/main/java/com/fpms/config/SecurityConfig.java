@@ -73,6 +73,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/pitches/**").permitAll()
                         .requestMatchers("/api/v1/timeslots/**").permitAll()
                         .requestMatchers("/api/v1/bookings/schedule-grid").permitAll()
+                        .requestMatchers("/api/v1/payments/vnpay/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/ws/**", "/api/ws/**").permitAll()
