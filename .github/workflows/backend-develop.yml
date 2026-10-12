@@ -49,7 +49,7 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Run backend tests
+      - name: Run all backend tests
         run: |
           chmod +x mvnw
-          ./mvnw test -Dtest=!BookingWebSocketIntegrationTest
+          ./mvnw test
