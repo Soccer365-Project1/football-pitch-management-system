@@ -27,3 +27,15 @@ export interface ApiResponse<T = void> {
   errors?: FieldErrorDetail[];
   timestamp?: string;
 }
+
+export interface PageResponse<T> {
+  items: T[];
+  content?: T[];
+  pageNo: number;
+  pageNumber?: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  isLast?: boolean;
+  last?: boolean;
+}
