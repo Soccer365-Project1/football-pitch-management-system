@@ -80,7 +80,7 @@ const Login: React.FC = () => {
       } else if (user.role === 'ROLE_ADMIN') {
         navigate('/admin', { replace: true });
       } else if (user.role === 'ROLE_STAFF') {
-        navigate('/staff/orders', { replace: true });
+        navigate('/admin/timeline', { replace: true });
       } else {
         navigate('/', { replace: true });
       }
@@ -123,7 +123,7 @@ const Login: React.FC = () => {
         } else if (user.role === 'ROLE_ADMIN') {
           navigate('/admin', { replace: true });
         } else if (user.role === 'ROLE_STAFF') {
-          navigate('/staff/orders', { replace: true });
+          navigate('/admin/timeline', { replace: true });
         } else {
           navigate('/', { replace: true });
         }

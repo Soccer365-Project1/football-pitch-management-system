@@ -34,6 +34,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -229,5 +231,46 @@ class AdminUserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(2022));
+    }
+
+    @Test
+    @DisplayName("TC_CTL_09: POST /api/v1/admin/users/staff - Tạo tài khoản nhân viên thành công 201 Created")
+    void createStaff_Success() throws Exception {
+        com.fpms.dto.request.CreateStaffRequest request = com.fpms.dto.request.CreateStaffRequest.builder()
+                .fullName("Nguyễn Thu Ngân")
+                .phoneNumber("0909090909")
+                .email("ngan.staff@fpms.com")
+                .password("Password@123")
+                .confirmPassword("Password@123")
+                .build();
+
+        when(adminUserService.createStaff(any())).thenReturn(userResponse);
+
+        mockMvc.perform(post("/api/v1/admin/users/staff")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.email").value("customer@gmail.com"));
+    }
+
+    @Test
+    @DisplayName("TC_CTL_10: PUT /api/v1/admin/users/{id} - Cập nhật thông tin người dùng thành công")
+    void updateUser_Success() throws Exception {
+        com.fpms.dto.request.UpdateUserRequest request = com.fpms.dto.request.UpdateUserRequest.builder()
+                .fullName("Nguyễn Hữu Giáp")
+                .phoneNumber("0912345678")
+                .build();
+
+        when(adminUserService.updateUser(any(), eq(2L), any())).thenReturn(userResponse);
+
+        mockMvc.perform(put("/api/v1/admin/users/2")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.email").value("customer@gmail.com"));
     }
 }
