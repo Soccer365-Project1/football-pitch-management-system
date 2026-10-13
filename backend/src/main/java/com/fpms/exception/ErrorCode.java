@@ -37,6 +37,8 @@ public enum ErrorCode {
     CANNOT_CHANGE_OWN_ROLE(2020, HttpStatus.BAD_REQUEST, "Bạn không thể tự thay đổi vai trò của chính mình"),
     CANNOT_MODIFY_ADMIN(2021, HttpStatus.BAD_REQUEST, "Không thể thay đổi vai trò của Quản trị viên khác"),
     INVALID_ROLE_ASSIGNMENT(2022, HttpStatus.BAD_REQUEST, "Chỉ được phép phân quyền Khách hàng (ROLE_CUSTOMER) hoặc Nhân viên (ROLE_STAFF)"),
+    STAFF_CANNOT_MODIFY_OTHER_STAFF(2023, HttpStatus.FORBIDDEN, "Nhân viên không có quyền chỉnh sửa thông tin của nhân viên khác hoặc Quản trị viên"),
+    STAFF_CANNOT_LOCK_OTHER_STAFF(2024, HttpStatus.FORBIDDEN, "Nhân viên không có quyền khóa hoặc mở khóa tài khoản của nhân viên khác hoặc Quản trị viên"),
 
     // 3. Nhóm Lỗi Phân Hệ Sân Bóng & Khung Giờ (3000 - 3999)
     PITCH_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin sân bóng"),

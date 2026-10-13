@@ -1,6 +1,8 @@
 package com.fpms.service;
 
 import com.fpms.common.response.PageResponse;
+import com.fpms.dto.request.CreateStaffRequest;
+import com.fpms.dto.request.UpdateUserRequest;
 import com.fpms.dto.request.UpdateUserRoleRequest;
 import com.fpms.dto.request.UpdateUserStatusRequest;
 import com.fpms.dto.response.UserResponse;
@@ -31,6 +33,15 @@ public interface AdminUserService {
     UserResponse getUserById(Long id);
 
     /**
+     * Cập nhật thông tin người dùng (Họ và tên, Số điện thoại) từ Quản trị viên
+     *
+     * @param id ID người dùng cần cập nhật
+     * @param request dữ liệu cập nhật
+     * @return thông tin người dùng sau khi cập nhật
+     */
+    UserResponse updateUser(UserPrincipal currentUser, Long id, UpdateUserRequest request);
+
+    /**
      * Khóa hoặc mở khóa tài khoản người dùng (ACTIVE <-> LOCKED)
      *
      * @param currentAdmin thông tin tài khoản admin đang đăng nhập
@@ -49,4 +60,12 @@ public interface AdminUserService {
      * @return thông tin người dùng sau khi cập nhật
      */
     UserResponse updateUserRole(UserPrincipal currentAdmin, Long id, UpdateUserRoleRequest request);
+
+    /**
+     * Tạo tài khoản nhân viên Staff mới từ Admin
+     *
+     * @param request dữ liệu nhân viên mới
+     * @return thông tin tài khoản nhân viên sau khi tạo
+     */
+    UserResponse createStaff(CreateStaffRequest request);
 }
