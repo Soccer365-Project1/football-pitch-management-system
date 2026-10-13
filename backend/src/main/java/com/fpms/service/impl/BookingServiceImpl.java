@@ -27,6 +27,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +44,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Service
@@ -216,12 +218,10 @@ public class BookingServiceImpl implements BookingService {
         vnpParams.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
         vnpParams.put("vnp_IpAddr", VNPayUtil.getIpAddress(httpRequest));
 
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
-        vnpParams.put("vnp_CreateDate", formatter.format(cld.getTime()));
-
-        cld.add(Calendar.MINUTE, 10);
-        vnpParams.put("vnp_ExpireDate", formatter.format(cld.getTime()));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        vnpParams.put("vnp_CreateDate", now.format(formatter));
+        vnpParams.put("vnp_ExpireDate", now.plusMinutes(10).format(formatter));
 
         List<String> fieldNames = new ArrayList<>(vnpParams.keySet());
         Collections.sort(fieldNames);
