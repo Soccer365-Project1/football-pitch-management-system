@@ -103,13 +103,15 @@ class VNPayPaymentIntegrationTest {
                 .build());
         testTimeSlotId = slot.getId();
 
-        // 3. Tạo bảng giá (giá 300.000 VNĐ -> cọc 30% là 90.000 VNĐ)
-        priceMatrixRepository.save(PriceMatrix.builder()
-                .pitchType(pitchType)
-                .isPeakHour(false)
-                .dayType(DayType.WEEKDAY)
-                .price(BigDecimal.valueOf(300000))
-                .build());
+        // 3. Tạo bảng giá (giá 300.000 VNĐ -> cọc 30% là 90.000 VNĐ cho mọi ngày)
+        for (DayType dt : DayType.values()) {
+            priceMatrixRepository.save(PriceMatrix.builder()
+                    .pitchType(pitchType)
+                    .isPeakHour(false)
+                    .dayType(dt)
+                    .price(BigDecimal.valueOf(300000))
+                    .build());
+        }
 
         // 4. Khởi tạo phương thức VNPAY
         if (!paymentMethodRepository.existsByCode(PaymentMethodCode.VNPAY)) {
