@@ -86,7 +86,10 @@ public enum ErrorCode {
     BOOKING_NOT_FOUND(3040, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin đơn đặt sân"),
     PAYMENT_METHOD_NOT_FOUND(3041, HttpStatus.NOT_FOUND, "Không tìm thấy phương thức thanh toán"),
     PAYMENT_TRANSACTION_NOT_FOUND(3042, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin giao dịch thanh toán"),
-    PAYMENT_FAILED(3043, HttpStatus.BAD_REQUEST, "Thanh toán thất bại");
+    PAYMENT_FAILED(3043, HttpStatus.BAD_REQUEST, "Thanh toán thất bại"),
+
+    // Report & Analytics Error Codes (5000 - 5099)
+    INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
 
 
     private final int code;
