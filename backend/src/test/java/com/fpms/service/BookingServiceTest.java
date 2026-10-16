@@ -2,6 +2,7 @@ package com.fpms.service;
 
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.response.BookingResponse;
+import com.fpms.dto.response.BookingSummaryResponse;
 import com.fpms.entity.*;
 import com.fpms.entity.enums.BookingStatus;
 import com.fpms.entity.enums.BookingType;
@@ -300,5 +301,86 @@ class BookingServiceTest {
         } finally {
             TransactionSynchronizationManager.clear();
         }
+    }
+
+    @Test
+    @DisplayName("getMyBookings - Thành công khi người dùng đã đăng nhập")
+    void getMyBookings_Success() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B123456")
+                .bookingDate(LocalDate.now())
+                .status(BookingStatus.CONFIRMED)
+                .build();
+        booking.setId(10L);
+
+        BookingSummaryResponse response = BookingSummaryResponse.builder()
+                .id(10L)
+                .bookingCode("#B123456")
+                .pitchName("Sân 1")
+                .status(BookingStatus.CONFIRMED)
+                .build();
+
+        org.springframework.data.domain.Page<Booking> page = new org.springframework.data.domain.PageImpl<>(
+                List.of(booking),
+                org.springframework.data.domain.PageRequest.of(0, 10),
+                1
+        );
+
+        when(bookingRepository.findMyBookings(eq(userPrincipal.getId()), any(), any(), any(), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
+        when(bookingMapper.toBookingSummaryResponse(booking)).thenReturn(response);
+
+        com.fpms.common.response.PageResponse<BookingSummaryResponse> result =
+                bookingService.getMyBookings(userPrincipal, null, null, null, 1, 10);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getItems().size());
+        assertEquals(10L, result.getItems().get(0).getId());
+    }
+
+    @Test
+    @DisplayName("getMyBookings - Lỗi khi chưa xác thực (userPrincipal == null)")
+    void getMyBookings_Unauthenticated() {
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.getMyBookings(null, null, null, null, 1, 10));
+        assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("getMyBookingDetail - Thành công khi đơn thuộc về người dùng")
+    void getMyBookingDetail_Success() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B123456")
+                .status(BookingStatus.CONFIRMED)
+                .build();
+        booking.setId(10L);
+
+        BookingResponse response = BookingResponse.builder()
+                .id(10L)
+                .bookingCode("#B123456")
+                .status(BookingStatus.CONFIRMED)
+                .build();
+
+        when(bookingRepository.findByIdAndCustomerIdAndIsDeletedFalse(10L, userPrincipal.getId()))
+                .thenReturn(Optional.of(booking));
+        when(bookingMapper.toBookingResponse(booking)).thenReturn(response);
+
+        BookingResponse result = bookingService.getMyBookingDetail(10L, userPrincipal);
+
+        assertNotNull(result);
+        assertEquals(10L, result.getId());
+        assertEquals("#B123456", result.getBookingCode());
+    }
+
+    @Test
+    @DisplayName("getMyBookingDetail - Thất bại khi không tìm thấy hoặc không thuộc về người dùng")
+    void getMyBookingDetail_NotFound() {
+        when(bookingRepository.findByIdAndCustomerIdAndIsDeletedFalse(999L, userPrincipal.getId()))
+                .thenReturn(Optional.empty());
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.getMyBookingDetail(999L, userPrincipal));
+        assertEquals(ErrorCode.BOOKING_NOT_FOUND, ex.getErrorCode());
     }
 }

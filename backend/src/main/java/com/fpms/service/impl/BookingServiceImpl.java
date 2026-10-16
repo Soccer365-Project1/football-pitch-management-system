@@ -3,6 +3,7 @@ package com.fpms.service.impl;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.response.BookingEventDto;
 import com.fpms.dto.response.BookingResponse;
+import com.fpms.dto.response.BookingSummaryResponse;
 import com.fpms.dto.response.ScheduleGridResponse;
 import com.fpms.dto.response.ScheduleGridItemResponse;
 import com.fpms.dto.response.PriceItemResponse;
@@ -23,6 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.fpms.common.response.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -285,5 +291,46 @@ public class BookingServiceImpl implements BookingService {
         response.setPrices(priceItems);
 
         return response;
+    }
+
+    @Override
+    public PageResponse<BookingSummaryResponse> getMyBookings(
+            UserPrincipal currentUser,
+            BookingStatus status,
+            LocalDate fromDate,
+            LocalDate toDate,
+            int page,
+            int size
+    ) {
+        if (currentUser == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        int pageIndex = Math.max(0, page - 1);
+        int pageSize = size > 0 ? size : 10;
+        Pageable pageable = PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Booking> bookingPage = bookingRepository.findMyBookings(
+                currentUser.getId(),
+                status,
+                fromDate,
+                toDate,
+                pageable
+        );
+
+        Page<BookingSummaryResponse> responsePage = bookingPage.map(bookingMapper::toBookingSummaryResponse);
+        return PageResponse.from(responsePage);
+    }
+
+    @Override
+    public BookingResponse getMyBookingDetail(Long bookingId, UserPrincipal currentUser) {
+        if (currentUser == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Booking booking = bookingRepository.findByIdAndCustomerIdAndIsDeletedFalse(bookingId, currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        return bookingMapper.toBookingResponse(booking);
     }
 }
