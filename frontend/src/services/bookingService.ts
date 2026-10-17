@@ -71,6 +71,7 @@ export interface BookingSummaryResponse {
   endTime: string;
   status: BookingStatusType;
   totalAmount: number;
+  depositAmount?: number;
 }
 
 export interface BookingFilterParams {
@@ -104,6 +105,11 @@ export const bookingService = {
 
   getMyBookingDetail: async (id: number) => {
     const response = await api.get<ApiResponse<BookingResponse>>(`/bookings/my-bookings/${id}`);
+    return response.data;
+  },
+
+  cancelBooking: async (id: number, reason?: string) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/${id}/cancel`, { reason });
     return response.data;
   }
 };

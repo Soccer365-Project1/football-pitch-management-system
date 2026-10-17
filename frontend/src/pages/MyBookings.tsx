@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, XCircle, CalendarCheck, Trash2, Clock, ChevronRight } from 'lucide-react';
+import { Search, Loader2, CalendarCheck, Trash2, Clock, ChevronRight } from 'lucide-react';
 import { bookingService, type BookingSummaryResponse, type BookingResponse } from '../services/bookingService.ts';
-import { ModalOverlay } from '../components/common/ModalOverlay.tsx';
-import { showToast, showConfirm } from '../utils/toast.ts';
+import { showToast } from '../utils/toast.ts';
+import { BookingCancelModal } from '../components/booking/BookingCancelModal.tsx';
+import { BookingDetailModal } from '../components/booking/BookingDetailModal.tsx';
 
 const MyBookings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'UPCOMING' | 'HISTORY'>('ALL');
@@ -63,6 +64,53 @@ const MyBookings: React.FC = () => {
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED':
+        return 'Đã xác nhận';
+      case 'IN_PROGRESS':
+        return 'Đang sử dụng sân';
+      case 'WAITING_CANCELLATION':
+      case 'PENDING_CANCEL':
+        return 'Chờ xác nhận hủy';
+      case 'WAITING_APPROVAL':
+        return 'Chờ duyệt đơn';
+      case 'COMPLETED':
+        return 'Hoàn thành';
+      case 'PENDING_HOLD':
+        return 'Chờ đặt cọc';
+      case 'CANCELLED':
+        return 'Đã hủy';
+      case 'REFUNDED':
+        return 'Đã hoàn tiền';
+      default:
+        return status;
+    }
+  };
+
+  // Tạo thông tin chi tiết đầy đủ khi hover vào mã đơn
+  const getBookingTooltip = (b: BookingSummaryResponse) => {
+    const code = b.bookingCode
+      ? (b.bookingCode.startsWith('#') ? b.bookingCode : `#${b.bookingCode}`)
+      : `#${b.id}`;
+    const time = `${b.startTime?.substring(0, 5)} - ${b.endTime?.substring(0, 5)}`;
+    const statusText = getStatusText(b.status);
+    const total = formatPrice(b.totalAmount || 0);
+    const deposit = b.depositAmount ? formatPrice(b.depositAmount) : null;
+
+    return [
+      `Mã đơn: ${code}`,
+      `Sân bóng: ${b.pitchName || 'Chưa cập nhật'}`,
+      `Ngày đá: ${b.bookingDate || 'Chưa cập nhật'}`,
+      `Khung giờ: ${time}`,
+      `Trạng thái: ${statusText}`,
+      `Tổng tiền: ${total}`,
+      deposit ? `Tiền đã cọc: ${deposit}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  };
+
   // Mở modal xem chi tiết đơn
   const handleOpenDetail = async (id: number) => {
     try {
@@ -78,15 +126,23 @@ const MyBookings: React.FC = () => {
     }
   };
 
-  // Yêu cầu hủy đơn
-  const handleCancelRequest = async (booking: BookingSummaryResponse) => {
-    const isConfirmed = await showConfirm(
-      'Yêu cầu hủy đơn đặt sân',
-      `Bạn có chắc chắn muốn yêu cầu hủy đơn ${booking.bookingCode}?`,
-      'Gửi yêu cầu'
-    );
-    if (isConfirmed) {
-      showToast('Yêu cầu hủy đơn đã được ghi nhận và đang chờ xử lý!', 'success');
+  const [cancellingBooking, setCancellingBooking] = useState<BookingSummaryResponse | null>(null);
+
+  // Mở modal xác nhận hủy đơn
+  const handleOpenCancelModal = (booking: BookingSummaryResponse) => {
+    setCancellingBooking(booking);
+  };
+
+  // Xác nhận gửi yêu cầu hủy đơn kèm lý do
+  const handleConfirmCancel = async (bookingId: number, reason: string) => {
+    // Đảm bảo luôn đóng popup modal ngay lập tức kể cả khi có exception
+    setCancellingBooking(null);
+    try {
+      await bookingService.cancelBooking(bookingId, reason);
+      showToast('Yêu cầu hủy đơn đã được gửi thành công!', 'success');
+      await fetchBookings();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Không thể hủy đơn đặt sân', 'error');
     }
   };
 
@@ -173,7 +229,7 @@ const MyBookings: React.FC = () => {
               <Clock size={28} />
             </div>
             <div className="bookings-stat-info">
-              <p className="bookings-stat-title">Doanh thu / Chờ duyệt</p>
+              <p className="bookings-stat-title">Đã hoàn thành / Chờ duyệt</p>
               <p className="bookings-stat-value">{activeCount} đơn</p>
             </div>
           </div>
@@ -226,12 +282,12 @@ const MyBookings: React.FC = () => {
             <table className="bookings-table">
               <thead>
                 <tr>
-                  <th>Mã đơn</th>
-                  <th>Ngày đá</th>
-                  <th>Sân / Khung giờ</th>
-                  <th>Trạng thái</th>
-                  <th>Tổng tiền</th>
-                  <th style={{ textAlign: 'right' }}>Thao tác</th>
+                  <th style={{ width: '15%' }}>Mã đơn</th>
+                  <th style={{ width: '12%' }}>Ngày đá</th>
+                  <th style={{ width: '17%' }}>Sân / Khung giờ</th>
+                  <th style={{ width: '18%' }}>Trạng thái</th>
+                  <th style={{ width: '14%' }}>Tổng tiền</th>
+                  <th style={{ width: '24%', textAlign: 'right' }}>Thao tác</th>
                 </tr>
               </thead>
 
@@ -256,7 +312,7 @@ const MyBookings: React.FC = () => {
                     <tr key={booking.id}>
                       {/* Mã đơn */}
                       <td>
-                        <span className="booking-code-text">
+                        <span className="booking-code-text" title={getBookingTooltip(booking)}>
                           #{booking.bookingCode ? booking.bookingCode.replace('#', '') : booking.id}
                         </span>
                       </td>
@@ -270,7 +326,7 @@ const MyBookings: React.FC = () => {
 
                       {/* Sân / Khung giờ */}
                       <td>
-                        <div className="booking-pitch-text">
+                        <div className="booking-pitch-text" title={booking.pitchName}>
                           {booking.pitchName}
                         </div>
                         <div className="booking-time-text">
@@ -293,10 +349,10 @@ const MyBookings: React.FC = () => {
                       {/* Thao tác */}
                       <td>
                         <div className="booking-actions">
-                          {booking.status === 'CONFIRMED' && (
+                          {(booking.status === 'CONFIRMED' || booking.status === 'WAITING_APPROVAL') && (
                             <button
                               type="button"
-                              onClick={() => handleCancelRequest(booking)}
+                              onClick={() => handleOpenCancelModal(booking)}
                               className="booking-btn-cancel"
                             >
                               Hủy đơn
@@ -436,7 +492,7 @@ const MyBookings: React.FC = () => {
               <div key={booking.id} className="bookings-mobile-card">
                 {/* Header Thẻ: Mã đơn (#B1) + Badge trạng thái */}
                 <div className="bookings-mobile-card-header">
-                  <span className="bookings-mobile-code">
+                  <span className="bookings-mobile-code" title={getBookingTooltip(booking)}>
                     #{booking.bookingCode ? booking.bookingCode.replace('#', '') : booking.id}
                   </span>
                   {getStatusBadge(booking.status)}
@@ -446,7 +502,7 @@ const MyBookings: React.FC = () => {
                 <div className="bookings-mobile-card-body">
                   <div className="bookings-mobile-row">
                     <span className="bookings-mobile-label">Sân bóng:</span>
-                    <span className="bookings-mobile-val">{booking.pitchName}</span>
+                    <span className="bookings-mobile-val" title={booking.pitchName}>{booking.pitchName}</span>
                   </div>
                   <div className="bookings-mobile-row">
                     <span className="bookings-mobile-label">Ngày đá:</span>
@@ -468,10 +524,10 @@ const MyBookings: React.FC = () => {
 
                 {/* Footer Thẻ: Nút bấm Hủy đơn / Xem chi tiết */}
                 <div className="bookings-mobile-card-actions">
-                  {booking.status === 'CONFIRMED' && (
+                  {(booking.status === 'CONFIRMED' || booking.status === 'WAITING_APPROVAL') && (
                     <button
                       type="button"
-                      onClick={() => handleCancelRequest(booking)}
+                      onClick={() => handleOpenCancelModal(booking)}
                       className="booking-btn-cancel"
                     >
                       Hủy đơn
@@ -511,116 +567,20 @@ const MyBookings: React.FC = () => {
       </div>
 
       {/* Modal chi tiết đơn đặt sân */}
-      {selectedBooking && (
-        <ModalOverlay onClose={() => setSelectedBooking(null)} maxWidth="580px">
-          <div className="booking-modal-content">
-            <div className="booking-modal-header">
-              <div style={{ flex: 1, paddingRight: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
-                  <h3 className="booking-modal-title">Chi tiết đơn đặt sân</h3>
-                  {getStatusBadge(selectedBooking.status)}
-                </div>
-                <p className="booking-modal-code">
-                  Mã đơn: #{selectedBooking.bookingCode ? selectedBooking.bookingCode.replace('#', '') : selectedBooking.id}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedBooking(null)}
-                className="booking-modal-close"
-                title="Đóng"
-                aria-label="Đóng chi tiết đơn"
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
+      <BookingDetailModal
+        booking={selectedBooking}
+        onClose={() => setSelectedBooking(null)}
+        formatPrice={formatPrice}
+        getStatusBadge={getStatusBadge}
+      />
 
-            <div className="booking-modal-body">
-              <div className="booking-modal-section-card">
-                <div className="booking-modal-row">
-                  <span className="booking-modal-label">Sân bóng:</span>
-                  <span className="booking-modal-val">{selectedBooking.pitchNameSnapshot}</span>
-                </div>
-                <div className="booking-modal-row">
-                  <span className="booking-modal-label">Ngày đặt đá:</span>
-                  <span className="booking-modal-val">{selectedBooking.bookingDate}</span>
-                </div>
-                <div className="booking-modal-row">
-                  <span className="booking-modal-label">Khung giờ:</span>
-                  <span className="booking-modal-val" style={{ color: 'var(--color-primary)' }}>
-                    {selectedBooking.startTimeSnapshot?.substring(0, 5)} - {selectedBooking.endTimeSnapshot?.substring(0, 5)}
-                  </span>
-                </div>
-                <div className="booking-modal-row">
-                  <span className="booking-modal-label">Hình thức đặt:</span>
-                  <span className="booking-modal-val">
-                    {selectedBooking.bookingType === 'ONLINE' ? 'Đặt trực tuyến qua website' : 'Đặt tại quầy'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="booking-modal-prices">
-                <div className="booking-modal-row">
-                  <span className="booking-modal-label">Tổng tiền sân:</span>
-                  <span className="booking-modal-val">
-                    {formatPrice(selectedBooking.totalPitchAmount || 0)}
-                  </span>
-                </div>
-                <div className="booking-modal-row" style={{ color: 'var(--color-primary)' }}>
-                  <span style={{ fontWeight: 500 }}>Tiền cọc (30%):</span>
-                  <span style={{ fontWeight: 700 }}>{formatPrice(selectedBooking.depositAmount || 0)}</span>
-                </div>
-                {Number(selectedBooking.additionalFee || 0) > 0 && (
-                  <div className="booking-modal-row">
-                    <span className="booking-modal-label">Phụ phí phát sinh:</span>
-                    <span className="booking-modal-val">{formatPrice(selectedBooking.additionalFee)}</span>
-                  </div>
-                )}
-                <div className="booking-modal-total-row">
-                  <span>Còn lại thanh toán tại sân:</span>
-                  <span style={{ color: 'var(--color-primary)' }}>
-                    {formatPrice(selectedBooking.remainingAmount || 0)}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.825rem', color: 'var(--color-text-muted)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Khách hàng:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-text-base)' }}>
-                    {selectedBooking.guestName} ({selectedBooking.guestPhone})
-                  </span>
-                </div>
-                {selectedBooking.customerNote && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Ghi chú:</span>
-                    <p style={{
-                      padding: '0.75rem',
-                      borderRadius: '0.5rem',
-                      backgroundColor: 'var(--color-bg-base)',
-                      border: '1px solid var(--color-border)',
-                      fontStyle: 'italic',
-                      color: 'var(--color-text-base)'
-                    }}>
-                      "{selectedBooking.customerNote}"
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="booking-modal-footer">
-              <button
-                type="button"
-                onClick={() => setSelectedBooking(null)}
-                className="booking-btn-close-modal"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
+      {/* Modal Popup Yêu Cầu Hủy Đơn Đặt Sân */}
+      <BookingCancelModal
+        booking={cancellingBooking}
+        onClose={() => setCancellingBooking(null)}
+        onConfirm={handleConfirmCancel}
+        formatPrice={formatPrice}
+      />
     </div>
   );
 };
