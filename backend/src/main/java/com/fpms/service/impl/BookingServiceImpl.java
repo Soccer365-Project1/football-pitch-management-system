@@ -1,5 +1,6 @@
 package com.fpms.service.impl;
 
+import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.response.BookingEventDto;
 import com.fpms.dto.response.BookingResponse;
@@ -8,6 +9,8 @@ import com.fpms.dto.response.ScheduleGridResponse;
 import com.fpms.dto.response.ScheduleGridItemResponse;
 import com.fpms.dto.response.PriceItemResponse;
 import com.fpms.entity.*;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import com.fpms.entity.enums.BookingStatus;
 import com.fpms.entity.enums.BookingType;
 import com.fpms.entity.enums.DayType;
@@ -17,6 +20,7 @@ import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.BookingMapper;
 import com.fpms.repository.*;
 import com.fpms.security.UserPrincipal;
+import com.fpms.service.BookingCancellationService;
 import com.fpms.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -67,6 +71,7 @@ public class BookingServiceImpl implements BookingService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final VNPayConfig vnPayConfig;
     private final SimpMessagingTemplate messagingTemplate;
+    private final BookingCancellationService bookingCancellationService;
 
     private DayType determineDayType(LocalDate date) {
         if (holidayRepository.existsByHolidayDate(date)) {
@@ -330,6 +335,84 @@ public class BookingServiceImpl implements BookingService {
 
         Booking booking = bookingRepository.findByIdAndCustomerIdAndIsDeletedFalse(bookingId, currentUser.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        return bookingMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse cancelBooking(Long bookingId, BookingCancelRequest request, UserPrincipal currentUser) {
+        if (currentUser == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(booking.getIsDeleted())) {
+            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
+        }
+
+        // Kiểm tra đúng đơn của mình (API dành cho khách hàng)
+        if (booking.getCustomer() == null || !booking.getCustomer().getId().equals(currentUser.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 1. Kiểm tra trạng thái: chỉ cho phép hủy khi ở trạng thái WAITING_APPROVAL hoặc CONFIRMED
+        if (booking.getStatus() != BookingStatus.WAITING_APPROVAL && booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new AppException(ErrorCode.CANNOT_CANCEL_BOOKING_STATUS);
+        }
+
+        // 2. Kiểm tra thời gian: hiện tại chưa đến start time của ca đá
+        LocalTime startTime = booking.getStartTimeSnapshot() != null 
+                ? booking.getStartTimeSnapshot() 
+                : (booking.getTimeSlot() != null ? booking.getTimeSlot().getStartTime() : null);
+
+        if (startTime == null) {
+            throw new AppException(ErrorCode.TIME_SLOT_NOT_FOUND);
+        }
+
+        LocalDateTime startDateTime = LocalDateTime.of(booking.getBookingDate(), startTime);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (!now.isBefore(startDateTime)) {
+            throw new AppException(ErrorCode.BOOKING_ALREADY_STARTED);
+        }
+
+        // 3. Tạo bản ghi yêu cầu hủy đơn qua BookingCancellationService
+        bookingCancellationService.createCancellation(booking, booking.getCustomer(), request);
+
+        // 4. Chuyển trạng thái đơn sang WAITING_CANCELLATION
+        booking.setStatus(BookingStatus.WAITING_CANCELLATION);
+        if (request != null && request.getReason() != null && !request.getReason().trim().isEmpty()) {
+            String currentNote = booking.getCustomerNote();
+            String cancelReasonNote = "[Yêu cầu hủy: " + request.getReason().trim() + "]";
+            booking.setCustomerNote(currentNote != null && !currentNote.isEmpty() 
+                    ? currentNote + " " + cancelReasonNote 
+                    : cancelReasonNote);
+        }
+
+        booking = bookingRepository.save(booking);
+
+        // 5. Phát WebSocket thông báo trạng thái cập nhật cho bảng lịch
+        BookingEventDto event = BookingEventDto.builder()
+                .action("BOOKING_CANCEL_REQUESTED")
+                .pitchId(booking.getPitch().getId())
+                .timeSlotId(booking.getTimeSlot().getId())
+                .date(booking.getBookingDate().toString())
+                .status(BookingStatus.WAITING_CANCELLATION.name())
+                .build();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend("/topic/schedule", event);
+                }
+            });
+        } else {
+            messagingTemplate.convertAndSend("/topic/schedule", event);
+        }
 
         return bookingMapper.toBookingResponse(booking);
     }

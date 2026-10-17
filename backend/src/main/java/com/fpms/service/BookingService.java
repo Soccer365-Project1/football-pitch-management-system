@@ -26,4 +26,5 @@ public interface BookingService {
             int size
     );
     BookingResponse getMyBookingDetail(Long bookingId, UserPrincipal currentUser);
+    BookingResponse cancelBooking(Long bookingId, com.fpms.dto.request.BookingCancelRequest request, UserPrincipal currentUser);
 }

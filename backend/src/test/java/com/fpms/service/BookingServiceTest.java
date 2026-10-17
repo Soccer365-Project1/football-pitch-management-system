@@ -1,5 +1,6 @@
 package com.fpms.service;
 
+import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.response.BookingResponse;
 import com.fpms.dto.response.BookingSummaryResponse;
@@ -60,6 +61,8 @@ class BookingServiceTest {
     private com.fpms.config.VNPayConfig vnPayConfig;
     @Mock
     private SimpMessagingTemplate messagingTemplate;
+    @Mock
+    private BookingCancellationService bookingCancellationService;
 
     @InjectMocks
     private BookingServiceImpl bookingService;
@@ -382,5 +385,148 @@ class BookingServiceTest {
         AppException ex = assertThrows(AppException.class, () ->
                 bookingService.getMyBookingDetail(999L, userPrincipal));
         assertEquals(ErrorCode.BOOKING_NOT_FOUND, ex.getErrorCode());
+    }
+
+
+    @Test
+    @DisplayName("cancelBooking - Thành công khi trạng thái CONFIRMED và chưa đến start time")
+    void cancelBooking_Success_Confirmed() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B124")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now().plusDays(2))
+                .startTimeSnapshot(LocalTime.of(17, 30))
+                .customer(user)
+                .pitch(pitch)
+                .timeSlot(timeSlot)
+                .depositAmount(BigDecimal.valueOf(150000))
+                .build();
+        booking.setId(21L);
+
+        BookingCancelRequest cancelRequest = new BookingCancelRequest();
+        cancelRequest.setReason("Có việc bận gia đình");
+
+        BookingResponse response = BookingResponse.builder()
+                .id(21L)
+                .bookingCode("#B124")
+                .status(BookingStatus.WAITING_CANCELLATION)
+                .build();
+
+        when(bookingRepository.findById(21L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+        when(bookingMapper.toBookingResponse(booking)).thenReturn(response);
+
+        BookingResponse result = bookingService.cancelBooking(21L, cancelRequest, userPrincipal);
+
+        assertNotNull(result);
+        assertEquals(BookingStatus.WAITING_CANCELLATION, booking.getStatus());
+        verify(bookingCancellationService, times(1)).createCancellation(eq(booking), eq(user), eq(cancelRequest));
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    @DisplayName("cancelBooking - Thành công khi trạng thái WAITING_APPROVAL")
+    void cancelBooking_Success_WaitingApproval() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B128")
+                .status(BookingStatus.WAITING_APPROVAL)
+                .bookingDate(LocalDate.now().plusDays(1))
+                .startTimeSnapshot(LocalTime.of(18, 0))
+                .customer(user)
+                .pitch(pitch)
+                .timeSlot(timeSlot)
+                .build();
+        booking.setId(28L);
+
+        BookingResponse response = BookingResponse.builder()
+                .id(28L)
+                .bookingCode("#B128")
+                .status(BookingStatus.WAITING_CANCELLATION)
+                .build();
+
+        when(bookingRepository.findById(28L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+        when(bookingMapper.toBookingResponse(booking)).thenReturn(response);
+
+        BookingResponse result = bookingService.cancelBooking(28L, null, userPrincipal);
+
+        assertNotNull(result);
+        assertEquals(BookingStatus.WAITING_CANCELLATION, booking.getStatus());
+        verify(bookingCancellationService, times(1)).createCancellation(eq(booking), eq(user), isNull());
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    @DisplayName("cancelBooking - Thất bại khi trạng thái không phải WAITING_APPROVAL hoặc CONFIRMED")
+    void cancelBooking_Failed_InvalidStatus() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B125")
+                .status(BookingStatus.IN_PROGRESS)
+                .bookingDate(LocalDate.now().plusDays(1))
+                .startTimeSnapshot(LocalTime.of(19, 0))
+                .customer(user)
+                .build();
+        booking.setId(22L);
+
+        when(bookingRepository.findById(22L)).thenReturn(Optional.of(booking));
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.cancelBooking(22L, null, userPrincipal));
+        assertEquals(ErrorCode.CANNOT_CANCEL_BOOKING_STATUS, ex.getErrorCode());
+        verify(bookingCancellationService, never()).createCancellation(any(), any(), any());
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("cancelBooking - Thất bại khi ca đá đã bắt đầu hoặc trong quá khứ")
+    void cancelBooking_Failed_PastStartTime() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B126")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now().minusDays(1)) // Ngày trong quá khứ
+                .startTimeSnapshot(LocalTime.of(8, 0))
+                .customer(user)
+                .build();
+        booking.setId(23L);
+
+        when(bookingRepository.findById(23L)).thenReturn(Optional.of(booking));
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.cancelBooking(23L, null, userPrincipal));
+        assertEquals(ErrorCode.BOOKING_ALREADY_STARTED, ex.getErrorCode());
+        verify(bookingCancellationService, never()).createCancellation(any(), any(), any());
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("cancelBooking - Thất bại khi không phải chủ đơn đặt sân")
+    void cancelBooking_Failed_UnauthorizedUser() {
+        User otherUser = new User();
+        otherUser.setId(99L); // ID khác với userPrincipal (ID = 1L)
+
+        Booking booking = Booking.builder()
+                .bookingCode("#B127")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now().plusDays(1))
+                .startTimeSnapshot(LocalTime.of(19, 0))
+                .customer(otherUser)
+                .build();
+        booking.setId(24L);
+
+        when(bookingRepository.findById(24L)).thenReturn(Optional.of(booking));
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.cancelBooking(24L, null, userPrincipal));
+        assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
+        verify(bookingCancellationService, never()).createCancellation(any(), any(), any());
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("cancelBooking - Thất bại khi chưa xác thực (userPrincipal == null)")
+    void cancelBooking_Failed_Unauthenticated() {
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.cancelBooking(25L, null, null));
+        assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
     }
 }

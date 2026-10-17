@@ -21,4 +21,5 @@ public class BookingSummaryResponse {
     private LocalTime endTime;
     private BookingStatus status;
     private BigDecimal totalAmount;
+    private BigDecimal depositAmount;
 }

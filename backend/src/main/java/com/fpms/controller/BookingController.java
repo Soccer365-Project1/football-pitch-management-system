@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.fpms.security.UserPrincipal;
 import jakarta.validation.Valid;
+import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.response.BookingResponse;
 import com.fpms.service.BookingService;
@@ -90,5 +91,17 @@ public class BookingController {
     ) {
         BookingResponse response = bookingService.getMyBookingDetail(id, userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin chi tiết đơn thành công", response));
+    }
+
+    @Operation(summary = "Hủy đơn đặt sân", description = "Hủy đơn đặt sân nếu trạng thái là Chờ duyệt hoặc Đã xác nhận và hiện tại chưa đến giờ bắt đầu ca đá")
+    @SecurityRequirement(name = "BearerAuth")
+    @RequestMapping(value = "/{id}/cancel", method = {RequestMethod.PUT, RequestMethod.POST})
+    public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
+            @PathVariable Long id,
+            @RequestBody(required = false) BookingCancelRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        BookingResponse response = bookingService.cancelBooking(id, request, userPrincipal);
+        return ResponseEntity.ok(ApiResponse.success("Hủy đơn đặt sân thành công", response));
     }
 }
