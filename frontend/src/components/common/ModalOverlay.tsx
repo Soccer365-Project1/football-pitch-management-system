@@ -77,19 +77,20 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
         - transform: 'none' để tránh hiệu ứng bay nhẹ khi hover chuột của class card gốc
       */}
       <div
-        className="card"
+        className="card modal-dialog-container"
         style={{
           position: 'relative',
           zIndex: 10000,
           width: '100%',
           maxWidth,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 760px)',
           display: 'flex',
           flexDirection: 'column',
           transform: 'none',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
-          padding: '1.75rem',
+          padding: '1.5rem',
           borderRadius: '16px',
+          overflow: 'hidden',
         }}
       >
         {children}

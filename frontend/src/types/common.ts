@@ -27,7 +27,11 @@ export interface ApiResponse<T = void> {
   errors?: FieldErrorDetail[];
   timestamp?: string;
 }
-
+/**
+ * Cấu trúc phân trang chuẩn (PageResponse)
+ * Tương ứng với class PageResponse.java bên Backend FPMS (items, pageNo, isLast)
+ * Đồng thời hỗ trợ tương thích ngược với chuẩn Spring Data Page (content, pageNumber, last)
+ */
 export interface PageResponse<T> {
   items: T[];
   content?: T[];
@@ -39,3 +43,4 @@ export interface PageResponse<T> {
   isLast?: boolean;
   last?: boolean;
 }
+

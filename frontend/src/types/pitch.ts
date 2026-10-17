@@ -41,17 +41,7 @@ export interface ScheduleGridResponse {
   prices: PriceItemResponse[];
 }
 
-export interface PageResponse<T> {
-  items: T[];
-  content?: T[]; // backward-compatibility fallback
-  pageNo: number;
-  pageNumber?: number; // backward-compatibility fallback
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  isLast?: boolean;
-  last?: boolean;
-}
+export type { PageResponse } from './common.ts';
 
 export interface PitchFilterParams {
   keyword?: string;

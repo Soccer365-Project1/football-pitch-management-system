@@ -82,11 +82,12 @@ public enum ErrorCode {
     IS_PEAK_HOUR_REQUIRED(3016, HttpStatus.BAD_REQUEST, "Vui lòng xác định khung giờ vàng hay thường"),
     PRICE_MAX_EXCEEDED(3037, HttpStatus.BAD_REQUEST, "Giá thuê sân không được vượt quá 50.000.000 VNĐ"),
 
-    // Payment & Booking Error Codes (3040 - 3050)
     BOOKING_NOT_FOUND(3040, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin đơn đặt sân"),
     PAYMENT_METHOD_NOT_FOUND(3041, HttpStatus.NOT_FOUND, "Không tìm thấy phương thức thanh toán"),
     PAYMENT_TRANSACTION_NOT_FOUND(3042, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin giao dịch thanh toán"),
     PAYMENT_FAILED(3043, HttpStatus.BAD_REQUEST, "Thanh toán thất bại"),
+    CANNOT_CANCEL_BOOKING_STATUS(3044, HttpStatus.BAD_REQUEST, "Chỉ có thể hủy đơn đặt sân ở trạng thái chờ xác nhận hoặc đã xác nhận"),
+    BOOKING_ALREADY_STARTED(3045, HttpStatus.BAD_REQUEST, "Không thể hủy đơn đặt sân khi ca đá đã bắt đầu hoặc đã qua"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
