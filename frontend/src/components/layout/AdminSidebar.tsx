@@ -12,7 +12,7 @@ interface AdminSidebarProps {
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const handleLogoutClick = async () => {
     const isConfirmed = await showConfirm(
@@ -29,14 +29,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
   };
 
   const menuItems = [
-    { path: '/admin', icon: <BarChart3 size={20} />, label: 'Thống kê' },
+    ...(user?.role === 'ROLE_ADMIN' ? [{ path: '/admin', icon: <BarChart3 size={20} />, label: 'Thống kê' }] : []),
     { path: '/admin/timeline', icon: <Calendar size={20} />, label: 'Quản lý Ca Đá' },
     { path: '/admin/bookings', icon: <CreditCard size={20} />, label: 'Quản lý Đơn' },
     { path: '/admin/transactions', icon: <CreditCard size={20} />, label: 'Giao dịch' },
     { path: '/admin/users', icon: <Users size={20} />, label: 'Người dùng' },
-    { path: '/admin/pitches', icon: <Settings size={20} />, label: 'Quản lý Sân' },
-    { path: '/admin/timeslots', icon: <Calendar size={20} />, label: 'Khung giờ' },
-    { path: '/admin/pricing', icon: <CreditCard size={20} />, label: 'Bảng giá sân' },
+    ...(user?.role === 'ROLE_ADMIN' ? [
+      { path: '/admin/pitches', icon: <Settings size={20} />, label: 'Quản lý Sân' },
+      { path: '/admin/timeslots', icon: <Calendar size={20} />, label: 'Khung giờ' },
+      { path: '/admin/pricing', icon: <CreditCard size={20} />, label: 'Bảng giá sân' },
+    ] : []),
   ];
 
   return (

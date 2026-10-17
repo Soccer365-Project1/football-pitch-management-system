@@ -26,8 +26,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,10 +49,14 @@ class AdminUserServiceTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
 
     private UserPrincipal currentAdmin;
+    private UserPrincipal currentStaff;
     private Role adminRole;
     private Role customerRole;
     private Role staffRole;
@@ -64,6 +71,14 @@ class AdminUserServiceTest {
                 .id(1L)
                 .email("admin@soccer365.vn")
                 .fullName("Quản trị viên")
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                .build();
+
+        currentStaff = UserPrincipal.builder()
+                .id(3L)
+                .email("staff@soccer365.vn")
+                .fullName("Nhân viên")
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_STAFF")))
                 .build();
 
         adminRole = Role.builder().id(1L).roleName(RoleName.ROLE_ADMIN).build();
@@ -306,5 +321,151 @@ class AdminUserServiceTest {
 
         assertEquals(ErrorCode.INVALID_ROLE_ASSIGNMENT, exception.getErrorCode());
         verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("TC_SRV_13: Tạo tài khoản nhân viên mới thành công")
+    void createStaff_Success() {
+        com.fpms.dto.request.CreateStaffRequest request = com.fpms.dto.request.CreateStaffRequest.builder()
+                .fullName("Nguyễn Thu Ngân")
+                .phoneNumber("0909090909")
+                .email("ngan.staff@fpms.com")
+                .password("123456")
+                .confirmPassword("123456")
+                .build();
+
+        when(userRepository.existsByEmail("ngan.staff@fpms.com")).thenReturn(false);
+        when(userRepository.existsByPhoneNumber("0909090909")).thenReturn(false);
+        when(roleRepository.findByRoleName(RoleName.ROLE_STAFF)).thenReturn(Optional.of(staffRole));
+        when(passwordEncoder.encode("123456")).thenReturn("hashedPassword");
+        when(userRepository.save(any(User.class))).thenReturn(staffUser);
+        when(userMapper.toUserResponse(staffUser)).thenReturn(userResponse);
+
+        UserResponse response = adminUserService.createStaff(request);
+
+        assertNotNull(response);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("TC_SRV_14: Tạo tài khoản nhân viên thất bại do mật khẩu xác nhận không khớp")
+    void createStaff_PasswordMismatch_ThrowsException() {
+        com.fpms.dto.request.CreateStaffRequest request = com.fpms.dto.request.CreateStaffRequest.builder()
+                .fullName("Nguyễn Thu Ngân")
+                .phoneNumber("0909090909")
+                .email("ngan.staff@fpms.com")
+                .password("123456")
+                .confirmPassword("654321")
+                .build();
+
+        AppException exception = assertThrows(AppException.class, () ->
+                adminUserService.createStaff(request));
+
+        assertEquals(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC_SRV_15: Tạo tài khoản nhân viên thất bại do email đã tồn tại")
+    void createStaff_EmailExists_ThrowsException() {
+        com.fpms.dto.request.CreateStaffRequest request = com.fpms.dto.request.CreateStaffRequest.builder()
+                .fullName("Nguyễn Thu Ngân")
+                .phoneNumber("0909090909")
+                .email("ngan.staff@fpms.com")
+                .password("123456")
+                .confirmPassword("123456")
+                .build();
+
+        when(userRepository.existsByEmail("ngan.staff@fpms.com")).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class, () ->
+                adminUserService.createStaff(request));
+
+        assertEquals(ErrorCode.EMAIL_ALREADY_EXISTS, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC_SRV_16: Cập nhật thông tin người dùng thành công")
+    void updateUser_Success() {
+        com.fpms.dto.request.UpdateUserRequest request = com.fpms.dto.request.UpdateUserRequest.builder()
+                .fullName("Nguyễn Văn Mới")
+                .phoneNumber("0912345678")
+                .build();
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(customerUser));
+        when(userRepository.existsByPhoneNumberAndIdNot("0912345678", 2L)).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenReturn(customerUser);
+        when(userMapper.toUserResponse(customerUser)).thenReturn(userResponse);
+
+        UserResponse result = adminUserService.updateUser(currentAdmin, 2L, request);
+
+        assertNotNull(result);
+        assertEquals("customer@gmail.com", result.getEmail());
+        verify(userRepository).save(customerUser);
+    }
+
+    @Test
+    @DisplayName("TC_SRV_17: Cập nhật thông tin người dùng thất bại do SĐT đã được sử dụng")
+    void updateUser_PhoneAlreadyExists_ThrowsException() {
+        com.fpms.dto.request.UpdateUserRequest request = com.fpms.dto.request.UpdateUserRequest.builder()
+                .fullName("Nguyễn Văn Mới")
+                .phoneNumber("0912345678")
+                .build();
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(customerUser));
+        when(userRepository.existsByPhoneNumberAndIdNot("0912345678", 2L)).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class, () ->
+                adminUserService.updateUser(currentAdmin, 2L, request));
+
+        assertEquals(ErrorCode.PHONE_ALREADY_EXISTS, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC_SRV_18: Nhân viên không được phép chỉnh sửa thông tin của Nhân viên khác")
+    void updateUser_StaffModifiesOtherStaff_ThrowsException() {
+        com.fpms.dto.request.UpdateUserRequest request = com.fpms.dto.request.UpdateUserRequest.builder()
+                .fullName("Nhân viên sửa")
+                .phoneNumber("0912345678")
+                .build();
+
+        User otherStaff = User.builder()
+                .email("other@soccer365.vn")
+                .role(staffRole)
+                .build();
+        otherStaff.setId(99L);
+        otherStaff.setIsDeleted(false);
+
+        when(userRepository.findById(99L)).thenReturn(Optional.of(otherStaff));
+
+        AppException exception = assertThrows(AppException.class, () ->
+                adminUserService.updateUser(currentStaff, 99L, request));
+
+        assertEquals(ErrorCode.STAFF_CANNOT_MODIFY_OTHER_STAFF, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC_SRV_19: Nhân viên không được phép khóa tài khoản của Nhân viên khác")
+    void updateUserStatus_StaffLocksOtherStaff_ThrowsException() {
+        UpdateUserStatusRequest request = UpdateUserStatusRequest.builder()
+                .status(UserStatus.LOCKED)
+                .build();
+
+        User otherStaff = User.builder()
+                .email("other@soccer365.vn")
+                .role(staffRole)
+                .build();
+        otherStaff.setId(99L);
+
+        when(userRepository.findById(99L)).thenReturn(Optional.of(otherStaff));
+
+        AppException exception = assertThrows(AppException.class, () ->
+                adminUserService.updateUserStatus(currentStaff, 99L, request));
+
+        assertEquals(ErrorCode.STAFF_CANNOT_LOCK_OTHER_STAFF, exception.getErrorCode());
+        verify(userRepository, never()).save(any());
     }
 }

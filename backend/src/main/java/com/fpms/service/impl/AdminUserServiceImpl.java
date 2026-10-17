@@ -1,6 +1,7 @@
 package com.fpms.service.impl;
 
 import com.fpms.common.response.PageResponse;
+import com.fpms.dto.request.UpdateUserRequest;
 import com.fpms.dto.request.UpdateUserRoleRequest;
 import com.fpms.dto.request.UpdateUserStatusRequest;
 import com.fpms.dto.response.UserResponse;
@@ -30,6 +31,10 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fpms.dto.request.CreateStaffRequest;
+import com.fpms.entity.enums.AuthProvider;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,6 +44,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public PageResponse<UserResponse> getUsers(String keyword, RoleName role, UserStatus status, int page, int size) {
@@ -97,11 +103,51 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
+    public UserResponse updateUser(UserPrincipal currentUser, Long id, UpdateUserRequest request) {
+        log.info("Người dùng (ID: {}) cập nhật thông tin người dùng ID: {}",
+                currentUser != null ? currentUser.getId() : null, id);
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // Quy tắc bảo vệ quyền: Nhân viên không được chỉnh sửa thông tin của Nhân viên khác hoặc Quản trị viên
+        if (currentUser != null && currentUser.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(RoleName.ROLE_STAFF.name()))) {
+            RoleName targetRole = user.getRole() != null ? user.getRole().getRoleName() : null;
+            if (targetRole == RoleName.ROLE_ADMIN || (targetRole == RoleName.ROLE_STAFF && !user.getId().equals(currentUser.getId()))) {
+                throw new AppException(ErrorCode.STAFF_CANNOT_MODIFY_OTHER_STAFF);
+            }
+        }
+
+        String fullName = request.getFullName().trim();
+        String phoneNumber = request.getPhoneNumber().trim();
+
+        // Kiểm tra số điện thoại mới có bị trùng với tài khoản người dùng khác hay không
+        if (userRepository.existsByPhoneNumberAndIdNot(phoneNumber, user.getId())) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
+
+        user.setFullName(fullName);
+        user.setPhoneNumber(phoneNumber);
+
+        User updatedUser = userRepository.save(user);
+        log.info("Đã cập nhật thông tin người dùng thành công: userId={}, fullName={}, phone={}",
+                user.getId(), fullName, phoneNumber);
+
+        return userMapper.toUserResponse(updatedUser);
+    }
+
+    @Override
+    @Transactional
     public UserResponse updateUserStatus(UserPrincipal currentAdmin, Long id, UpdateUserStatusRequest request) {
-        log.info("Quản trị viên (ID: {}) cập nhật trạng thái người dùng (ID: {}) -> {}",
+        log.info("Người dùng (ID: {}) cập nhật trạng thái người dùng (ID: {}) -> {}",
                 currentAdmin != null ? currentAdmin.getId() : null, id, request.getStatus());
 
-        // Guard 1: Chặn Admin tự khóa tài khoản của chính mình
+        // Guard 1: Chặn tự khóa tài khoản của chính mình
         if (currentAdmin != null && currentAdmin.getId().equals(id)) {
             throw new AppException(ErrorCode.CANNOT_LOCK_SELF);
         }
@@ -109,9 +155,17 @@ public class AdminUserServiceImpl implements AdminUserService {
         User targetUser = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Guard 2: Chặn khóa tài khoản của Quản trị viên khác
+        // Guard 2: Chặn khóa tài khoản của Quản trị viên
         if (targetUser.getRole() != null && targetUser.getRole().getRoleName() == RoleName.ROLE_ADMIN) {
             throw new AppException(ErrorCode.CANNOT_LOCK_ADMIN);
+        }
+
+        // Guard 3: Nhân viên không được phép khóa hoặc mở khóa tài khoản của Nhân viên khác
+        if (currentAdmin != null && currentAdmin.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(RoleName.ROLE_STAFF.name()))) {
+            if (targetUser.getRole() != null && targetUser.getRole().getRoleName() == RoleName.ROLE_STAFF) {
+                throw new AppException(ErrorCode.STAFF_CANNOT_LOCK_OTHER_STAFF);
+            }
         }
 
         targetUser.setStatus(request.getStatus());
@@ -151,6 +205,45 @@ public class AdminUserServiceImpl implements AdminUserService {
         targetUser.setRole(newRole);
         User savedUser = userRepository.save(targetUser);
         log.info("Đã cập nhật vai trò người dùng thành công: userId={}, newRole={}", savedUser.getId(), savedUser.getRole().getRoleName());
+
+        return userMapper.toUserResponse(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse createStaff(CreateStaffRequest request) {
+        log.info("Quản trị viên tạo tài khoản nhân viên mới: email={}", request.getEmail());
+
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+
+        String email = request.getEmail().trim().toLowerCase();
+        String phoneNumber = request.getPhoneNumber().trim();
+
+        if (userRepository.existsByEmail(email)) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+        if (userRepository.existsByPhoneNumber(phoneNumber)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
+
+        Role staffRole = roleRepository.findByRoleName(RoleName.ROLE_STAFF)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        User user = User.builder()
+                .fullName(request.getFullName().trim())
+                .email(email)
+                .phoneNumber(phoneNumber)
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(staffRole)
+                .status(UserStatus.ACTIVE)
+                .authProvider(AuthProvider.LOCAL)
+                .build();
+        user.setIsDeleted(false);
+
+        User savedUser = userRepository.save(user);
+        log.info("Tạo tài khoản nhân viên thành công: userId={}, email={}", savedUser.getId(), savedUser.getEmail());
 
         return userMapper.toUserResponse(savedUser);
     }

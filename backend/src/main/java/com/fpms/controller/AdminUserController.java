@@ -2,6 +2,8 @@ package com.fpms.controller;
 
 import com.fpms.common.response.ApiResponse;
 import com.fpms.common.response.PageResponse;
+import com.fpms.dto.request.CreateStaffRequest;
+import com.fpms.dto.request.UpdateUserRequest;
 import com.fpms.dto.request.UpdateUserRoleRequest;
 import com.fpms.dto.request.UpdateUserStatusRequest;
 import com.fpms.dto.response.UserResponse;
@@ -14,6 +16,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerAuth")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
@@ -49,6 +52,17 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin người dùng thành công", response));
     }
 
+    @Operation(summary = "Cập nhật thông tin người dùng", description = "Cho phép quản trị viên hoặc nhân viên chỉnh sửa Họ và tên, Số điện thoại của khách hàng")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        UserResponse response = adminUserService.updateUser(userPrincipal, id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin người dùng thành công", response));
+    }
+
     @Operation(summary = "Khóa hoặc Mở khóa tài khoản người dùng", description = "Cập nhật trạng thái tài khoản thành ACTIVE hoặc LOCKED")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<UserResponse>> updateUserStatus(
@@ -61,6 +75,7 @@ public class AdminUserController {
     }
 
     @Operation(summary = "Cấp quyền Staff hoặc Thu hồi quyền Staff", description = "Chuyển đổi vai trò người dùng giữa ROLE_CUSTOMER và ROLE_STAFF")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/role")
     public ResponseEntity<ApiResponse<UserResponse>> updateUserRole(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -69,5 +84,16 @@ public class AdminUserController {
     ) {
         UserResponse response = adminUserService.updateUserRole(userPrincipal, id, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật vai trò người dùng thành công", response));
+    }
+
+    @Operation(summary = "Tạo tài khoản nhân viên mới", description = "Tạo tài khoản với vai trò ROLE_STAFF và trạng thái ACTIVE (chỉ dành cho Quản trị viên)")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/staff")
+    public ResponseEntity<ApiResponse<UserResponse>> createStaff(
+            @Valid @RequestBody CreateStaffRequest request
+    ) {
+        UserResponse response = adminUserService.createStaff(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Tạo tài khoản nhân viên thành công", response));
     }
 }
