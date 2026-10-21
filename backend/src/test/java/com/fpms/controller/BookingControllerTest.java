@@ -192,4 +192,23 @@ class BookingControllerTest {
 
         verifyNoInteractions(bookingService);
     }
+
+    @Test
+    @DisplayName("TC-C08: POST /api/v1/bookings/{id}/repay - Thành công sinh URL thanh toán lại")
+    void repayBooking_Success() throws Exception {
+        com.fpms.dto.response.BookingDepositResponse depositResponse = com.fpms.dto.response.BookingDepositResponse.builder()
+                .bookingCode("#B1001")
+                .bookingId(10L)
+                .depositAmount(BigDecimal.valueOf(60000))
+                .paymentUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=1")
+                .build();
+
+        when(bookingService.repayBooking(eq(10L), any(), any())).thenReturn(depositResponse);
+
+        mockMvc.perform(post("/api/v1/bookings/10/repay"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bookingCode").value("#B1001"))
+                .andExpect(jsonPath("$.data.paymentUrl").value("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=1"));
+    }
 }

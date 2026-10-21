@@ -2,6 +2,7 @@ package com.fpms.service;
 
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
+import com.fpms.dto.request.BookingSearchRequest;
 import com.fpms.dto.response.BookingResponse;
 import com.fpms.dto.response.BookingSummaryResponse;
 import com.fpms.entity.*;
@@ -354,12 +355,17 @@ class BookingServiceTest {
                 1
         );
 
-        when(bookingRepository.findMyBookings(eq(userPrincipal.getId()), any(), any(), any(), any(org.springframework.data.domain.Pageable.class)))
+        when(bookingRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(page);
         when(bookingMapper.toBookingSummaryResponse(booking)).thenReturn(response);
 
+        BookingSearchRequest request = BookingSearchRequest.builder()
+                .page(1)
+                .pageSize(10)
+                .build();
+
         com.fpms.common.response.PageResponse<BookingSummaryResponse> result =
-                bookingService.getMyBookings(userPrincipal, null, null, null, 1, 10);
+                bookingService.getMyBookings(request, userPrincipal);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
@@ -370,8 +376,9 @@ class BookingServiceTest {
     @Test
     @DisplayName("getMyBookings - Lỗi khi chưa xác thực (userPrincipal == null)")
     void getMyBookings_Unauthenticated() {
+        BookingSearchRequest request = new BookingSearchRequest();
         AppException ex = assertThrows(AppException.class, () ->
-                bookingService.getMyBookings(null, null, null, null, 1, 10));
+                bookingService.getMyBookings(request, null));
         assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
     }
 
@@ -565,5 +572,85 @@ class BookingServiceTest {
         AppException ex = assertThrows(AppException.class, () ->
                 bookingService.cancelBooking(26L, blankRequest, userPrincipal));
         assertEquals(ErrorCode.BOOKING_CANCEL_REASON_REQUIRED, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("repayBooking - Thành công khi thời gian holding còn đủ (> 2 phút)")
+    void repayBooking_Success() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B555")
+                .status(BookingStatus.PENDING_HOLD)
+                .holdExpiresAt(LocalDateTime.now().plusMinutes(7))
+                .depositAmount(BigDecimal.valueOf(60000))
+                .customer(user)
+                .build();
+        booking.setId(55L);
+
+        PaymentMethod vnpayMethod = PaymentMethod.builder()
+                .code(com.fpms.entity.enums.PaymentMethodCode.VNPAY)
+                .name("VNPAY")
+                .build();
+
+        when(bookingRepository.findById(55L)).thenReturn(Optional.of(booking));
+        when(paymentMethodRepository.findByCode(com.fpms.entity.enums.PaymentMethodCode.VNPAY))
+                .thenReturn(Optional.of(vnpayMethod));
+        when(vnPayConfig.getVersion()).thenReturn("2.1.0");
+        when(vnPayConfig.getCommand()).thenReturn("pay");
+        when(vnPayConfig.getTmnCode()).thenReturn("TMNTEST");
+        when(vnPayConfig.getReturnUrl()).thenReturn("http://localhost:5173/payment-result");
+        when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+        when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        httpRequest.setRemoteAddr("127.0.0.1");
+
+        com.fpms.dto.response.BookingDepositResponse response =
+                bookingService.repayBooking(55L, userPrincipal, httpRequest);
+
+        assertNotNull(response);
+        assertEquals("#B555", response.getBookingCode());
+        assertNotNull(response.getPaymentUrl());
+        assertTrue(response.getPaymentUrl().contains("vnp_Amount=6000000"));
+        verify(paymentTransactionRepository, times(1)).save(any(PaymentTransaction.class));
+    }
+
+    @Test
+    @DisplayName("repayBooking - Thất bại và hủy đơn khi thời gian holding còn dưới 2 phút")
+    void repayBooking_TooShort_CancelsAndFails() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B557")
+                .status(BookingStatus.PENDING_HOLD)
+                .holdExpiresAt(LocalDateTime.now().plusMinutes(1))
+                .customer(user)
+                .build();
+        booking.setId(57L);
+
+        when(bookingRepository.findById(57L)).thenReturn(Optional.of(booking));
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.repayBooking(57L, userPrincipal, httpRequest));
+        assertEquals(ErrorCode.HOLDING_TIME_TOO_SHORT, ex.getErrorCode());
+        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        assertNull(booking.getHoldExpiresAt());
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    @DisplayName("repayBooking - Thất bại khi trạng thái đơn không phải PENDING_HOLD")
+    void repayBooking_InvalidStatus_Fails() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B558")
+                .status(BookingStatus.CONFIRMED)
+                .customer(user)
+                .build();
+        booking.setId(58L);
+
+        when(bookingRepository.findById(58L)).thenReturn(Optional.of(booking));
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.repayBooking(58L, userPrincipal, httpRequest));
+        assertEquals(ErrorCode.BOOKING_CANNOT_REPAY, ex.getErrorCode());
     }
 }

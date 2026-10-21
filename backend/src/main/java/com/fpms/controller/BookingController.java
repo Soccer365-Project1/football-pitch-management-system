@@ -12,6 +12,7 @@ import com.fpms.security.UserPrincipal;
 import jakarta.validation.Valid;
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
+import com.fpms.dto.request.BookingSearchRequest;
 import com.fpms.dto.response.BookingResponse;
 import com.fpms.service.BookingService;
 
@@ -65,20 +66,26 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success("Khởi tạo đặt sân và thanh toán cọc thành công", response));
     }
 
-    @Operation(summary = "Lấy lịch sử đặt sân cá nhân", description = "Lấy danh sách các đơn đặt sân của tài khoản đang đăng nhập từ JWT Token")
+    @Operation(summary = "Thanh toán lại tiền cọc", description = "Tạo URL thanh toán VNPAY mới cho đơn đặt sân đang chờ giữ chỗ")
+    @SecurityRequirement(name = "BearerAuth")
+    @PostMapping("/{id}/repay")
+    public ResponseEntity<ApiResponse<com.fpms.dto.response.BookingDepositResponse>> repayBooking(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        com.fpms.dto.response.BookingDepositResponse response = bookingService.repayBooking(id, userPrincipal, httpRequest);
+        return ResponseEntity.ok(ApiResponse.success("Khởi tạo liên kết thanh toán lại thành công", response));
+    }
+
+    @Operation(summary = "Lấy lịch sử đặt sân cá nhân", description = "Lấy danh sách các đơn đặt sân của tài khoản đang đăng nhập, hỗ trợ tìm kiếm theo từ khóa, lọc theo trạng thái, ngày đá và phân trang")
     @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/my-bookings")
     public ResponseEntity<ApiResponse<PageResponse<BookingSummaryResponse>>> getMyBookings(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestParam(required = false) BookingStatus status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size
+            @Valid @ModelAttribute BookingSearchRequest request
     ) {
-        PageResponse<BookingSummaryResponse> response = bookingService.getMyBookings(
-                userPrincipal, status, fromDate, toDate, page, size
-        );
+        PageResponse<BookingSummaryResponse> response = bookingService.getMyBookings(request, userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử đặt sân thành công", response));
     }
 

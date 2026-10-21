@@ -1,6 +1,7 @@
 package com.fpms.service;
 
 import com.fpms.dto.request.BookingCreationRequest;
+import com.fpms.dto.request.BookingSearchRequest;
 import com.fpms.dto.response.BookingResponse;
 
 import java.time.LocalDate;
@@ -18,13 +19,10 @@ public interface BookingService {
     BookingDepositResponse createBookingWithDepositPayment(BookingCreationRequest request, UserPrincipal userPrincipal, HttpServletRequest httpRequest);
     ScheduleGridResponse getScheduleGrid(LocalDate date, Long pitchTypeId);
     PageResponse<BookingSummaryResponse> getMyBookings(
-            UserPrincipal currentUser,
-            BookingStatus status,
-            LocalDate fromDate,
-            LocalDate toDate,
-            int page,
-            int size
+            BookingSearchRequest request,
+            UserPrincipal currentUser
     );
     BookingResponse getMyBookingDetail(Long bookingId, UserPrincipal currentUser);
     BookingResponse cancelBooking(Long bookingId, com.fpms.dto.request.BookingCancelRequest request, UserPrincipal currentUser);
+    BookingDepositResponse repayBooking(Long bookingId, UserPrincipal userPrincipal, HttpServletRequest httpRequest);
 }
