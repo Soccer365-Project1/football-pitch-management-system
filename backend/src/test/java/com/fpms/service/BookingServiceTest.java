@@ -8,6 +8,7 @@ import com.fpms.entity.*;
 import com.fpms.entity.enums.BookingStatus;
 import com.fpms.entity.enums.BookingType;
 import com.fpms.entity.enums.DayType;
+import com.fpms.entity.enums.PitchStatus;
 import com.fpms.entity.enums.RoleName;
 import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
@@ -26,6 +27,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 import java.util.List;
@@ -213,6 +215,29 @@ class BookingServiceTest {
         });
 
         assertEquals(ErrorCode.PITCH_NOT_FOUND, exception.getErrorCode());
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-S03b: Lỗi Sân bóng đang bảo trì hoặc dừng hoạt động")
+    void createBooking_PitchNotActive_Fails() {
+        // 1. Kiểm tra khi sân đang bảo trì (MAINTENANCE)
+        pitch.setStatus(PitchStatus.MAINTENANCE);
+        when(pitchRepository.findById(1L)).thenReturn(Optional.of(pitch));
+
+        AppException exception = assertThrows(AppException.class, () -> {
+            bookingService.createBooking(request, userPrincipal);
+        });
+
+        assertEquals(ErrorCode.PITCH_NOT_ACTIVE, exception.getErrorCode());
+
+        // 2. Kiểm tra khi sân dừng hoạt động (INACTIVE)
+        pitch.setStatus(PitchStatus.INACTIVE);
+        AppException inactiveException = assertThrows(AppException.class, () -> {
+            bookingService.createBooking(request, userPrincipal);
+        });
+
+        assertEquals(ErrorCode.PITCH_NOT_ACTIVE, inactiveException.getErrorCode());
         verify(bookingRepository, never()).save(any());
     }
 
@@ -430,7 +455,7 @@ class BookingServiceTest {
         Booking booking = Booking.builder()
                 .bookingCode("#B128")
                 .status(BookingStatus.WAITING_APPROVAL)
-                .bookingDate(LocalDate.now().plusDays(1))
+                .bookingDate(LocalDate.now().plusDays(2))
                 .startTimeSnapshot(LocalTime.of(18, 0))
                 .customer(user)
                 .pitch(pitch)
@@ -478,22 +503,23 @@ class BookingServiceTest {
     }
 
     @Test
-    @DisplayName("cancelBooking - Thất bại khi ca đá đã bắt đầu hoặc trong quá khứ")
-    void cancelBooking_Failed_PastStartTime() {
+    @DisplayName("cancelBooking - Thất bại khi thời gian đến ca đá còn dưới 24 tiếng")
+    void cancelBooking_Failed_Within24Hours() {
+        LocalDateTime startDateTime = LocalDateTime.now().plusHours(5);
         Booking booking = Booking.builder()
-                .bookingCode("#B126")
+                .bookingCode("#B129")
                 .status(BookingStatus.CONFIRMED)
-                .bookingDate(LocalDate.now().minusDays(1)) // Ngày trong quá khứ
-                .startTimeSnapshot(LocalTime.of(8, 0))
+                .bookingDate(startDateTime.toLocalDate())
+                .startTimeSnapshot(startDateTime.toLocalTime())
                 .customer(user)
                 .build();
-        booking.setId(23L);
+        booking.setId(29L);
 
-        when(bookingRepository.findById(23L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findById(29L)).thenReturn(Optional.of(booking));
 
         AppException ex = assertThrows(AppException.class, () ->
-                bookingService.cancelBooking(23L, null, userPrincipal));
-        assertEquals(ErrorCode.BOOKING_ALREADY_STARTED, ex.getErrorCode());
+                bookingService.cancelBooking(29L, null, userPrincipal));
+        assertEquals(ErrorCode.CANNOT_CANCEL_WITHIN_24_HOURS, ex.getErrorCode());
         verify(bookingCancellationService, never()).createCancellation(any(), any(), any());
         verify(bookingRepository, never()).save(any());
     }
@@ -528,5 +554,16 @@ class BookingServiceTest {
         AppException ex = assertThrows(AppException.class, () ->
                 bookingService.cancelBooking(25L, null, null));
         assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("cancelBooking - Thất bại khi lý do hủy rỗng hoặc chỉ chứa khoảng trắng")
+    void cancelBooking_Failed_BlankReason() {
+        BookingCancelRequest blankRequest = new BookingCancelRequest();
+        blankRequest.setReason("   ");
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.cancelBooking(26L, blankRequest, userPrincipal));
+        assertEquals(ErrorCode.BOOKING_CANCEL_REASON_REQUIRED, ex.getErrorCode());
     }
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Loader2, CalendarCheck, Trash2, Clock, ChevronRight } from 'lucide-react';
 import { bookingService, type BookingSummaryResponse, type BookingResponse } from '../services/bookingService.ts';
 import { showToast } from '../utils/toast.ts';
+import { formatDate } from '../utils/formatUtils.ts';
 import { BookingCancelModal } from '../components/booking/BookingCancelModal.tsx';
 import { BookingDetailModal } from '../components/booking/BookingDetailModal.tsx';
 
@@ -101,7 +102,7 @@ const MyBookings: React.FC = () => {
     return [
       `Mã đơn: ${code}`,
       `Sân bóng: ${b.pitchName || 'Chưa cập nhật'}`,
-      `Ngày đá: ${b.bookingDate || 'Chưa cập nhật'}`,
+      `Ngày đá: ${b.bookingDate ? formatDate(b.bookingDate) : 'Chưa cập nhật'}`,
       `Khung giờ: ${time}`,
       `Trạng thái: ${statusText}`,
       `Tổng tiền: ${total}`,
@@ -320,7 +321,7 @@ const MyBookings: React.FC = () => {
                       {/* Ngày đá */}
                       <td>
                         <span style={{ color: 'var(--color-text-base)', fontWeight: 500 }}>
-                          {booking.bookingDate}
+                          {formatDate(booking.bookingDate)}
                         </span>
                       </td>
 
@@ -506,7 +507,7 @@ const MyBookings: React.FC = () => {
                   </div>
                   <div className="bookings-mobile-row">
                     <span className="bookings-mobile-label">Ngày đá:</span>
-                    <span className="bookings-mobile-val">{booking.bookingDate}</span>
+                    <span className="bookings-mobile-val">{formatDate(booking.bookingDate)}</span>
                   </div>
                   <div className="bookings-mobile-row">
                     <span className="bookings-mobile-label">Khung giờ:</span>

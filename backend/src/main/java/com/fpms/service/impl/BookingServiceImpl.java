@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import com.fpms.entity.enums.BookingStatus;
 import com.fpms.entity.enums.BookingType;
 import com.fpms.entity.enums.DayType;
+import com.fpms.entity.enums.PitchStatus;
 import com.fpms.entity.enums.RoleName;
 import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
@@ -90,6 +91,10 @@ public class BookingServiceImpl implements BookingService {
         // 1. Validate Pitch and TimeSlot
         Pitch pitch = pitchRepository.findById(request.getPitchId())
                 .orElseThrow(() -> new AppException(ErrorCode.PITCH_NOT_FOUND));
+
+        if (pitch.getStatus() != PitchStatus.ACTIVE) {
+            throw new AppException(ErrorCode.PITCH_NOT_ACTIVE);
+        }
 
         TimeSlot timeSlot = timeSlotRepository.findById(request.getTimeSlotId())
                 .orElseThrow(() -> new AppException(ErrorCode.TIME_SLOT_NOT_FOUND));
@@ -346,6 +351,10 @@ public class BookingServiceImpl implements BookingService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
+        if (request != null && request.getReason() != null && request.getReason().trim().isEmpty()) {
+            throw new AppException(ErrorCode.BOOKING_CANCEL_REASON_REQUIRED);
+        }
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
 
@@ -363,7 +372,7 @@ public class BookingServiceImpl implements BookingService {
             throw new AppException(ErrorCode.CANNOT_CANCEL_BOOKING_STATUS);
         }
 
-        // 2. Kiểm tra thời gian: hiện tại chưa đến start time của ca đá
+        // 2. Kiểm tra thời gian: phải hủy trước thời gian bắt đầu ca đá ít nhất 24 giờ
         LocalTime startTime = booking.getStartTimeSnapshot() != null 
                 ? booking.getStartTimeSnapshot() 
                 : (booking.getTimeSlot() != null ? booking.getTimeSlot().getStartTime() : null);
@@ -375,8 +384,8 @@ public class BookingServiceImpl implements BookingService {
         LocalDateTime startDateTime = LocalDateTime.of(booking.getBookingDate(), startTime);
         LocalDateTime now = LocalDateTime.now();
 
-        if (!now.isBefore(startDateTime)) {
-            throw new AppException(ErrorCode.BOOKING_ALREADY_STARTED);
+        if (now.plusHours(24).isAfter(startDateTime)) {
+            throw new AppException(ErrorCode.CANNOT_CANCEL_WITHIN_24_HOURS);
         }
 
         // 3. Tạo bản ghi yêu cầu hủy đơn qua BookingCancellationService

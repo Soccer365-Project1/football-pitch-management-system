@@ -98,7 +98,7 @@ public class BookingController {
     @RequestMapping(value = "/{id}/cancel", method = {RequestMethod.PUT, RequestMethod.POST})
     public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
             @PathVariable Long id,
-            @RequestBody(required = false) BookingCancelRequest request,
+            @Valid @RequestBody BookingCancelRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
         BookingResponse response = bookingService.cancelBooking(id, request, userPrincipal);

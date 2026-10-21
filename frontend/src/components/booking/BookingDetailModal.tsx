@@ -1,6 +1,7 @@
 import React from 'react';
 import { XCircle } from 'lucide-react';
 import { ModalOverlay } from '../common/ModalOverlay.tsx';
+import { formatDate } from '../../utils/formatUtils.ts';
 import type { BookingResponse } from '../../services/bookingService.ts';
 
 export interface BookingDetailModalProps {
@@ -52,7 +53,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             </div>
             <div className="booking-modal-row">
               <span className="booking-modal-label">Ngày đặt đá:</span>
-              <span className="booking-modal-val">{booking.bookingDate}</span>
+              <span className="booking-modal-val">{formatDate(booking.bookingDate)}</span>
             </div>
             <div className="booking-modal-row">
               <span className="booking-modal-label">Khung giờ:</span>
