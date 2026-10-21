@@ -92,6 +92,9 @@ public enum ErrorCode {
     BOOKING_CANCEL_REASON_REQUIRED(3046, HttpStatus.BAD_REQUEST, "Lý do hủy đơn không được để trống"),
     BOOKING_CANCEL_REASON_TOO_LONG(3047, HttpStatus.BAD_REQUEST, "Lý do hủy đơn không được vượt quá 500 ký tự"),
     CANNOT_CANCEL_WITHIN_24_HOURS(3048, HttpStatus.BAD_REQUEST, "Không thể hủy đơn đặt sân khi thời gian đến ca đá còn dưới 24 giờ"),
+    BOOKING_CANNOT_REPAY(3049, HttpStatus.BAD_REQUEST, "Chỉ có thể thanh toán lại cho đơn đặt sân đang chờ đặt cọc"),
+    HOLDING_TIME_EXPIRED(3050, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ của đơn đặt sân đã hết hạn. Vui lòng đặt lại đơn mới"),
+    HOLDING_TIME_TOO_SHORT(3051, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ còn lại dưới 2 phút không đủ để thanh toán. Đơn đặt sân đã được hủy, vui lòng chọn lại khung giờ mới"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");

@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -108,20 +109,29 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentTransactionRepository.save(transaction);
             }
 
+            boolean isHoldExpired = booking == null || booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(LocalDateTime.now().plusMinutes(2));
+
             if (booking != null && booking.getStatus() == BookingStatus.PENDING_HOLD) {
-                booking.setStatus(BookingStatus.CANCELLED);
-                booking.setHoldExpiresAt(null);
-                bookingRepository.save(booking);
-                notifyBookingUpdated(booking);
-                log.info("VNPay Return: Người dùng hủy thanh toán đơn {}, đã chuyển sang CANCELLED và giải phóng giữ sân", booking.getBookingCode());
+                if (isHoldExpired) {
+                    booking.setStatus(BookingStatus.CANCELLED);
+                    booking.setHoldExpiresAt(null);
+                    bookingRepository.save(booking);
+                    notifyBookingUpdated(booking);
+                    log.info("VNPay Return: Người dùng hủy thanh toán đơn {}, thời gian giữ sân còn dưới 2 phút -> CANCELLED và giải phóng giữ sân", booking.getBookingCode());
+                } else {
+                    log.info("VNPay Return: Người dùng hủy thanh toán đơn {}, nhưng thời gian giữ sân còn trên 2 phút (đến {}), giữ nguyên PENDING_HOLD để thanh toán lại",
+                            booking.getBookingCode(), booking.getHoldExpiresAt());
+                }
             }
 
             return PaymentReturnResponse.builder()
-                    .status("CANCELLED")
+                    .status(isHoldExpired ? "CANCELLED" : "PENDING_HOLD")
                     .bookingCode(booking != null ? booking.getBookingCode() : null)
                     .bookingId(booking != null ? booking.getId() : null)
                     .amount(amount)
-                    .message("Bạn đã hủy giao dịch thanh toán cọc. Khung giờ đặt sân đã được giải phóng.")
+                    .message(isHoldExpired
+                            ? "Bạn đã hủy giao dịch trên VNPAY hoặc thời gian giữ chỗ còn lại dưới 2 phút không đủ để thanh toán lại. Đơn đặt sân đã được hủy và giải phóng khung giờ."
+                            : "Giao dịch thanh toán chưa hoàn tất. Khung giờ của bạn vẫn đang được tạm giữ, bạn có thể thanh toán lại.")
                     .build();
         } else {
             return PaymentReturnResponse.builder()
@@ -204,11 +214,17 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentTransactionRepository.save(transaction);
 
                 if ("24".equals(responseCode) && booking != null && booking.getStatus() == BookingStatus.PENDING_HOLD) {
-                    booking.setStatus(BookingStatus.CANCELLED);
-                    booking.setHoldExpiresAt(null);
-                    bookingRepository.save(booking);
-                    notifyBookingUpdated(booking);
-                    log.info("VNPay IPN: Người dùng hủy thanh toán đơn {}, đã chuyển sang CANCELLED và giải phóng giữ sân", booking.getBookingCode());
+                    boolean isHoldExpired = booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(LocalDateTime.now().plusMinutes(2));
+                    if (isHoldExpired) {
+                        booking.setStatus(BookingStatus.CANCELLED);
+                        booking.setHoldExpiresAt(null);
+                        bookingRepository.save(booking);
+                        notifyBookingUpdated(booking);
+                        log.info("VNPay IPN: Đơn {} thời gian holding còn dưới 2 phút, chuyển sang CANCELLED và giải phóng giữ sân", booking.getBookingCode());
+                    } else {
+                        log.info("VNPay IPN: Khách hủy thanh toán đơn {}, thời gian holding còn trên 2 phút (đến {}), giữ nguyên PENDING_HOLD để thanh toán lại",
+                                booking.getBookingCode(), booking.getHoldExpiresAt());
+                    }
                 } else {
                     log.info("VNPay IPN: Giao dịch thất bại mã lỗi={}", responseCode);
                 }
