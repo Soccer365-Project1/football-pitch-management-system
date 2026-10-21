@@ -220,7 +220,12 @@ class VNPayPaymentIntegrationTest {
         String txnRef = paymentUrl.substring(paymentUrl.indexOf("vnp_TxnRef=") + 11);
         txnRef = txnRef.substring(0, txnRef.indexOf("&"));
 
-        // Bước 2: Giả lập Return URL khi khách bấm HỦY (Mã 24)
+        // Bước 2: Giả lập thời gian giữ chỗ còn dưới 2 phút (không đủ thời gian thanh toán lại -> CANCELLED)
+        Booking bookingToCancel = bookingRepository.findByBookingCode(bookingCode).orElseThrow();
+        bookingToCancel.setHoldExpiresAt(java.time.LocalDateTime.now().plusMinutes(1));
+        bookingRepository.save(bookingToCancel);
+
+        // Giả lập Return URL khi khách bấm HỦY (Mã 24)
         Map<String, String> returnParams = new HashMap<>();
         returnParams.put("vnp_TxnRef", txnRef);
         returnParams.put("vnp_Amount", "9000000");
@@ -251,6 +256,65 @@ class VNPayPaymentIntegrationTest {
                         .param("date", testBookingDate.toString())
                         .param("pitchTypeId", cancelledBooking.getPitch().getPitchType().getId().toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.bookings[?(@.bookingCode == '" + bookingCode + "')]").doesNotExist());
+                .andExpect(jsonPath("$.data.bookings[?(@.pitchId == " + testPitchId + " && @.timeSlotId == " + testTimeSlotId + ")]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("E2E Test: Đặt sân -> Khách bấm Hủy trên VNPay nhưng hạn giữ chỗ còn > 2 phút -> Giữ PENDING_HOLD để thanh toán lại")
+    void testBookingDeposit_And_UserCancelled_WhenHoldTimeSufficient_KeepsPendingHoldForRepay() throws Exception {
+        // Bước 1: Tạo đơn cọc (mặc định giữ chỗ 10 phút > 2 phút)
+        BookingCreationRequest request = new BookingCreationRequest();
+        request.setPitchId(testPitchId);
+        request.setTimeSlotId(testTimeSlotId);
+        request.setBookingDate(testBookingDate);
+        request.setGuestName("Khách Hủy Nhưng Giữ Chỗ");
+        request.setGuestPhone("0912345678");
+
+        MvcResult result = mockMvc.perform(post("/api/v1/bookings/deposit-checkout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        String bookingCode = root.path("data").path("bookingCode").asText();
+        String paymentUrl = root.path("data").path("paymentUrl").asText();
+
+        String txnRef = paymentUrl.substring(paymentUrl.indexOf("vnp_TxnRef=") + 11);
+        txnRef = txnRef.substring(0, txnRef.indexOf("&"));
+
+        // Bước 2: Khách bấm Hủy trên VNPay (Mã 24)
+        Map<String, String> returnParams = new HashMap<>();
+        returnParams.put("vnp_TxnRef", txnRef);
+        returnParams.put("vnp_Amount", "9000000");
+        returnParams.put("vnp_ResponseCode", "24");
+
+        String hashData = VNPayUtil.buildHashData(returnParams);
+        String vnpSecureHash = VNPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
+
+        mockMvc.perform(get("/api/v1/payments/vnpay/payment-return")
+                        .param("vnp_TxnRef", txnRef)
+                        .param("vnp_Amount", "9000000")
+                        .param("vnp_ResponseCode", "24")
+                        .param("vnp_SecureHash", vnpSecureHash))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING_HOLD"))
+                .andExpect(jsonPath("$.data.bookingCode").value(bookingCode));
+
+        // Bước 3: Đơn vẫn ở trạng thái PENDING_HOLD và còn holdExpiresAt
+        Booking pendingBooking = bookingRepository.findByBookingCode(bookingCode).orElseThrow();
+        assertEquals(BookingStatus.PENDING_HOLD, pendingBooking.getStatus());
+        assertNotNull(pendingBooking.getHoldExpiresAt());
+
+        // Giao dịch hiện tại đánh dấu FAILED
+        PaymentTransaction failedTxn = paymentTransactionRepository.findByTransactionCode(txnRef).orElseThrow();
+        assertEquals(TransactionStatus.FAILED, failedTxn.getStatus());
+
+        // Bảng lịch vẫn đang giữ khung giờ này
+        mockMvc.perform(get("/api/v1/bookings/schedule-grid")
+                        .param("date", testBookingDate.toString())
+                        .param("pitchTypeId", pendingBooking.getPitch().getPitchType().getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bookings[?(@.pitchId == " + testPitchId + " && @.timeSlotId == " + testTimeSlotId + " && @.status == 'PENDING_HOLD')]").exists());
     }
 }
