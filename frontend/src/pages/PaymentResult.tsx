@@ -9,6 +9,8 @@ const PaymentResult: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<PaymentReturnResult | null>(null);
+  const [repaying, setRepaying] = useState(false);
+  const [repayError, setRepayError] = useState<string | null>(null);
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -47,7 +49,24 @@ const PaymentResult: React.FC = () => {
     );
   }
 
+  const handleRepay = async () => {
+    if (!result?.bookingId) return;
+    try {
+      setRepaying(true);
+      setRepayError(null);
+      const res = await bookingService.repayBooking(result.bookingId);
+      if (res.data?.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      }
+    } catch (err: any) {
+      setRepayError(err?.response?.data?.message || 'Không thể tạo liên kết thanh toán lại. Có thể thời gian giữ chỗ đã hết hạn.');
+    } finally {
+      setRepaying(false);
+    }
+  };
+
   const isSuccess = result?.status === 'SUCCESS';
+  const isPendingHold = result?.status === 'PENDING_HOLD';
   const isCancelled = result?.status === 'CANCELLED';
 
   return (
@@ -120,7 +139,7 @@ const PaymentResult: React.FC = () => {
               </button>
             </div>
           </>
-        ) : isCancelled ? (
+        ) : isPendingHold ? (
           <>
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -128,9 +147,79 @@ const PaymentResult: React.FC = () => {
             >
               <AlertTriangle size={42} />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Đã hủy thanh toán</h1>
+            <h1 className="text-2xl font-bold mb-2">Thanh toán chưa hoàn tất</h1>
             <p className="text-muted text-sm mb-6">
-              Bạn đã hủy giao dịch trên VNPAY. Tài khoản ngân hàng của bạn chưa bị trừ tiền.
+              {result?.message || 'Giao dịch trên VNPAY chưa hoàn thành, nhưng khung giờ của bạn vẫn đang được tạm giữ. Bạn có thể thanh toán lại để giữ chỗ.'}
+            </p>
+
+            {repayError && (
+              <div
+                className="p-3 mb-4 rounded-lg text-sm text-left"
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+              >
+                {repayError}
+              </div>
+            )}
+
+            {result?.bookingCode && (
+              <div
+                className="rounded-lg p-4 text-left text-sm space-y-2 mb-6"
+                style={{
+                  backgroundColor: 'var(--color-bg-base)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-muted">Mã đơn đặt sân:</span>
+                  <span className="font-semibold">{result.bookingCode}</span>
+                </div>
+                {result.amount && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-muted">Tiền cọc cần thanh toán (30%):</span>
+                    <span className="font-bold text-primary">{formatPrice(result.amount)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleRepay}
+                disabled={repaying}
+                className="btn btn-primary w-full flex items-center justify-center gap-2 py-3"
+                style={{ padding: '0.85rem' }}
+              >
+                {repaying ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Đang tạo liên kết thanh toán...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={18} /> Thanh toán lại cọc VNPAY
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => navigate('/my-bookings')}
+                className="btn btn-outline w-full py-3"
+                style={{ padding: '0.85rem' }}
+              >
+                Về danh sách đơn của tôi
+              </button>
+            </div>
+          </>
+        ) : isCancelled ? (
+          <>
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
+            >
+              <AlertTriangle size={42} />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Đã hủy đơn đặt sân</h1>
+            <p className="text-muted text-sm mb-6">
+              Giao dịch đã bị hủy và thời gian giữ chỗ đã hết hạn. Khung giờ sân đã được giải phóng.
             </p>
             <div className="flex flex-col gap-3">
               <button

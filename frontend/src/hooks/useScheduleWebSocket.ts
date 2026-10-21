@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-export const useScheduleWebSocket = (selectedDate: string) => {
+export const useScheduleWebSocket = (selectedDate?: string) => {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
 
@@ -20,9 +20,10 @@ export const useScheduleWebSocket = (selectedDate: string) => {
         client.subscribe('/topic/schedule', (message) => {
           console.log('Received WebSocket message:', message.body);
 
-          // Invalidate the schedule grid cache to refetch
+          // Invalidate the schedule grid & bookings cache to refetch
           queryClient.invalidateQueries({ queryKey: ['scheduleGrid'] });
           queryClient.invalidateQueries({ queryKey: ['pitches'] });
+          queryClient.invalidateQueries({ queryKey: ['myBookings'] });
         });
       },
       onStompError: (frame) => {

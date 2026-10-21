@@ -1,5 +1,5 @@
 import React from 'react';
-import { XCircle } from 'lucide-react';
+import { XCircle, Loader2 } from 'lucide-react';
 import { ModalOverlay } from '../common/ModalOverlay.tsx';
 import { formatDate } from '../../utils/formatUtils.ts';
 import type { BookingResponse } from '../../services/bookingService.ts';
@@ -9,6 +9,8 @@ export interface BookingDetailModalProps {
   onClose: () => void;
   formatPrice: (price: number) => string;
   getStatusBadge: (status: string) => React.ReactNode;
+  onRepay?: (bookingId: number) => void;
+  repaying?: boolean;
 }
 
 export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
@@ -16,6 +18,8 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   onClose,
   formatPrice,
   getStatusBadge,
+  onRepay,
+  repaying = false,
 }) => {
   if (!booking) return null;
 
@@ -133,6 +137,19 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         </div>
 
         <div className="booking-modal-footer">
+          {booking.status === 'PENDING_HOLD' && onRepay && (
+            <button
+              type="button"
+              disabled={repaying}
+              onClick={() => onRepay(booking.id)}
+              className="booking-btn-modal-repay"
+            >
+              {repaying ? (
+                <Loader2 size={16} className="animate-spin inline mr-1" />
+              ) : null}
+              Đặt cọc ngay
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
