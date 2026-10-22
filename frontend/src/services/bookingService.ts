@@ -18,7 +18,7 @@ export interface BookingDepositResponse {
 }
 
 export interface PaymentReturnResult {
-  status: 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'INVALID_SIGNATURE';
+  status: 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'PENDING_HOLD' | 'INVALID_SIGNATURE';
   bookingCode?: string;
   bookingId?: number;
   amount?: number;
@@ -74,12 +74,19 @@ export interface BookingSummaryResponse {
   depositAmount?: number;
 }
 
+export type SearchFieldType = 'ALL' | 'BOOKING_CODE' | 'PITCH_NAME' | 'PHONE';
+
 export interface BookingFilterParams {
   status?: string;
+  keyword?: string;
+  searchField?: SearchFieldType;
   fromDate?: string;
   toDate?: string;
   page?: number;
+  pageSize?: number;
   size?: number;
+  sortBy?: string;
+  sortDir?: 'ASC' | 'DESC';
 }
 
 export const bookingService = {
@@ -110,6 +117,11 @@ export const bookingService = {
 
   cancelBooking: async (id: number, reason?: string) => {
     const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/${id}/cancel`, { reason });
+    return response.data;
+  },
+
+  repayBooking: async (id: number) => {
+    const response = await api.post<ApiResponse<BookingDepositResponse>>(`/bookings/${id}/repay`);
     return response.data;
   }
 };

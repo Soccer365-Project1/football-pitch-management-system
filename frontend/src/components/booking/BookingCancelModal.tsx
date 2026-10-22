@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X, ShieldAlert } from 'lucide-react';
 import { ModalOverlay } from '../common/ModalOverlay.tsx';
+import { formatDate } from '../../utils/formatUtils.ts';
 import type { BookingSummaryResponse } from '../../services/bookingService.ts';
 
 export const PRESET_CANCEL_REASONS = [
@@ -87,7 +88,7 @@ export const BookingCancelModal: React.FC<BookingCancelModalProps> = ({
             <div className="cancel-modal-summary-row">
               <span className="cancel-modal-summary-label">Khung giờ:</span>
               <span className="cancel-modal-summary-val">
-                {booking.bookingDate} ({booking.startTime?.substring(0, 5)} - {booking.endTime?.substring(0, 5)})
+                {formatDate(booking.bookingDate)} ({booking.startTime?.substring(0, 5)} - {booking.endTime?.substring(0, 5)})
               </span>
             </div>
             <div className="cancel-modal-summary-row">

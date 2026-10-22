@@ -46,6 +46,7 @@ public enum ErrorCode {
     PITCH_TYPE_NOT_FOUND(3003, HttpStatus.NOT_FOUND, "Không tìm thấy loại sân bóng yêu cầu"),
     PITCH_STATUS_INVALID(3004, HttpStatus.BAD_REQUEST, "Trạng thái sân bóng không hợp lệ"),
     PITCH_HAS_BOOKINGS(3005, HttpStatus.BAD_REQUEST, "Sân bóng đã có ca đá hoặc lịch đặt trong hệ thống, không thể xóa. Vui lòng chuyển trạng thái sang Ngừng hoạt động"),
+    PITCH_NOT_ACTIVE(3007, HttpStatus.BAD_REQUEST, "Sân bóng đang bảo trì hoặc dừng hoạt động, không thể đặt sân"),
     TIME_SLOT_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin khung giờ"),
     TIME_SLOT_INVALID_TIME(3012, HttpStatus.BAD_REQUEST, "Giờ kết thúc phải lớn hơn giờ bắt đầu"),
     TIME_SLOT_OVERLAPPING(3013, HttpStatus.BAD_REQUEST, "Khung giờ bị chồng chéo với khung giờ khác đã tồn tại"),
@@ -88,6 +89,12 @@ public enum ErrorCode {
     PAYMENT_FAILED(3043, HttpStatus.BAD_REQUEST, "Thanh toán thất bại"),
     CANNOT_CANCEL_BOOKING_STATUS(3044, HttpStatus.BAD_REQUEST, "Chỉ có thể hủy đơn đặt sân ở trạng thái chờ xác nhận hoặc đã xác nhận"),
     BOOKING_ALREADY_STARTED(3045, HttpStatus.BAD_REQUEST, "Không thể hủy đơn đặt sân khi ca đá đã bắt đầu hoặc đã qua"),
+    BOOKING_CANCEL_REASON_REQUIRED(3046, HttpStatus.BAD_REQUEST, "Lý do hủy đơn không được để trống"),
+    BOOKING_CANCEL_REASON_TOO_LONG(3047, HttpStatus.BAD_REQUEST, "Lý do hủy đơn không được vượt quá 500 ký tự"),
+    CANNOT_CANCEL_WITHIN_24_HOURS(3048, HttpStatus.BAD_REQUEST, "Không thể hủy đơn đặt sân khi thời gian đến ca đá còn dưới 24 giờ"),
+    BOOKING_CANNOT_REPAY(3049, HttpStatus.BAD_REQUEST, "Chỉ có thể thanh toán lại cho đơn đặt sân đang chờ đặt cọc"),
+    HOLDING_TIME_EXPIRED(3050, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ của đơn đặt sân đã hết hạn. Vui lòng đặt lại đơn mới"),
+    HOLDING_TIME_TOO_SHORT(3051, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ còn lại dưới 2 phút không đủ để thanh toán. Đơn đặt sân đã được hủy, vui lòng chọn lại khung giờ mới"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
