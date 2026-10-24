@@ -109,7 +109,7 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentTransactionRepository.save(transaction);
             }
 
-            boolean isHoldExpired = booking == null || booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(LocalDateTime.now().plusMinutes(2));
+            boolean isHoldExpired = booking == null || booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).plusMinutes(2));
 
             if (booking != null && booking.getStatus() == BookingStatus.PENDING_HOLD) {
                 if (isHoldExpired) {
@@ -214,7 +214,7 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentTransactionRepository.save(transaction);
 
                 if ("24".equals(responseCode) && booking != null && booking.getStatus() == BookingStatus.PENDING_HOLD) {
-                    boolean isHoldExpired = booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(LocalDateTime.now().plusMinutes(2));
+                    boolean isHoldExpired = booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).plusMinutes(2));
                     if (isHoldExpired) {
                         booking.setStatus(BookingStatus.CANCELLED);
                         booking.setHoldExpiresAt(null);

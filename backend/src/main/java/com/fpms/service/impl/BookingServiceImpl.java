@@ -168,7 +168,7 @@ public class BookingServiceImpl implements BookingService {
             booking.setStatus(BookingStatus.CONFIRMED);
         } else {
             booking.setStatus(BookingStatus.PENDING_HOLD);
-            booking.setHoldExpiresAt(java.time.LocalDateTime.now().plusMinutes(10));
+            booking.setHoldExpiresAt(java.time.LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusMinutes(10));
         }
 
         booking = bookingRepository.save(booking);
@@ -254,7 +254,7 @@ public class BookingServiceImpl implements BookingService {
             throw new AppException(ErrorCode.BOOKING_CANNOT_REPAY);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         if (booking.getHoldExpiresAt() == null || !booking.getHoldExpiresAt().isAfter(now.plusMinutes(2))) {
             booking.setStatus(BookingStatus.CANCELLED);
             booking.setHoldExpiresAt(null);
@@ -315,14 +315,15 @@ public class BookingServiceImpl implements BookingService {
         vnpParams.put("vnp_IpAddr", VNPayUtil.getIpAddress(httpRequest));
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        ZoneId vnZone = ZoneId.of("Asia/Ho_Chi_Minh");
+        ZonedDateTime now = ZonedDateTime.now(vnZone);
         vnpParams.put("vnp_CreateDate", now.format(formatter));
 
         LocalDateTime holdExpiresAt = booking.getHoldExpiresAt();
         if (holdExpiresAt == null) {
-            holdExpiresAt = LocalDateTime.now().plusMinutes(10);
+            holdExpiresAt = now.toLocalDateTime().plusMinutes(10);
         }
-        ZonedDateTime expireZoned = holdExpiresAt.atZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+        ZonedDateTime expireZoned = holdExpiresAt.atZone(vnZone);
         vnpParams.put("vnp_ExpireDate", expireZoned.format(formatter));
 
         List<String> fieldNames = new ArrayList<>(vnpParams.keySet());
