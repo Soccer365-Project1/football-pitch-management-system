@@ -22,7 +22,7 @@ public class BookingCleanupJob {
     @Scheduled(fixedRate = 60000) // Run every 60 seconds
     @Transactional
     public void cleanupExpiredBookings() {
-        int cancelledCount = bookingRepository.cancelExpiredHolds(java.time.LocalDateTime.now().plusMinutes(2));
+        int cancelledCount = bookingRepository.cancelExpiredHolds(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).plusMinutes(2));
         if (cancelledCount > 0) {
             log.info("[BookingCleanupJob] Successfully auto-cancelled {} expired/too-short PENDING_HOLD bookings.", cancelledCount);
             
