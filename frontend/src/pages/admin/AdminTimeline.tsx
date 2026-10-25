@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Calendar,
   Play,
@@ -18,9 +19,38 @@ const getLocalDateString = (d: Date = new Date()) => {
 };
 
 const AdminTimeline: React.FC = () => {
-  // 1. Ngày được chọn (mặc định hôm nay) & Bộ lọc loại sân
-  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
-  const [selectedPitchType, setSelectedPitchType] = useState<string>('all');
+  // 1. Đồng bộ Ngày & Bộ lọc loại sân với URL query params (searchParams)
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const selectedDate = searchParams.get('date') || getLocalDateString();
+  const selectedPitchType = searchParams.get('type') || 'all';
+
+  // Tự động đồng bộ ngày mặc định lên URL nếu chưa có
+  useEffect(() => {
+    if (!searchParams.get('date')) {
+      const nextParams: Record<string, string> = { date: selectedDate };
+      if (selectedPitchType !== 'all') {
+        nextParams.type = selectedPitchType;
+      }
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, selectedDate, selectedPitchType, setSearchParams]);
+
+  const handleDateChange = (newDate: string) => {
+    const nextParams: Record<string, string> = { date: newDate };
+    if (selectedPitchType !== 'all') {
+      nextParams.type = selectedPitchType;
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handlePitchTypeChange = (newType: string) => {
+    const nextParams: Record<string, string> = { date: selectedDate };
+    if (newType !== 'all') {
+      nextParams.type = newType;
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   // 2. React Query: Tải dữ liệu ma trận ca đá Real-time
   const { data: pitchTypes = [] } = usePitchTypes();
@@ -85,7 +115,7 @@ const AdminTimeline: React.FC = () => {
             {/* Dropdown lọc theo loại sân */}
             <select
               value={selectedPitchType}
-              onChange={(e) => setSelectedPitchType(e.target.value)}
+              onChange={(e) => handlePitchTypeChange(e.target.value)}
               className="timeline-select-pitch"
               aria-label="Lọc theo loại sân"
             >
@@ -103,7 +133,7 @@ const AdminTimeline: React.FC = () => {
               <input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={(e) => handleDateChange(e.target.value)}
                 className="timeline-date-input"
                 aria-label="Chọn ngày quản lý ca đá"
               />
