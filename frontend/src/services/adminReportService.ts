@@ -60,4 +60,17 @@ export const adminReportService = {
     });
     return response.data.data || [];
   },
+
+  /**
+   * 5. Xuất file báo cáo Excel doanh thu & đơn đặt sân (SRS UC018.2)
+   * Endpoint: GET /api/v1/admin/reports/export-excel
+   * @param params { startDate, endDate }
+   */
+  exportReportExcel: async (params: ReportFilterParams): Promise<Blob> => {
+    const response = await api.get('/admin/reports/export-excel', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
