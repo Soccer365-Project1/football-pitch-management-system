@@ -136,6 +136,12 @@
 			<artifactId>google-http-client-gson</artifactId>
 			<version>1.46.3</version>
 		</dependency>
+		<!-- Apache POI for Excel (.xlsx) Export (SRS UC018.2) -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.5</version>
+		</dependency>
 	</dependencies>
 
 	<build>
