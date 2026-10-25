@@ -25,4 +25,5 @@ public interface BookingService {
     BookingResponse getMyBookingDetail(Long bookingId, UserPrincipal currentUser);
     BookingResponse cancelBooking(Long bookingId, com.fpms.dto.request.BookingCancelRequest request, UserPrincipal currentUser);
     BookingDepositResponse repayBooking(Long bookingId, UserPrincipal userPrincipal, HttpServletRequest httpRequest);
+    com.fpms.dto.response.AdminTimelineResponse getAdminTimeline(LocalDate date, Long pitchTypeId);
 }

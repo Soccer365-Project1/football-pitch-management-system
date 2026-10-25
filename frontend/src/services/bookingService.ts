@@ -123,6 +123,15 @@ export const bookingService = {
   repayBooking: async (id: number) => {
     const response = await api.post<ApiResponse<BookingDepositResponse>>(`/bookings/${id}/repay`);
     return response.data;
+  },
+
+  getAdminTimeline: async (date: string, pitchTypeId?: number | string) => {
+    const params: any = { date };
+    if (pitchTypeId && pitchTypeId !== 'all') {
+      params.pitchTypeId = pitchTypeId;
+    }
+    const response = await api.get<ApiResponse<import('../types/adminTimeline.ts').AdminTimelineResponse>>('/bookings/admin/timeline', { params });
+    return response.data?.data;
   }
 };
 

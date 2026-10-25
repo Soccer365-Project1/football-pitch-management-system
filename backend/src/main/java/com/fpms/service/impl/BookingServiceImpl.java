@@ -76,6 +76,7 @@ public class BookingServiceImpl implements BookingService {
     private final VNPayConfig vnPayConfig;
     private final SimpMessagingTemplate messagingTemplate;
     private final BookingCancellationService bookingCancellationService;
+    private final BookingCancellationRepository bookingCancellationRepository;
 
     private DayType determineDayType(LocalDate date) {
         if (holidayRepository.existsByHolidayDate(date)) {
@@ -493,5 +494,102 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return bookingMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    public com.fpms.dto.response.AdminTimelineResponse getAdminTimeline(LocalDate date, Long pitchTypeId) {
+        if (date == null) {
+            date = LocalDate.now();
+        }
+
+        // 1. Lấy danh sách sân
+        List<com.fpms.entity.Pitch> pitches = pitchRepository.findAllByIsDeletedFalse();
+        if (pitchTypeId != null && pitchTypeId > 0) {
+            pitches = pitches.stream()
+                    .filter(p -> p.getPitchType() != null && p.getPitchType().getId().equals(pitchTypeId))
+                    .collect(Collectors.toList());
+        }
+
+        // 2. Lấy danh sách khung giờ hoạt động
+        List<com.fpms.entity.TimeSlot> timeSlots = timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc();
+
+        // 3. Lấy tất cả đơn đặt sân trong ngày
+        List<Booking> bookings = bookingRepository.findOccupyingBookings(date, pitchTypeId);
+        Map<String, Booking> bookingMap = new HashMap<>();
+        for (Booking b : bookings) {
+            if (b.getPitch() != null && b.getTimeSlot() != null) {
+                String key = b.getPitch().getId() + "_" + b.getTimeSlot().getId();
+                bookingMap.put(key, b);
+            }
+        }
+
+        List<com.fpms.dto.response.AdminTimelineSlotResponse> slotResponses = new ArrayList<>();
+
+        for (com.fpms.entity.Pitch pitch : pitches) {
+            for (com.fpms.entity.TimeSlot slot : timeSlots) {
+                String key = pitch.getId() + "_" + slot.getId();
+                Booking booking = bookingMap.get(key);
+
+                String status;
+                Long bookingId = null;
+                String bookingCode = null;
+                String guestName = null;
+                String guestPhone = null;
+                BigDecimal totalAmount = null;
+                BigDecimal depositAmount = null;
+                BigDecimal remainingAmount = null;
+                String customerNote = null;
+                String cancellationReason = null;
+
+                if (pitch.getStatus() == com.fpms.entity.enums.PitchStatus.MAINTENANCE || pitch.getStatus() == com.fpms.entity.enums.PitchStatus.INACTIVE) {
+                    status = "MAINTENANCE";
+                } else if (booking != null) {
+                    status = booking.getStatus().name();
+                    bookingId = booking.getId();
+                    bookingCode = booking.getBookingCode();
+                    guestName = booking.getGuestName();
+                    guestPhone = booking.getGuestPhone();
+                    totalAmount = booking.getTotalPitchAmount() != null
+                            ? booking.getTotalPitchAmount().add(booking.getAdditionalFee() != null ? booking.getAdditionalFee() : BigDecimal.ZERO)
+                            : BigDecimal.ZERO;
+                    depositAmount = booking.getDepositAmount();
+                    remainingAmount = booking.getRemainingAmount();
+                    customerNote = booking.getCustomerNote();
+
+                    if (booking.getStatus() == BookingStatus.WAITING_CANCELLATION) {
+                        cancellationReason = bookingCancellationRepository.findByBookingId(booking.getId())
+                                .map(com.fpms.entity.BookingCancellation::getReason)
+                                .orElse(null);
+                    }
+                } else {
+                    status = "AVAILABLE";
+                }
+
+                slotResponses.add(com.fpms.dto.response.AdminTimelineSlotResponse.builder()
+                        .pitchId(pitch.getId())
+                        .pitchName(pitch.getName())
+                        .pitchTypeName(pitch.getPitchType() != null ? pitch.getPitchType().getName() : "")
+                        .timeSlotId(slot.getId())
+                        .startTime(slot.getStartTime())
+                        .endTime(slot.getEndTime())
+                        .bookingDate(date)
+                        .status(status)
+                        .bookingId(bookingId)
+                        .bookingCode(bookingCode)
+                        .guestName(guestName)
+                        .guestPhone(guestPhone)
+                        .totalAmount(totalAmount)
+                        .depositAmount(depositAmount)
+                        .remainingAmount(remainingAmount)
+                        .customerNote(customerNote)
+                        .cancellationReason(cancellationReason)
+                        .build());
+            }
+        }
+
+        return com.fpms.dto.response.AdminTimelineResponse.builder()
+                .date(date)
+                .bookings(slotResponses)
+                .build();
     }
 }
