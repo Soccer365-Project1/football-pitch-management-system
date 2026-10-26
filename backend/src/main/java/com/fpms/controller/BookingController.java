@@ -111,4 +111,15 @@ public class BookingController {
         BookingResponse response = bookingService.cancelBooking(id, request, userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Hủy đơn đặt sân thành công", response));
     }
+
+    @Operation(summary = "Lấy ma trận ca đá cho nhân viên/quản trị viên", description = "Xem chi tiết ca đá kèm thông tin khách hàng, check-in, check-out")
+    @SecurityRequirement(name = "BearerAuth")
+    @GetMapping("/admin/timeline")
+    public ResponseEntity<ApiResponse<com.fpms.dto.response.AdminTimelineResponse>> getAdminTimeline(
+            @RequestParam LocalDate date,
+            @RequestParam(required = false) Long pitchTypeId
+    ) {
+        com.fpms.dto.response.AdminTimelineResponse response = bookingService.getAdminTimeline(date, pitchTypeId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin ca đá thành công", response));
+    }
 }

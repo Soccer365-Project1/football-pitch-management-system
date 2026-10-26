@@ -11,4 +11,13 @@ export const useMyBookings = (params: BookingFilterParams = { page: 1, pageSize:
     placeholderData: (previousData) => previousData,
   });
 };
-
+export const useAdminTimeline = (date: string, pitchTypeId?: string | number) => {
+  return useQuery({
+    queryKey: ['adminTimeline', date, pitchTypeId],
+    queryFn: async () => {
+      const res = await bookingService.getAdminTimeline(date, pitchTypeId);
+      return res;
+    },
+    refetchOnWindowFocus: true,
+  });
+};
