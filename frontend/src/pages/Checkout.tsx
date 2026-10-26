@@ -3,8 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { usePitches, useTimeSlots, useScheduleGrid } from '../hooks/queries/usePitchQueries.ts';
 
-import PaymentSuccess from '../components/checkout/PaymentSuccess.tsx';
-import PaymentFailed from '../components/checkout/PaymentFailed.tsx';
 import CheckoutHeader from '../components/checkout/CheckoutHeader.tsx';
 import CheckoutInvoice from '../components/checkout/CheckoutInvoice.tsx';
 import CheckoutForm from '../components/checkout/CheckoutForm.tsx';
@@ -22,12 +20,6 @@ const Checkout: React.FC = () => {
   const { data: timeSlots = [], isLoading: isLoadingSlots } = useTimeSlots();
   const { data: scheduleData = { bookings: [], prices: [] }, isLoading: isLoadingSchedule } = useScheduleGrid(selectedDate, 'all');
 
-  const [paymentStatus, setPaymentStatus] = useState<'IDLE' | 'SUCCESS' | 'FAILED'>(() => {
-    const statusParam = searchParams.get('status');
-    if (statusParam === 'failed' || statusParam === 'error') return 'FAILED';
-    if (statusParam === 'success') return 'SUCCESS';
-    return 'IDLE';
-  });
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (isLoadingPitches || isLoadingSlots || isLoadingSchedule) {
@@ -54,58 +46,29 @@ const Checkout: React.FC = () => {
   const depositAmount = basePrice * depositRatio;
   const remainingAmount = basePrice - depositAmount;
 
-  const handlePaymentSuccess = async (formData: { guestName: string; guestPhone: string; customerNote: string }) => {
+  const handleBookingSubmit = async (formData: { guestName: string; guestPhone: string; customerNote: string }) => {
     setIsProcessing(true);
     try {
-      await bookingService.createBooking({
+      const response = await bookingService.checkoutDeposit({
         pitchId: Number(pitchId),
         timeSlotId: Number(timeSlotId),
         bookingDate: selectedDate,
         ...formData
       });
-      setPaymentStatus('SUCCESS');
-      showToast('Đặt sân thành công!', 'success');
+
+      const paymentUrl = response?.data?.paymentUrl;
+      if (paymentUrl) {
+        showToast('Đang chuyển hướng sang cổng thanh toán VNPAY...', 'info');
+        window.location.href = paymentUrl;
+      } else {
+        showToast('Không tìm thấy đường dẫn thanh toán từ máy chủ.', 'error');
+        setIsProcessing(false);
+      }
     } catch (error: any) {
-      console.error('Lỗi khi đặt sân:', error);
-      showToast(error.response?.data?.message || 'Có lỗi xảy ra khi đặt sân. Vui lòng thử lại.', 'error');
-      setPaymentStatus('FAILED');
-    } finally {
+      console.error('Lỗi khi đặt sân và chuyển hướng VNPAY:', error);
       setIsProcessing(false);
     }
   };
-
-  const handlePaymentFailed = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentStatus('FAILED');
-    }, 1200);
-  };
-
-  if (paymentStatus === 'SUCCESS') {
-    return (
-      <PaymentSuccess
-        pitch={pitch}
-        slot={slot}
-        depositAmount={depositAmount}
-        remainingAmount={remainingAmount}
-        onViewBookings={() => navigate('/my-bookings')}
-        onBookMore={() => navigate('/book-pitch')}
-      />
-    );
-  }
-
-  if (paymentStatus === 'FAILED') {
-    return (
-      <PaymentFailed
-        pitch={pitch}
-        slot={slot}
-        depositAmount={depositAmount}
-        onRetry={() => setPaymentStatus('IDLE')}
-        onBookMore={() => navigate('/')}
-      />
-    );
-  }
 
   return (
     <div className="max-w-[1400px] mx-auto pt-8 px-4 pb-12">
@@ -131,8 +94,7 @@ const Checkout: React.FC = () => {
         <CheckoutForm
           depositAmount={depositAmount}
           isProcessing={isProcessing}
-          onSubmit={handlePaymentSuccess}
-          onPaymentFailed={handlePaymentFailed}
+          onSubmit={handleBookingSubmit}
         />
       </div>
     </div>

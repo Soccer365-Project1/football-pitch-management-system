@@ -38,34 +38,36 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
 
   return (
     <header className="navbar">
-      <div className="container flex items-center justify-between">
-        <Link to="/" className="font-bold text-2xl" style={{ color: 'var(--color-primary)' }}>
+      <div className="container flex items-center justify-between" style={{ gap: '0.75rem' }}>
+        <Link to="/" className="font-bold text-2xl flex-shrink-0" style={{ color: 'var(--color-primary)' }}>
           Soccer365
         </Link>
         
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link to="/" className="font-semibold">Trang Chủ</Link>
-          <Link to="/book-pitch" className="font-semibold">Đặt Sân</Link>
-          <Link to="/my-bookings" className="font-semibold">Đơn Của Tôi</Link>
+        <nav className="customer-desktop-nav hidden md:flex items-center">
+          <div className="customer-nav-links flex items-center">
+            <Link to="/" className="font-semibold customer-nav-link">Trang Chủ</Link>
+            <Link to="/book-pitch" className="font-semibold customer-nav-link">Đặt Sân</Link>
+            <Link to="/my-bookings" className="font-semibold customer-nav-link">Đơn Của Tôi</Link>
+          </div>
           
-          <div className="flex items-center gap-4">
+          <div className="customer-nav-actions flex items-center">
             <button 
               onClick={toggleTheme} 
-              className="btn btn-secondary" 
+              className="btn btn-secondary flex-shrink-0" 
               style={{ padding: '0.5rem', borderRadius: '50%' }} 
               title="Chuyển đổi giao diện"
               aria-label="Chuyển đổi giao diện sáng tối"
             >
-              {theme === 'light' ? <Moon size={20} aria-hidden="true" /> : <Sun size={20} aria-hidden="true" />}
+              {theme === 'light' ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
             </button>
             
             {isAuthenticated ? (
               <>
                 <Link 
                   to="/profile" 
-                  className={`btn ${isProfilePage ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2 font-semibold`} 
-                  style={{ padding: '0 1rem', height: '40px', justifyContent: 'center' }}
+                  className={`btn ${isProfilePage ? 'btn-primary' : 'btn-secondary'} customer-user-btn flex items-center gap-2 font-semibold flex-shrink-0`} 
+                  style={{ height: '38px', justifyContent: 'center' }}
                 >
                   {user?.avatarUrl ? (
                     <img 
@@ -82,13 +84,13 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
                 </Link>
                 <button 
                   onClick={handleLogoutClick} 
-                  className="btn btn-secondary flex items-center gap-1.5 font-semibold cursor-pointer" 
-                  style={{ padding: '0 1rem', height: '40px', justifyContent: 'center', color: 'var(--color-danger)' }}
+                  className="btn btn-secondary customer-logout-btn flex items-center gap-1.5 font-semibold cursor-pointer flex-shrink-0" 
+                  style={{ height: '38px', justifyContent: 'center', color: 'var(--color-danger)' }}
                   title="Đăng xuất"
                   aria-label="Đăng xuất"
                 >
-                  <LogOut size={18} aria-hidden="true" />
-                  <span>Đăng xuất</span>
+                  <LogOut size={16} aria-hidden="true" />
+                  <span className="customer-btn-text">Đăng xuất</span>
                 </button>
               </>
             ) : (

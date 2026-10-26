@@ -1,0 +1,13 @@
+# ==========================================
+# FILE MẪU CẤU HÌNH CỤC BỘ (TEMPLATE)
+# Sao chép file này thành application-local.properties và điền key của bạn
+# ==========================================
+
+# 1. Cấu hình VNPAY Sandbox
+vnpay.tmn-code=YOUR_VNPAY_TMN_CODE
+vnpay.hash-secret=YOUR_VNPAY_HASH_SECRET
+vnpay.pay-url=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+vnpay.return-url=http://localhost:5173/payment-result
+
+# 2. Cấu hình Email Brevo
+# brevo.api.key=YOUR_BREVO_API_KEY

@@ -158,13 +158,17 @@ public class PitchServiceImpl implements PitchService {
                 .action("PITCH_STATUS_UPDATED")
                 .pitchId(updatedPitch.getId())
                 .build();
-                
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                messagingTemplate.convertAndSend("/topic/schedule", event);
-            }
-        });
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend("/topic/schedule", event);
+                }
+            });
+        } else {
+            messagingTemplate.convertAndSend("/topic/schedule", event);
+        }
 
         log.info("Đổi trạng thái sân bóng ID: {} sang {} thành công", id, updatedPitch.getStatus());
         return pitchMapper.toPitchResponse(updatedPitch);

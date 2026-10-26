@@ -27,11 +27,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.fpms.dto.request.BookingCancelRequest;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -136,5 +138,77 @@ class BookingControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value(ErrorCode.PAST_DATE_NOT_ALLOWED.getCode()));
+    }
+
+    @Test
+    @DisplayName("TC-C05: PUT /api/v1/bookings/{id}/cancel - Thành công")
+    void cancelBooking_Success() throws Exception {
+        BookingCancelRequest cancelRequest = new BookingCancelRequest();
+        cancelRequest.setReason("Bận việc đột xuất");
+
+        BookingResponse response = new BookingResponse();
+        response.setId(10L);
+
+        when(bookingService.cancelBooking(eq(10L), any(BookingCancelRequest.class), any())).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/bookings/10/cancel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cancelRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Hủy đơn đặt sân thành công"));
+    }
+
+    @Test
+    @DisplayName("TC-C06: PUT /api/v1/bookings/{id}/cancel - Lỗi Validation khi reason rỗng hoặc chỉ có khoảng trắng")
+    void cancelBooking_BlankReason_BadRequest() throws Exception {
+        BookingCancelRequest cancelRequest = new BookingCancelRequest();
+        cancelRequest.setReason("   ");
+
+        mockMvc.perform(put("/api/v1/bookings/10/cancel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cancelRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errors[0].field").value("reason"))
+                .andExpect(jsonPath("$.errors[0].message").value(ErrorCode.BOOKING_CANCEL_REASON_REQUIRED.getMessage()));
+
+        verifyNoInteractions(bookingService);
+    }
+
+    @Test
+    @DisplayName("TC-C07: PUT /api/v1/bookings/{id}/cancel - Lỗi Validation khi reason vượt quá 500 ký tự")
+    void cancelBooking_ReasonTooLong_BadRequest() throws Exception {
+        BookingCancelRequest cancelRequest = new BookingCancelRequest();
+        cancelRequest.setReason("A".repeat(501));
+
+        mockMvc.perform(put("/api/v1/bookings/10/cancel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cancelRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errors[0].field").value("reason"))
+                .andExpect(jsonPath("$.errors[0].message").value(ErrorCode.BOOKING_CANCEL_REASON_TOO_LONG.getMessage()));
+
+        verifyNoInteractions(bookingService);
+    }
+
+    @Test
+    @DisplayName("TC-C08: POST /api/v1/bookings/{id}/repay - Thành công sinh URL thanh toán lại")
+    void repayBooking_Success() throws Exception {
+        com.fpms.dto.response.BookingDepositResponse depositResponse = com.fpms.dto.response.BookingDepositResponse.builder()
+                .bookingCode("#B1001")
+                .bookingId(10L)
+                .depositAmount(BigDecimal.valueOf(60000))
+                .paymentUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=1")
+                .build();
+
+        when(bookingService.repayBooking(eq(10L), any(), any())).thenReturn(depositResponse);
+
+        mockMvc.perform(post("/api/v1/bookings/10/repay"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bookingCode").value("#B1001"))
+                .andExpect(jsonPath("$.data.paymentUrl").value("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=1"));
     }
 }

@@ -39,6 +39,8 @@ public class BookingResponse {
 
     private String pitchNameSnapshot; 
 
+    private String pitchTypeName;
+
     private BigDecimal totalPitchAmount; 
 
     private BigDecimal depositAmount; 
@@ -54,4 +56,6 @@ public class BookingResponse {
     private LocalDateTime holdExpiresAt; 
 
     private String customerNote;
+
+    private LocalDateTime createdAt;
 }

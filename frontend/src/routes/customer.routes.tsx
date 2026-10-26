@@ -13,6 +13,7 @@ import ForgotPassword from '../pages/ForgotPassword';
 import Profile from '../pages/Profile';
 import MyBookings from '../pages/MyBookings';
 import Checkout from '../pages/Checkout';
+import PaymentResult from '../pages/PaymentResult';
 
 export const customerRoutes: RouteObject[] = [
   {
@@ -41,10 +42,9 @@ export const customerRoutes: RouteObject[] = [
         element: <BookPitch />,
       },
       {
-        path: 'my-bookings',
-        element: <MyBookings />,
+        path: 'payment-result',
+        element: <PaymentResult />,
       },
-
 
       // 2. CÁC TRANG YÊU CẦU ĐĂNG NHẬP (Bảo vệ bằng ProtectedRoute)
       {
@@ -53,6 +53,10 @@ export const customerRoutes: RouteObject[] = [
           {
             path: 'profile',
             element: <Profile />,
+          },
+          {
+            path: 'my-bookings',
+            element: <MyBookings />,
           },
           {
             path: 'checkout/:timeSlotId/:pitchId',

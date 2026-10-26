@@ -2,6 +2,7 @@ package com.fpms.mapper;
 
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.response.BookingResponse;
+import com.fpms.dto.response.BookingSummaryResponse;
 import com.fpms.entity.Booking;
 import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
@@ -35,5 +36,13 @@ public interface BookingMapper {
     Booking toBooking(BookingCreationRequest request);
 
     @Mapping(source = "staff.fullName", target = "staffName")
+    @Mapping(source = "pitch.pitchType.name", target = "pitchTypeName")
+    @Mapping(source = "createdAt", target = "createdAt")
     BookingResponse toBookingResponse(Booking booking);
+
+    @Mapping(source = "pitchNameSnapshot", target = "pitchName")
+    @Mapping(source = "startTimeSnapshot", target = "startTime")
+    @Mapping(source = "endTimeSnapshot", target = "endTime")
+    @Mapping(source = "totalPitchAmount", target = "totalAmount")
+    BookingSummaryResponse toBookingSummaryResponse(Booking booking);
 }

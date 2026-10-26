@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router';
+import ProtectedRoute from '../components/common/ProtectedRoute';
 import AdminLayout from '../layouts/AdminLayout';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminTimeline from '../pages/admin/AdminTimeline';
@@ -13,43 +14,64 @@ import AdminProfile from '../pages/admin/AdminProfile';
 export const adminRoutes: RouteObject[] = [
   {
     path: '/admin',
-    element: <AdminLayout />,
+    element: <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_STAFF']} />,
     children: [
       {
-        index: true,
-        element: <AdminDashboard />
-      },
-      {
-        path: 'timeline',
-        element: <AdminTimeline />
-      },
-      {
-        path: 'bookings',
-        element: <AdminBookings />
-      },
-      {
-        path: 'transactions',
-        element: <AdminTransactions />
-      },
-      {
-        path: 'users',
-        element: <AdminUsers />
-      },
-      {
-        path: 'pitches',
-        element: <AdminPitches />
-      },
-      {
-        path: 'timeslots',
-        element: <AdminTimeSlots />
-      },
-      {
-        path: 'pricing',
-        element: <AdminPricing />
-      },
-      {
-        path: 'profile',
-        element: <AdminProfile />
+        element: <AdminLayout />,
+        children: [
+          {
+            index: true,
+            element: (
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            )
+          },
+          {
+            path: 'timeline',
+            element: <AdminTimeline />
+          },
+          {
+            path: 'bookings',
+            element: <AdminBookings />
+          },
+          {
+            path: 'transactions',
+            element: <AdminTransactions />
+          },
+          {
+            path: 'users',
+            element: <AdminUsers />
+          },
+          {
+            path: 'pitches',
+            element: (
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <AdminPitches />
+              </ProtectedRoute>
+            )
+          },
+          {
+            path: 'timeslots',
+            element: (
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <AdminTimeSlots />
+              </ProtectedRoute>
+            )
+          },
+          {
+            path: 'pricing',
+            element: (
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <AdminPricing />
+              </ProtectedRoute>
+            )
+          },
+          {
+            path: 'profile',
+            element: <AdminProfile />
+          }
+        ]
       }
     ]
   }
