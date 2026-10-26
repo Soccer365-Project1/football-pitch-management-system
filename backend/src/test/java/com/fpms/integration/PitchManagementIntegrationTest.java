@@ -393,9 +393,6 @@ class PitchManagementIntegrationTest extends BaseIntegrationTest {
                 .startTimeSnapshot(timeSlot.getStartTime())
                 .endTimeSnapshot(timeSlot.getEndTime())
                 .priceSnapshot(new BigDecimal("200000"))
-                .startTimeSnapshot(LocalTime.of(8, 0))
-                .endTimeSnapshot(LocalTime.of(9, 30))
-                .pitchNameSnapshot("Test Pitch")
                 .totalPitchAmount(new BigDecimal("200000"))
                 .status(BookingStatus.CONFIRMED)
                 .build());
