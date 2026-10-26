@@ -100,6 +100,15 @@ public enum ErrorCode {
     CHECK_IN_TIME_NOT_REACHED(3054, HttpStatus.BAD_REQUEST, "Chưa đến giờ nhận sân (giờ nhận sân phải từ giờ bắt đầu ca đá)"),
     BOOKING_DATE_NOT_TODAY(3055, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay"),
 
+    // Booking Admin Management Error Codes (3056 - 3062)
+    BOOKING_NOT_WAITING_APPROVAL(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể duyệt đơn đặt sân ở trạng thái chờ duyệt"),
+    BOOKING_CANNOT_COLLECT_PAYMENT(3057, HttpStatus.BAD_REQUEST, "Chỉ có thể thu tiền và đóng ca cho đơn ở trạng thái đã xác nhận hoặc đang diễn ra"),
+    REFUND_METHOD_REQUIRED(3058, HttpStatus.BAD_REQUEST, "Vui lòng chọn phương thức hoàn tiền khi hủy đơn"),
+    ADDITIONAL_FEE_INVALID(3059, HttpStatus.BAD_REQUEST, "Phụ phí phát sinh không hợp lệ, phải là số không âm"),
+    BOOKING_ALREADY_CANCELLED_OR_COMPLETED(3060, HttpStatus.BAD_REQUEST, "Không thể thao tác trên đơn đã bị hủy hoặc đã hoàn thành"),
+    BOOKING_CANCEL_REASON_LENGTH_INVALID(3061, HttpStatus.BAD_REQUEST, "Lý do hủy đơn phải từ 5 đến 500 ký tự"),
+    PAID_AMOUNT_EXCEEDS_TOTAL(3062, HttpStatus.BAD_REQUEST, "Số tiền thanh toán vượt quá tổng giá trị đơn đặt sân"),
+
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc"),
     REPORT_DATA_EMPTY(5002, HttpStatus.BAD_REQUEST, "Không có dữ liệu để xuất báo cáo"),

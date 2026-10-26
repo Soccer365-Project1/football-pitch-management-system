@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, Long> {
     Optional<PaymentTransaction> findByTransactionCode(String transactionCode);
     List<PaymentTransaction> findByBookingId(Long bookingId);
+    List<PaymentTransaction> findByBookingIdOrderByCreatedAtDesc(Long bookingId);
 }
