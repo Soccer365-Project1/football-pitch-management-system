@@ -9,10 +9,11 @@ import {
 } from 'lucide-react';
 import { useScheduleWebSocket } from '../../hooks/useScheduleWebSocket.ts';
 import { usePitches, useTimeSlots, usePitchTypes } from '../../hooks/queries/usePitchQueries.ts';
-import { useAdminTimeline } from '../../hooks/queries/useBookingQueries.ts';
+import { useAdminTimeline, useApproveBooking, useCheckInBooking } from '../../hooks/queries/useBookingQueries.ts';
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
-import { TimelineDetailModal } from '../../components/admin/timeline/index.ts';
+import { TimelineDetailModal, canCheckInSlot } from '../../components/admin/timeline/index.ts';
+import { showToast, showAlert, showConfirm } from '../../utils/toast.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
   return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -69,7 +70,50 @@ const AdminTimeline: React.FC = () => {
 
   const loading = isLoadingPitches || isLoadingTimeline;
 
-  // 3. Modal xem chi tiết ca đá
+  // 3. Mutations: Duyệt đơn & Nhận sân (Check-in)
+  const approveMutation = useApproveBooking();
+  const checkInMutation = useCheckInBooking();
+
+  const handleApprove = async (bookingId: number) => {
+    try {
+      await approveMutation.mutateAsync(bookingId);
+      showToast('Duyệt đơn đặt sân thành công!', 'success');
+      setDetailSlot(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Không thể duyệt đơn đặt sân';
+      showToast(msg, 'error');
+    }
+  };
+
+  const handleCheckIn = async (slot: AdminTimelineSlotResponse) => {
+    if (!slot.bookingId) return;
+
+    // 1. Kiểm tra điều kiện thời gian (>= startTime và đúng ngày)
+    const check = canCheckInSlot(slot);
+    if (!check.canCheckIn) {
+      showAlert('Không thể nhận sân', check.reason || 'Chưa đủ điều kiện nhận sân', 'warning');
+      return;
+    }
+
+    // 2. Xác nhận nhận sân
+    const confirmed = await showConfirm(
+      'Xác nhận nhận sân?',
+      `Khách hàng sẽ nhận sân ${slot.pitchName} (ca ${slot.startTime?.substring(0, 5)} - ${slot.endTime?.substring(0, 5)}). Trạng thái chuyển thành Đang sử dụng.`,
+      'Xác nhận nhận sân'
+    );
+    if (!confirmed) return;
+
+    try {
+      await checkInMutation.mutateAsync(slot.bookingId);
+      showToast('Nhận sân thành công! Trận đấu đang diễn ra.', 'success');
+      setDetailSlot(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Không thể nhận sân';
+      showToast(msg, 'error');
+    }
+  };
+
+  // 4. Modal xem chi tiết ca đá
   const [detailSlot, setDetailSlot] = useState<AdminTimelineSlotResponse | null>(null);
 
   // Lắng nghe WebSocket để realtime update
@@ -216,9 +260,9 @@ const AdminTimeline: React.FC = () => {
                               {status === 'CONFIRMED' && (
                                 <button
                                   type="button"
-                                  onClick={() => setDetailSlot(slotData || null)}
+                                  onClick={() => handleCheckIn(slotData!)}
                                   className="timeline-btn-checkin"
-                                  title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã xác nhận. Bấm xem chi tiết`}
+                                  title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã xác nhận. Bấm để nhận sân`}
                                 >
                                   <Play size={11} className="fill-current" />
                                   <span>Nhận sân</span>
@@ -255,7 +299,7 @@ const AdminTimeline: React.FC = () => {
                                 <div
                                   className="timeline-badge-waiting"
                                   onClick={() => setDetailSlot(slotData || null)}
-                                  title="Đơn đang chờ duyệt. Bấm để xem chi tiết"
+                                  title="Đơn đang chờ duyệt. Bấm để duyệt đơn"
                                 >
                                   Chờ duyệt
                                 </div>
@@ -292,11 +336,15 @@ const AdminTimeline: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Chi tiết ca đá */}
+      {/* Modal Chi tiết ca đá & Thao tác Duyệt / Nhận sân */}
       {detailSlot && (
         <TimelineDetailModal
           slot={detailSlot}
           onClose={() => setDetailSlot(null)}
+          onApprove={handleApprove}
+          onCheckIn={handleCheckIn}
+          isApproving={approveMutation.isPending}
+          isCheckingIn={checkInMutation.isPending}
         />
       )}
     </div>
