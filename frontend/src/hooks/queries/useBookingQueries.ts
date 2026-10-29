@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingService, type BookingFilterParams } from '../../services/bookingService.ts';
 
 export const useMyBookings = (params: BookingFilterParams = { page: 1, pageSize: 10 }) => {
@@ -11,6 +11,7 @@ export const useMyBookings = (params: BookingFilterParams = { page: 1, pageSize:
     placeholderData: (previousData) => previousData,
   });
 };
+
 export const useAdminTimeline = (date: string, pitchTypeId?: string | number) => {
   return useQuery({
     queryKey: ['adminTimeline', date, pitchTypeId],
@@ -19,5 +20,25 @@ export const useAdminTimeline = (date: string, pitchTypeId?: string | number) =>
       return res;
     },
     refetchOnWindowFocus: true,
+  });
+};
+
+export const useApproveBooking = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingId: number) => bookingService.approveBooking(bookingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
+    },
+  });
+};
+
+export const useCheckInBooking = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingId: number) => bookingService.checkInBooking(bookingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
+    },
   });
 };

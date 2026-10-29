@@ -1,1 +1,2 @@
-export { TimelineDetailModal } from './TimelineDetailModal.tsx';
+export { TimelineDetailModal, canCheckInSlot } from './TimelineDetailModal.tsx';
+

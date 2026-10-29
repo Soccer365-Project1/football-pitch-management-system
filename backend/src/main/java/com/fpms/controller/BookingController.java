@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.fpms.security.UserPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
@@ -121,5 +122,29 @@ public class BookingController {
     ) {
         com.fpms.dto.response.AdminTimelineResponse response = bookingService.getAdminTimeline(date, pitchTypeId);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin ca đá thành công", response));
+    }
+
+    @Operation(summary = "Duyệt đơn đặt sân", description = "Chuyển trạng thái từ Chờ duyệt sang Đã xác nhận")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PutMapping("/admin/{id}/approve")
+    public ResponseEntity<ApiResponse<BookingResponse>> approveBooking(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        BookingResponse response = bookingService.approveBooking(id, userPrincipal);
+        return ResponseEntity.ok(ApiResponse.success("Duyệt đơn đặt sân thành công", response));
+    }
+
+    @Operation(summary = "Nhận sân (Check-in)", description = "Chuyển trạng thái từ Đã xác nhận sang Đang sử dụng khi giờ hiện tại >= giờ bắt đầu ca đá")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PutMapping("/admin/{id}/check-in")
+    public ResponseEntity<ApiResponse<BookingResponse>> checkInBooking(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        BookingResponse response = bookingService.checkInBooking(id, userPrincipal);
+        return ResponseEntity.ok(ApiResponse.success("Nhận sân thành công", response));
     }
 }

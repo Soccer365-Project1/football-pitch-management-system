@@ -132,6 +132,16 @@ export const bookingService = {
     }
     const response = await api.get<ApiResponse<import('../types/adminTimeline.ts').AdminTimelineResponse>>('/bookings/admin/timeline', { params });
     return response.data?.data;
+  },
+
+  approveBooking: async (id: number) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/approve`);
+    return response.data;
+  },
+
+  checkInBooking: async (id: number) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/check-in`);
+    return response.data;
   }
 };
 

@@ -95,6 +95,10 @@ public enum ErrorCode {
     BOOKING_CANNOT_REPAY(3049, HttpStatus.BAD_REQUEST, "Chỉ có thể thanh toán lại cho đơn đặt sân đang chờ đặt cọc"),
     HOLDING_TIME_EXPIRED(3050, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ của đơn đặt sân đã hết hạn. Vui lòng đặt lại đơn mới"),
     HOLDING_TIME_TOO_SHORT(3051, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ còn lại dưới 2 phút không đủ để thanh toán. Đơn đặt sân đã được hủy, vui lòng chọn lại khung giờ mới"),
+    INVALID_BOOKING_STATUS_FOR_APPROVAL(3052, HttpStatus.BAD_REQUEST, "Chỉ có thể duyệt đơn đặt sân đang ở trạng thái chờ duyệt"),
+    INVALID_BOOKING_STATUS_FOR_CHECK_IN(3053, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận"),
+    CHECK_IN_TIME_NOT_REACHED(3054, HttpStatus.BAD_REQUEST, "Chưa đến giờ nhận sân (giờ nhận sân phải từ giờ bắt đầu ca đá)"),
+    BOOKING_DATE_NOT_TODAY(3055, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc"),
