@@ -97,7 +97,9 @@ public enum ErrorCode {
     HOLDING_TIME_TOO_SHORT(3051, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ còn lại dưới 2 phút không đủ để thanh toán. Đơn đặt sân đã được hủy, vui lòng chọn lại khung giờ mới"),
 
     // Report & Analytics Error Codes (5000 - 5099)
-    INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
+    INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc"),
+    REPORT_DATA_EMPTY(5002, HttpStatus.BAD_REQUEST, "Không có dữ liệu để xuất báo cáo"),
+    EXCEL_EXPORT_FAILED(5003, HttpStatus.INTERNAL_SERVER_ERROR, "Xuất báo cáo thất bại. Vui lòng thử lại");
 
 
     private final int code;
