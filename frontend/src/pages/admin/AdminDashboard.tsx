@@ -205,10 +205,31 @@ const AdminDashboard: React.FC = () => {
 
   const executeExportExcel = async () => {
     setShowConfirmExport(false);
-    showToast(
-      `Đang chuẩn bị xuất báo cáo từ ngày ${startDate} đến ${endDate}. Tính năng tích hợp với Engine Excel (Task 2).`,
-      'info'
-    );
+    try {
+      const blob = await adminReportService.exportReportExcel({ startDate, endDate });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `BaoCao_DoanhThu_FPMS_${startDate}_${endDate}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showToast('Xuất báo cáo Excel thành công!', 'success');
+    } catch (error: any) {
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const errorJson = JSON.parse(text);
+          showToast(errorJson.message || 'Không có dữ liệu để xuất báo cáo', 'warning');
+        } catch {
+          showToast('Xuất báo cáo thất bại. Vui lòng thử lại.', 'error');
+        }
+      } else {
+        const msg = error.response?.data?.message || 'Xuất báo cáo thất bại. Vui lòng thử lại.';
+        showToast(msg, 'error');
+      }
+    }
   };
 
   // ---------------------------------------------------------------------------------------

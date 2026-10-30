@@ -3,8 +3,8 @@ package com.fpms.repository;
 import com.fpms.entity.Booking;
 import com.fpms.entity.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -47,12 +47,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     java.util.Optional<Booking> findByIdAndCustomerIdAndIsDeletedFalse(Long id, Long customerId);
     // ==================== BÁO CÁO THỐNG KÊ (REPORTS & ANALYTICS) ====================
 
-    @Query("SELECT COALESCE(SUM(b.totalPitchAmount + b.additionalFee), 0) FROM Booking b " +
+    @Query("SELECT COALESCE(SUM(COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)), 0) FROM Booking b " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status IN (BookingStatus.CONFIRMED, " +
-           "                 BookingStatus.IN_PROGRESS, " +
-           "                 BookingStatus.COMPLETED)")
+           "AND b.status = BookingStatus.COMPLETED")
     java.math.BigDecimal sumRevenueBetweenDates(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
@@ -65,12 +63,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT b.bookingDate, COALESCE(SUM(b.totalPitchAmount + b.additionalFee), 0), COUNT(b) FROM Booking b " +
+    @Query("SELECT b.bookingDate, COALESCE(SUM(COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)), 0), COUNT(b) FROM Booking b " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status IN (BookingStatus.CONFIRMED, " +
-           "                 BookingStatus.IN_PROGRESS, " +
-           "                 BookingStatus.COMPLETED) " +
+           "AND b.status = BookingStatus.COMPLETED " +
            "GROUP BY b.bookingDate " +
            "ORDER BY b.bookingDate ASC")
     List<Object[]> getDailyRevenueBetweenDates(
@@ -86,15 +82,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT pt.id, pt.name, COALESCE(SUM(b.totalPitchAmount + b.additionalFee), 0), COUNT(b) " +
+    @Query("SELECT pt.id, pt.name, COALESCE(SUM(COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)), 0), COUNT(b) " +
            "FROM Booking b " +
            "JOIN b.pitch p " +
            "JOIN p.pitchType pt " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status IN (BookingStatus.CONFIRMED, " +
-           "                 BookingStatus.IN_PROGRESS, " +
-           "                 BookingStatus.COMPLETED) " +
+           "AND b.status = BookingStatus.COMPLETED " +
            "GROUP BY pt.id, pt.name")
     List<Object[]> getRevenueByPitchTypeBetweenDates(
             @Param("startDate") LocalDate startDate,
@@ -117,6 +111,19 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
            "GROUP BY b.customer.id " +
            "HAVING COUNT(b) >= 2")
     List<Object[]> findRepeatCustomerIdsBetweenDates(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT b FROM Booking b " +
+           "LEFT JOIN FETCH b.customer c " +
+           "JOIN FETCH b.pitch p " +
+           "JOIN FETCH p.pitchType pt " +
+           "JOIN FETCH b.timeSlot ts " +
+           "WHERE b.isDeleted = false " +
+           "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
+           "AND b.status = BookingStatus.COMPLETED " +
+           "ORDER BY b.bookingDate DESC, b.createdAt DESC")
+    List<Booking> findBookingsForReportExport(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 }
