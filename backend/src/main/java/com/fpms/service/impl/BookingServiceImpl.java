@@ -2,7 +2,10 @@ package com.fpms.service.impl;
 
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
+import com.fpms.dto.request.BookingCheckOutRequest;
+import com.fpms.dto.request.TransactionRequest;
 import com.fpms.dto.request.BookingSearchRequest;
+import com.fpms.service.PaymentTransactionService;
 import com.fpms.repository.specification.BookingSpecification;
 import org.springframework.data.jpa.domain.Specification;
 import com.fpms.dto.response.BookingEventDto;
@@ -77,6 +80,7 @@ public class BookingServiceImpl implements BookingService {
     private final SimpMessagingTemplate messagingTemplate;
     private final BookingCancellationService bookingCancellationService;
     private final BookingCancellationRepository bookingCancellationRepository;
+    private final PaymentTransactionService paymentTransactionService;
 
     private DayType determineDayType(LocalDate date) {
         if (holidayRepository.existsByHolidayDate(date)) {
@@ -210,18 +214,19 @@ public class BookingServiceImpl implements BookingService {
         PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
 
-        // 3. Khởi tạo PaymentTransaction PENDING
-        String txnCode = "TXN_" + System.currentTimeMillis() + "_" + booking.getId();
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .transactionCode(txnCode)
-                .booking(booking)
-                .paymentMethod(vnpayMethod)
-                .amount(booking.getDepositAmount())
-                .paymentType(PaymentType.DEPOSIT_30)
-                .status(TransactionStatus.PENDING)
-                .note("Đặt cọc 30% đơn " + booking.getBookingCode())
-                .build();
-        paymentTransactionRepository.save(transaction);
+        // 3. Khởi tạo PaymentTransaction PENDING qua PaymentTransactionService
+        PaymentTransaction transaction = paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethod(vnpayMethod)
+                        .amount(booking.getDepositAmount())
+                        .paymentType(PaymentType.DEPOSIT_30)
+                        .status(TransactionStatus.PENDING)
+                        .processedBy(null)
+                        .note("Đặt cọc 30% đơn " + booking.getBookingCode())
+                        .build()
+        );
+        String txnCode = transaction.getTransactionCode();
 
         // 4. Sinh URL thanh toán VNPAY (thời gian hết hạn đồng bộ theo holdExpiresAt của booking)
         String paymentUrl = buildVNPayUrl(booking, txnCode, httpRequest);
@@ -278,17 +283,18 @@ public class BookingServiceImpl implements BookingService {
         PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
 
-        String txnCode = "TXN_" + System.currentTimeMillis() + "_" + booking.getId();
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .transactionCode(txnCode)
-                .booking(booking)
-                .paymentMethod(vnpayMethod)
-                .amount(booking.getDepositAmount())
-                .paymentType(PaymentType.DEPOSIT_30)
-                .status(TransactionStatus.PENDING)
-                .note("Thanh toán lại cọc 30% đơn " + booking.getBookingCode())
-                .build();
-        paymentTransactionRepository.save(transaction);
+        PaymentTransaction transaction = paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethod(vnpayMethod)
+                        .amount(booking.getDepositAmount())
+                        .paymentType(PaymentType.DEPOSIT_30)
+                        .status(TransactionStatus.PENDING)
+                        .processedBy(null)
+                        .note("Thanh toán lại cọc 30% đơn " + booking.getBookingCode())
+                        .build()
+        );
+        String txnCode = transaction.getTransactionCode();
 
         String paymentUrl = buildVNPayUrl(booking, txnCode, httpRequest);
 
@@ -665,6 +671,70 @@ public class BookingServiceImpl implements BookingService {
                 .timeSlotId(booking.getTimeSlot().getId())
                 .date(booking.getBookingDate().toString())
                 .status(BookingStatus.IN_PROGRESS.name())
+                .build();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend("/topic/schedule", event);
+                }
+            });
+        } else {
+            messagingTemplate.convertAndSend("/topic/schedule", event);
+        }
+
+        return bookingMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse checkOutBooking(Long bookingId, BookingCheckOutRequest request, UserPrincipal currentUser) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getStatus() != BookingStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_CHECK_OUT);
+        }
+
+        if (request.getPaymentMethod() != PaymentMethodCode.CASH && request.getPaymentMethod() != PaymentMethodCode.BANK_TRANSFER) {
+            throw new AppException(ErrorCode.PAYMENT_METHOD_NOT_SUPPORTED_FOR_CHECKOUT);
+        }
+
+        User staff = null;
+        if (currentUser != null && currentUser.getId() != null) {
+            staff = userRepository.findById(currentUser.getId()).orElse(null);
+            if (staff != null) {
+                booking.setStaff(staff);
+            }
+        }
+
+        String note = "Thanh toán nốt 70% ca đá đơn " + booking.getBookingCode();
+        if (request.getNote() != null && !request.getNote().trim().isEmpty()) {
+            note += " - Ghi chú: " + request.getNote().trim();
+        }
+
+        paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethodCode(request.getPaymentMethod())
+                        .amount(booking.getRemainingAmount())
+                        .paymentType(PaymentType.REMAINING_70)
+                        .status(TransactionStatus.SUCCESS)
+                        .processedBy(staff)
+                        .note(note)
+                        .build()
+        );
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking = bookingRepository.save(booking);
+
+        BookingEventDto event = BookingEventDto.builder()
+                .action("BOOKING_COMPLETED")
+                .pitchId(booking.getPitch().getId())
+                .timeSlotId(booking.getTimeSlot().getId())
+                .date(booking.getBookingDate().toString())
+                .status(BookingStatus.COMPLETED.name())
                 .build();
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

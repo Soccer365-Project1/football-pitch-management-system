@@ -1,5 +1,6 @@
 package com.fpms.service;
 
+import com.fpms.dto.request.BookingCheckOutRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.request.BookingSearchRequest;
 import com.fpms.dto.response.BookingResponse;
@@ -28,4 +29,5 @@ public interface BookingService {
     com.fpms.dto.response.AdminTimelineResponse getAdminTimeline(LocalDate date, Long pitchTypeId);
     BookingResponse approveBooking(Long bookingId, UserPrincipal currentUser);
     BookingResponse checkInBooking(Long bookingId, UserPrincipal currentUser);
+    BookingResponse checkOutBooking(Long bookingId, BookingCheckOutRequest request, UserPrincipal currentUser);
 }

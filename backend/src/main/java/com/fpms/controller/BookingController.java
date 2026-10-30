@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.fpms.security.UserPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
+import com.fpms.dto.request.BookingCheckOutRequest;
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.request.BookingSearchRequest;
@@ -146,5 +147,18 @@ public class BookingController {
     ) {
         BookingResponse response = bookingService.checkInBooking(id, userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Nhận sân thành công", response));
+    }
+
+    @Operation(summary = "Trả sân & Kết thúc ca đá (Check-out)", description = "Thu tiền nốt 70% (CASH hoặc BANK_TRANSFER) và chuyển trạng thái sang Hoàn tất")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PutMapping("/admin/{id}/check-out")
+    public ResponseEntity<ApiResponse<BookingResponse>> checkOutBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingCheckOutRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        BookingResponse response = bookingService.checkOutBooking(id, request, userPrincipal);
+        return ResponseEntity.ok(ApiResponse.success("Trả sân và thanh toán thành công", response));
     }
 }
