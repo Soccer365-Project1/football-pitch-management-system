@@ -99,6 +99,15 @@ public enum ErrorCode {
     INVALID_BOOKING_STATUS_FOR_CHECK_IN(3053, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận"),
     CHECK_IN_TIME_NOT_REACHED(3054, HttpStatus.BAD_REQUEST, "Chưa đến giờ nhận sân (giờ nhận sân phải từ giờ bắt đầu ca đá)"),
     BOOKING_DATE_NOT_TODAY(3055, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay"),
+    INVALID_BOOKING_STATUS_FOR_CHECK_OUT(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể kết thúc và trả sân cho ca đá đang diễn ra (đang sử dụng)"),
+    PAYMENT_METHOD_NOT_SUPPORTED_FOR_CHECKOUT(3057, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ thanh toán nốt bằng Tiền mặt (CASH) hoặc Chuyển khoản (BANK_TRANSFER)"),
+    CHECKOUT_PAYMENT_METHOD_REQUIRED(3058, HttpStatus.BAD_REQUEST, "Vui lòng chọn hình thức thanh toán nốt"),
+    CHECKOUT_NOTE_TOO_LONG(3059, HttpStatus.BAD_REQUEST, "Ghi chú trả sân không được vượt quá 500 ký tự"),
+    BOOKING_CUSTOMER_NOTE_TOO_LONG(3988, HttpStatus.BAD_REQUEST, "Ghi chú đặt sân không được vượt quá 500 ký tự"),
+    TRANSACTION_BOOKING_REQUIRED(3060, HttpStatus.BAD_REQUEST, "Thông tin đơn đặt sân của giao dịch không được để trống"),
+    TRANSACTION_AMOUNT_REQUIRED(3061, HttpStatus.BAD_REQUEST, "Số tiền giao dịch không được để trống"),
+    TRANSACTION_PAYMENT_TYPE_REQUIRED(3062, HttpStatus.BAD_REQUEST, "Loại thanh toán không được để trống"),
+    TRANSACTION_NOTE_TOO_LONG(3063, HttpStatus.BAD_REQUEST, "Ghi chú giao dịch không được vượt quá 1000 ký tự"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");

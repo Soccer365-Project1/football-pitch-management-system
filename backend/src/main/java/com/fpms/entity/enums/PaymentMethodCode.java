@@ -2,7 +2,6 @@ package com.fpms.entity.enums;
 
 public enum PaymentMethodCode {
     VNPAY,
-    MOMO,
-    VIETQR,
+   BANK_TRANSFER,
     CASH
 }

@@ -12,6 +12,7 @@ import com.fpms.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PitchTypeRepository pitchTypeRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
@@ -41,10 +43,15 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initPaymentMethods() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE payment_methods DROP CONSTRAINT IF EXISTS payment_methods_code_check");
+        } catch (Exception e) {
+            log.warn("Không thể xóa check constraint trên bảng payment_methods: {}", e.getMessage());
+        }
+
         createPaymentMethodIfNotFound(PaymentMethodCode.VNPAY, "Cổng thanh toán VNPAY (QR / ATM / Visa)", true, 1);
         createPaymentMethodIfNotFound(PaymentMethodCode.CASH, "Tiền mặt tại quầy", true, 2);
-        createPaymentMethodIfNotFound(PaymentMethodCode.VIETQR, "Chuyển khoản VietQR", true, 3);
-        createPaymentMethodIfNotFound(PaymentMethodCode.MOMO, "Ví điện tử MoMo", false, 4);
+        createPaymentMethodIfNotFound(PaymentMethodCode.BANK_TRANSFER, "Chuyển khoản ngân hàng", true, 3);
     }
 
     private void createPaymentMethodIfNotFound(PaymentMethodCode code, String name, boolean isActive, int order) {
