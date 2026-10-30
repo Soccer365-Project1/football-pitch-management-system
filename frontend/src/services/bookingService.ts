@@ -142,6 +142,11 @@ export const bookingService = {
   checkInBooking: async (id: number) => {
     const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/check-in`);
     return response.data;
+  },
+
+  checkOutBooking: async (id: number, data: { paymentMethod: 'CASH' | 'BANK_TRANSFER'; note?: string }) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/check-out`, data);
+    return response.data;
   }
 };
 

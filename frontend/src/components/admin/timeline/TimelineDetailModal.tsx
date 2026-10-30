@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle, Play, Loader2, AlertCircle } from 'lucide-react';
+import { X, CheckCircle, Play, Square, Loader2, AlertCircle } from 'lucide-react';
 import { ModalOverlay } from '../../common/ModalOverlay.tsx';
 import type { AdminTimelineSlotResponse } from '../../../types/adminTimeline.ts';
 import { formatPrice, formatDate } from '../../../utils/formatUtils.ts';
@@ -11,6 +11,7 @@ interface TimelineDetailModalProps {
   onCheckIn?: (slot: AdminTimelineSlotResponse) => void;
   isApproving?: boolean;
   isCheckingIn?: boolean;
+  onOpenCheckOut?: (slot: AdminTimelineSlotResponse) => void;
 }
 
 export const canCheckInSlot = (slot: AdminTimelineSlotResponse): { canCheckIn: boolean; reason?: string } => {
@@ -48,6 +49,7 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
   onCheckIn,
   isApproving = false,
   isCheckingIn = false,
+  onOpenCheckOut,
 }) => {
   const checkInCheck = canCheckInSlot(slot);
 
@@ -190,6 +192,15 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
               </div>
             </div>
           )}
+
+          {slot.status === 'IN_PROGRESS' && (
+            <div className="timeline-modal-notice-box orange">
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong>Trận đấu đang diễn ra:</strong> Bấm nút <b>"Trả sân & Thanh toán"</b> bên dưới để thu nốt số tiền 70% còn lại và kết thúc ca đá.
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="timeline-modal-footer">
@@ -244,6 +255,18 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
                   <span>Nhận sân</span>
                 </>
               )}
+            </button>
+          )}
+
+          {/* Nút Trả sân cho IN_PROGRESS */}
+          {slot.status === 'IN_PROGRESS' && slot.bookingId && onOpenCheckOut && (
+            <button
+              type="button"
+              onClick={() => onOpenCheckOut(slot)}
+              className="timeline-btn-confirm-checkout"
+            >
+              <Square size={12} className="fill-current" />
+              <span>Trả sân & Thanh toán</span>
             </button>
           )}
         </div>
