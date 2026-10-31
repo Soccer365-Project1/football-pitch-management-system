@@ -306,8 +306,15 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
-    private String buildVNPayUrl(Booking booking, String txnCode, HttpServletRequest httpRequest) {
-        long amountInVnpay = booking.getDepositAmount().multiply(BigDecimal.valueOf(100)).longValue();
+    private String buildVNPayUrl(
+            Booking booking,
+            String txnCode,
+            BigDecimal amount,
+            String orderInfo,
+            LocalDateTime expireTime,
+            HttpServletRequest httpRequest
+    ) {
+        long amountInVnpay = amount.multiply(BigDecimal.valueOf(100)).longValue();
         Map<String, String> vnpParams = new HashMap<>();
         vnpParams.put("vnp_Version", vnPayConfig.getVersion());
         vnpParams.put("vnp_Command", vnPayConfig.getCommand());
@@ -315,7 +322,7 @@ public class BookingServiceImpl implements BookingService {
         vnpParams.put("vnp_Amount", String.valueOf(amountInVnpay));
         vnpParams.put("vnp_CurrCode", "VND");
         vnpParams.put("vnp_TxnRef", txnCode);
-        vnpParams.put("vnp_OrderInfo", "Dat coc san bong don " + booking.getBookingCode());
+        vnpParams.put("vnp_OrderInfo", orderInfo);
         vnpParams.put("vnp_OrderType", "other");
         vnpParams.put("vnp_Locale", "vn");
         vnpParams.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
@@ -326,11 +333,10 @@ public class BookingServiceImpl implements BookingService {
         ZonedDateTime now = ZonedDateTime.now(vnZone);
         vnpParams.put("vnp_CreateDate", now.format(formatter));
 
-        LocalDateTime holdExpiresAt = booking.getHoldExpiresAt();
-        if (holdExpiresAt == null) {
-            holdExpiresAt = now.toLocalDateTime().plusMinutes(10);
+        if (expireTime == null) {
+            expireTime = now.toLocalDateTime().plusMinutes(15);
         }
-        ZonedDateTime expireZoned = holdExpiresAt.atZone(vnZone);
+        ZonedDateTime expireZoned = expireTime.atZone(vnZone);
         vnpParams.put("vnp_ExpireDate", expireZoned.format(formatter));
 
         List<String> fieldNames = new ArrayList<>(vnpParams.keySet());
@@ -354,6 +360,21 @@ public class BookingServiceImpl implements BookingService {
 
         String secureHash = VNPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
         return vnPayConfig.getPayUrl() + "?" + query.toString() + "&vnp_SecureHash=" + secureHash;
+    }
+
+    private String buildVNPayUrl(Booking booking, String txnCode, HttpServletRequest httpRequest) {
+        LocalDateTime holdExpiresAt = booking.getHoldExpiresAt();
+        if (holdExpiresAt == null) {
+            holdExpiresAt = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusMinutes(10);
+        }
+        return buildVNPayUrl(
+                booking,
+                txnCode,
+                booking.getDepositAmount(),
+                "Dat coc san bong don " + booking.getBookingCode(),
+                holdExpiresAt,
+                httpRequest
+        );
     }
 
     @Override
@@ -749,5 +770,68 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return bookingMapper.toBookingResponse(booking);
+    }
+    @Override
+    @Transactional
+    public BookingDepositResponse payRemainingBooking(Long bookingId, UserPrincipal userPrincipal, HttpServletRequest httpRequest) {
+        if (userPrincipal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(booking.getIsDeleted())) {
+            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
+        }
+
+        // Chỉ chính khách hàng (chủ đơn đặt sân) mới được tự thanh toán nốt qua VNPAY
+        if (booking.getCustomer() == null || !booking.getCustomer().getId().equals(userPrincipal.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Chỉ cho phép thanh toán nốt khi ca đá đang ở trạng thái IN_PROGRESS (đang sử dụng)
+        if (booking.getStatus() != BookingStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_PAY_REMAINING);
+        }
+
+        BigDecimal remainingAmount = booking.getRemainingAmount();
+        if (remainingAmount == null || remainingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_CHECK_OUT);
+        }
+
+        PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
+
+        PaymentTransaction transaction = paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethod(vnpayMethod)
+                        .amount(remainingAmount)
+                        .paymentType(PaymentType.REMAINING_70)
+                        .status(TransactionStatus.PENDING)
+                        .processedBy(null)
+                        .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                        .build()
+        );
+        String txnCode = transaction.getTransactionCode();
+
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        String paymentUrl = buildVNPayUrl(
+                booking,
+                txnCode,
+                remainingAmount,
+                "Thanh toan not 70% don " + booking.getBookingCode(),
+                now.plusMinutes(15),
+                httpRequest
+        );
+
+        return BookingDepositResponse.builder()
+                .bookingCode(booking.getBookingCode())
+                .bookingId(booking.getId())
+                .depositAmount(booking.getDepositAmount())
+                .remainingAmount(remainingAmount)
+                .paymentUrl(paymentUrl)
+                .build();
     }
 }

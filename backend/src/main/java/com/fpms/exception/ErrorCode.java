@@ -108,6 +108,7 @@ public enum ErrorCode {
     TRANSACTION_AMOUNT_REQUIRED(3061, HttpStatus.BAD_REQUEST, "Số tiền giao dịch không được để trống"),
     TRANSACTION_PAYMENT_TYPE_REQUIRED(3062, HttpStatus.BAD_REQUEST, "Loại thanh toán không được để trống"),
     TRANSACTION_NOTE_TOO_LONG(3063, HttpStatus.BAD_REQUEST, "Ghi chú giao dịch không được vượt quá 1000 ký tự"),
+    INVALID_BOOKING_STATUS_FOR_PAY_REMAINING(3064, HttpStatus.BAD_REQUEST, "Chỉ có thể thanh toán nốt khi ca đá đang diễn ra (đang sử dụng)"),
 
     // Booking Admin Management Error Codes (3056 - 3062)
     BOOKING_NOT_WAITING_APPROVAL(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể duyệt đơn đặt sân ở trạng thái chờ duyệt"),

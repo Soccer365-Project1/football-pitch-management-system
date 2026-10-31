@@ -30,4 +30,5 @@ public interface BookingService {
     BookingResponse approveBooking(Long bookingId, UserPrincipal currentUser);
     BookingResponse checkInBooking(Long bookingId, UserPrincipal currentUser);
     BookingResponse checkOutBooking(Long bookingId, BookingCheckOutRequest request, UserPrincipal currentUser);
+    BookingDepositResponse payRemainingBooking(Long bookingId, UserPrincipal currentUser, HttpServletRequest httpRequest);
 }

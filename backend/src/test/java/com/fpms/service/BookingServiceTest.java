@@ -3,6 +3,7 @@ package com.fpms.service;
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.request.BookingSearchRequest;
+import com.fpms.dto.request.TransactionRequest;
 import com.fpms.dto.response.BookingResponse;
 import com.fpms.dto.response.BookingSummaryResponse;
 import com.fpms.entity.*;
@@ -59,7 +60,7 @@ class BookingServiceTest {
     @Mock
     private PaymentMethodRepository paymentMethodRepository;
     @Mock
-    private PaymentTransactionRepository paymentTransactionRepository;
+    private PaymentTransactionService paymentTransactionService;
     @Mock
     private com.fpms.config.VNPayConfig vnPayConfig;
     @Mock
@@ -313,6 +314,12 @@ class BookingServiceTest {
             when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
             when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
 
+            PaymentTransaction mockTxn = PaymentTransaction.builder()
+                    .transactionCode("TXN_123456")
+                    .build();
+            when(paymentTransactionService.createTransaction(any(TransactionRequest.class)))
+                    .thenReturn(mockTxn);
+
             org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
             httpRequest.setRemoteAddr("127.0.0.1");
 
@@ -326,7 +333,7 @@ class BookingServiceTest {
             assertTrue(depositResponse.getPaymentUrl().contains("vnp_Amount=6000000"), "vnp_Amount phải nhân 100 thành 6000000 (cọc 60.000)");
             assertTrue(depositResponse.getPaymentUrl().contains("vnp_SecureHash="), "URL phải chứa chữ ký SHA512");
 
-            verify(paymentTransactionRepository, times(1)).save(any(PaymentTransaction.class));
+            verify(paymentTransactionService, times(1)).createTransaction(any(TransactionRequest.class));
         } finally {
             TransactionSynchronizationManager.clear();
         }
@@ -601,6 +608,12 @@ class BookingServiceTest {
         when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
         when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
 
+        PaymentTransaction mockTxn = PaymentTransaction.builder()
+                .transactionCode("TXN_555")
+                .build();
+        when(paymentTransactionService.createTransaction(any(TransactionRequest.class)))
+                .thenReturn(mockTxn);
+
         org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
         httpRequest.setRemoteAddr("127.0.0.1");
 
@@ -611,7 +624,7 @@ class BookingServiceTest {
         assertEquals("#B555", response.getBookingCode());
         assertNotNull(response.getPaymentUrl());
         assertTrue(response.getPaymentUrl().contains("vnp_Amount=6000000"));
-        verify(paymentTransactionRepository, times(1)).save(any(PaymentTransaction.class));
+        verify(paymentTransactionService, times(1)).createTransaction(any(TransactionRequest.class));
     }
 
     @Test
@@ -652,5 +665,101 @@ class BookingServiceTest {
         AppException ex = assertThrows(AppException.class, () ->
                 bookingService.repayBooking(58L, userPrincipal, httpRequest));
         assertEquals(ErrorCode.BOOKING_CANNOT_REPAY, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("payRemainingBooking - Thành công khi ca đá đang ở trạng thái IN_PROGRESS")
+    void payRemainingBooking_Success() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B999")
+                .status(BookingStatus.IN_PROGRESS)
+                .depositAmount(BigDecimal.valueOf(90000))
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .customer(user)
+                .build();
+        booking.setId(99L);
+
+        PaymentMethod vnpayMethod = PaymentMethod.builder()
+                .code(com.fpms.entity.enums.PaymentMethodCode.VNPAY)
+                .name("VNPAY")
+                .isMaintenance(false)
+                .build();
+
+        PaymentTransaction mockTxn = PaymentTransaction.builder()
+                .transactionCode("TXN_999")
+                .build();
+
+        when(bookingRepository.findById(99L)).thenReturn(Optional.of(booking));
+        when(paymentMethodRepository.findByCode(com.fpms.entity.enums.PaymentMethodCode.VNPAY))
+                .thenReturn(Optional.of(vnpayMethod));
+        when(paymentTransactionService.createTransaction(any(TransactionRequest.class)))
+                .thenReturn(mockTxn);
+
+        when(vnPayConfig.getVersion()).thenReturn("2.1.0");
+        when(vnPayConfig.getCommand()).thenReturn("pay");
+        when(vnPayConfig.getTmnCode()).thenReturn("TMNTEST");
+        when(vnPayConfig.getReturnUrl()).thenReturn("http://localhost:5173/payment-result");
+        when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+        when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        httpRequest.setRemoteAddr("127.0.0.1");
+
+        com.fpms.dto.response.BookingDepositResponse response =
+                bookingService.payRemainingBooking(99L, userPrincipal, httpRequest);
+
+        assertNotNull(response);
+        assertEquals("#B999", response.getBookingCode());
+        assertEquals(BigDecimal.valueOf(210000), response.getRemainingAmount());
+        assertNotNull(response.getPaymentUrl());
+        assertTrue(response.getPaymentUrl().contains("vnp_Amount=21000000"));
+        verify(paymentTransactionService, times(1)).createTransaction(any(TransactionRequest.class));
+    }
+
+    @Test
+    @DisplayName("payRemainingBooking - Thất bại khi ca đá không ở trạng thái IN_PROGRESS")
+    void payRemainingBooking_InvalidStatus_Fails() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B999")
+                .status(BookingStatus.CONFIRMED)
+                .depositAmount(BigDecimal.valueOf(90000))
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .customer(user)
+                .build();
+        booking.setId(99L);
+
+        when(bookingRepository.findById(99L)).thenReturn(Optional.of(booking));
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.payRemainingBooking(99L, userPrincipal, httpRequest)
+        );
+        assertEquals(ErrorCode.INVALID_BOOKING_STATUS_FOR_PAY_REMAINING, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("payRemainingBooking - Thất bại khi người gọi không phải chủ đơn")
+    void payRemainingBooking_NotOwner_Fails() {
+        User otherUser = new User();
+        otherUser.setId(999L);
+
+        Booking booking = Booking.builder()
+                .bookingCode("#B999")
+                .status(BookingStatus.IN_PROGRESS)
+                .depositAmount(BigDecimal.valueOf(90000))
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .customer(otherUser)
+                .build();
+        booking.setId(99L);
+
+        when(bookingRepository.findById(99L)).thenReturn(Optional.of(booking));
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.payRemainingBooking(99L, userPrincipal, httpRequest)
+        );
+        assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
     }
 }

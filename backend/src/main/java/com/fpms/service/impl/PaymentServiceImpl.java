@@ -7,6 +7,7 @@ import com.fpms.entity.Booking;
 import com.fpms.entity.PaymentTransaction;
 import com.fpms.entity.enums.BookingStatus;
 import com.fpms.entity.enums.TransactionStatus;
+import com.fpms.entity.enums.PaymentType;
 import com.fpms.repository.BookingRepository;
 import com.fpms.repository.PaymentTransactionRepository;
 import com.fpms.service.PaymentService;
@@ -85,13 +86,25 @@ public class PaymentServiceImpl implements PaymentService {
                 transaction.setReferenceCode(transactionNo);
                 paymentTransactionRepository.save(transaction);
 
-                if (booking != null && booking.getStatus() == BookingStatus.PENDING_HOLD) {
-                    booking.setStatus(BookingStatus.WAITING_APPROVAL);
-                    booking.setHoldExpiresAt(null);
-                    bookingRepository.save(booking);
-                    notifyBookingUpdated(booking);
+                if (booking != null) {
+                    if (transaction.getPaymentType() == PaymentType.REMAINING_70) {
+                        booking.setStatus(BookingStatus.COMPLETED);
+                        bookingRepository.save(booking);
+                        notifyBookingUpdated(booking);
+                        log.info("VNPay Return: Thanh toán nốt 70% thành công cho đơn {}, trạng thái -> COMPLETED", booking.getBookingCode());
+                    } else if (booking.getStatus() == BookingStatus.PENDING_HOLD) {
+                        booking.setStatus(BookingStatus.WAITING_APPROVAL);
+                        booking.setHoldExpiresAt(null);
+                        bookingRepository.save(booking);
+                        notifyBookingUpdated(booking);
+                        log.info("VNPay Return: Đặt cọc thành công cho đơn {}, trạng thái -> WAITING_APPROVAL", booking.getBookingCode());
+                    }
                 }
             }
+
+            String returnMsg = transaction.getPaymentType() == PaymentType.REMAINING_70
+                    ? "Thanh toán nốt 70% thành công! Ca đá đã hoàn tất."
+                    : "Đặt cọc thành công! Khung giờ của bạn đã được đảm bảo.";
 
             return PaymentReturnResponse.builder()
                     .status("SUCCESS")
@@ -101,7 +114,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .transactionNo(transactionNo)
                     .bankCode(bankCode)
                     .payDate(payDate)
-                    .message("Đặt cọc thành công! Khung giờ của bạn đã được đảm bảo.")
+                    .message(returnMsg)
                     .build();
         } else if ("24".equals(responseCode)) {
             if (transaction.getStatus() == TransactionStatus.PENDING) {
@@ -203,12 +216,20 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentTransactionRepository.save(transaction);
 
                 if (booking != null) {
-                    booking.setStatus(BookingStatus.WAITING_APPROVAL);
-                    booking.setHoldExpiresAt(null);
-                    bookingRepository.save(booking);
-                    notifyBookingUpdated(booking);
+                    if (transaction.getPaymentType() == PaymentType.REMAINING_70) {
+                        booking.setStatus(BookingStatus.COMPLETED);
+                        bookingRepository.save(booking);
+                        notifyBookingUpdated(booking);
+                        log.info("VNPay IPN: Xác nhận thanh toán nốt 70% thành công cho đơn {}", booking.getBookingCode());
+                    } else if (booking.getStatus() == BookingStatus.PENDING_HOLD) {
+                        booking.setStatus(BookingStatus.WAITING_APPROVAL);
+                        booking.setHoldExpiresAt(null);
+                        bookingRepository.save(booking);
+                        notifyBookingUpdated(booking);
+                        log.info("VNPay IPN: Xác nhận đặt cọc thành công cho đơn {}", booking.getBookingCode());
+                    }
                 }
-                log.info("VNPay IPN: Xác nhận đặt cọc thành công cho đơn {}", booking != null ? booking.getBookingCode() : txnRef);
+                log.info("VNPay IPN: Xác nhận thanh toán thành công cho đơn {}", booking != null ? booking.getBookingCode() : txnRef);
             } else {
                 transaction.setStatus(TransactionStatus.FAILED);
                 paymentTransactionRepository.save(transaction);

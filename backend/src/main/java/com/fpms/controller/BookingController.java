@@ -80,6 +80,18 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success("Khởi tạo liên kết thanh toán lại thành công", response));
     }
 
+    @Operation(summary = "Thanh toán nốt 70% qua VNPAY", description = "Khách hàng tạo URL thanh toán nốt 70% qua VNPAY khi ca đá đang diễn ra (IN_PROGRESS)")
+    @SecurityRequirement(name = "BearerAuth")
+    @PostMapping("/{id}/pay-remaining")
+    public ResponseEntity<ApiResponse<com.fpms.dto.response.BookingDepositResponse>> payRemaining(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        com.fpms.dto.response.BookingDepositResponse response = bookingService.payRemainingBooking(id, userPrincipal, httpRequest);
+        return ResponseEntity.ok(ApiResponse.success("Khởi tạo liên kết thanh toán nốt thành công", response));
+    }
+
     @Operation(summary = "Lấy lịch sử đặt sân cá nhân", description = "Lấy danh sách các đơn đặt sân của tài khoản đang đăng nhập, hỗ trợ tìm kiếm theo từ khóa, lọc theo trạng thái, ngày đá và phân trang")
     @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/my-bookings")
