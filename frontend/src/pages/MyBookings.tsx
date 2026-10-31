@@ -54,6 +54,7 @@ const MyBookings: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null);
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [repayingId, setRepayingId] = useState<number | null>(null);
+  const [payingRemainingId, setPayingRemainingId] = useState<number | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<BookingSummaryResponse | null>(null);
 
   const queryClient = useQueryClient();
@@ -215,6 +216,24 @@ const MyBookings: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
     } finally {
       setRepayingId(null);
+    }
+  };
+
+  // Thanh toán nốt 70% qua VNPAY
+  const handlePayRemaining = async (bookingId: number) => {
+    try {
+      setPayingRemainingId(bookingId);
+      const res = await bookingService.payRemainingBooking(bookingId);
+      if (res && res.data && res.data.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      } else {
+        showToast('Không nhận được liên kết thanh toán từ máy chủ', 'error');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Không thể tạo liên kết thanh toán nốt';
+      showToast(msg, 'error');
+    } finally {
+      setPayingRemainingId(null);
     }
   };
 
@@ -582,14 +601,14 @@ const MyBookings: React.FC = () => {
                             </button>
                           )}
 
-                          {booking.status === 'COMPLETED' && (
+                          {booking.status === 'IN_PROGRESS' && (
                             <button
                               type="button"
-                              disabled={detailLoadingId === booking.id}
-                              onClick={() => handleOpenDetail(booking.id)}
+                              disabled={payingRemainingId === booking.id}
+                              onClick={() => handlePayRemaining(booking.id)}
                               className="booking-btn-pay"
                             >
-                              {detailLoadingId === booking.id ? (
+                              {payingRemainingId === booking.id ? (
                                 <Loader2 size={13} className="animate-spin inline mr-1" />
                               ) : null}
                               Thanh toán nốt
@@ -851,14 +870,14 @@ const MyBookings: React.FC = () => {
                     </button>
                   )}
 
-                  {booking.status === 'COMPLETED' && (
+                  {booking.status === 'IN_PROGRESS' && (
                     <button
                       type="button"
-                      disabled={detailLoadingId === booking.id}
-                      onClick={() => handleOpenDetail(booking.id)}
+                      disabled={payingRemainingId === booking.id}
+                      onClick={() => handlePayRemaining(booking.id)}
                       className="booking-btn-pay"
                     >
-                      {detailLoadingId === booking.id ? (
+                      {payingRemainingId === booking.id ? (
                         <Loader2 size={13} className="animate-spin inline mr-1" />
                       ) : null}
                       Thanh toán nốt
@@ -918,6 +937,8 @@ const MyBookings: React.FC = () => {
         getStatusBadge={getStatusBadge}
         onRepay={handleRepay}
         repaying={repayingId === selectedBooking?.id}
+        onPayRemaining={handlePayRemaining}
+        payingRemaining={payingRemainingId === selectedBooking?.id}
       />
 
       {/* Modal Popup Yêu Cầu Hủy Đơn Đặt Sân */}

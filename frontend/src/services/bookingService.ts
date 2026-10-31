@@ -125,6 +125,11 @@ export const bookingService = {
     return response.data;
   },
 
+  payRemainingBooking: async (id: number) => {
+    const response = await api.post<ApiResponse<BookingDepositResponse>>(`/bookings/${id}/pay-remaining`);
+    return response.data;
+  },
+
   getAdminTimeline: async (date: string, pitchTypeId?: number | string) => {
     const params: any = { date };
     if (pitchTypeId && pitchTypeId !== 'all') {

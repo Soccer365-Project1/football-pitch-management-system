@@ -11,6 +11,8 @@ export interface BookingDetailModalProps {
   getStatusBadge: (status: string) => React.ReactNode;
   onRepay?: (bookingId: number) => void;
   repaying?: boolean;
+  onPayRemaining?: (bookingId: number) => void;
+  payingRemaining?: boolean;
 }
 
 export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
@@ -20,6 +22,8 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   getStatusBadge,
   onRepay,
   repaying = false,
+  onPayRemaining,
+  payingRemaining = false,
 }) => {
   if (!booking) return null;
 
@@ -148,6 +152,20 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 <Loader2 size={16} className="animate-spin inline mr-1" />
               ) : null}
               Đặt cọc ngay
+            </button>
+          )}
+          {booking.status === 'IN_PROGRESS' && onPayRemaining && (
+            <button
+              type="button"
+              disabled={payingRemaining}
+              onClick={() => onPayRemaining(booking.id)}
+              className="booking-btn-modal-repay"
+              style={{ backgroundColor: '#2563eb', borderColor: '#2563eb' }}
+            >
+              {payingRemaining ? (
+                <Loader2 size={16} className="animate-spin inline mr-1" />
+              ) : null}
+              Thanh toán nốt qua VNPAY
             </button>
           )}
           <button
