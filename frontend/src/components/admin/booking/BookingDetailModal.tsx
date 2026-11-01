@@ -281,7 +281,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                   onOpenCollect(detail.id);
                 }}
               >
-                Thu tiền & Đóng ca
+                Thu tiền
               </button>
             )}
 
