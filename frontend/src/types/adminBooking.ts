@@ -109,7 +109,8 @@ export interface CounterBookingCreationPayload {
 
 export interface AdminBookingCancelPayload {
   cancelReason: string;
-  refundMethod: PaymentMethodCode;
+  isRefund?: boolean;
+  refundMethod?: PaymentMethodCode;
   refundAmount?: number;
 }
 

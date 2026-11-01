@@ -19,7 +19,6 @@ export const adminBookingService = {
    * Endpoint: GET /api/v1/admin/bookings
    */
   getBookings: async (params?: AdminBookingSearchParams): Promise<PageResponse<AdminBookingSummary>> => {
-    // Làm sạch params trước khi gửi
     const cleanParams: Record<string, any> = {};
     if (params) {
       if (params.page) cleanParams.page = params.page;
@@ -72,6 +71,15 @@ export const adminBookingService = {
    */
   cancelAndRefundBooking: async (id: number, payload: AdminBookingCancelPayload): Promise<AdminBookingDetail> => {
     const response = await api.post<ApiResponse<AdminBookingDetail>>(`/admin/bookings/${id}/cancel-refund`, payload);
+    return response.data.data!;
+  },
+
+  /**
+   * UC011.5: Admin tự hủy đơn đặt sân cho khách (có tùy chọn hoàn cọc hoặc không hoàn cọc)
+   * Endpoint: POST /api/v1/admin/bookings/{id}/cancel
+   */
+  cancelBooking: async (id: number, payload: AdminBookingCancelPayload): Promise<AdminBookingDetail> => {
+    const response = await api.post<ApiResponse<AdminBookingDetail>>(`/admin/bookings/${id}/cancel`, payload);
     return response.data.data!;
   },
 

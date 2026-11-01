@@ -83,14 +83,14 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
           zIndex: 10000,
           width: '100%',
           maxWidth,
-          maxHeight: 'min(90vh, 760px)',
+          maxHeight: 'min(92vh, 800px)',
           display: 'flex',
           flexDirection: 'column',
           transform: 'none',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
           padding: '1.5rem',
           borderRadius: '16px',
-          overflow: 'hidden',
+          overflowY: 'auto',
         }}
       >
         {children}
