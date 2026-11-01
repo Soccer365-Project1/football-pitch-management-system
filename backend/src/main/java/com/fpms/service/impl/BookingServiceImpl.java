@@ -421,6 +421,10 @@ public class BookingServiceImpl implements BookingService {
         }
 
         BookingSearchRequest searchRequest = (request != null) ? request : new BookingSearchRequest();
+        if (searchRequest.getFromDate() != null && searchRequest.getToDate() != null
+                && searchRequest.getFromDate().isAfter(searchRequest.getToDate())) {
+            throw new AppException(ErrorCode.INVALID_DATE_RANGE);
+        }
         Specification<Booking> spec = BookingSpecification.filterMyBookings(searchRequest, currentUser.getId());
         Pageable pageable = searchRequest.toPageable("createdAt", Sort.Direction.DESC);
 

@@ -12,6 +12,7 @@ import { showToast, showAlert } from '../utils/toast.ts';
 import { formatDate } from '../utils/formatUtils.ts';
 import { BookingCancelModal } from '../components/booking/BookingCancelModal.tsx';
 import { BookingDetailModal } from '../components/booking/BookingDetailModal.tsx';
+import { DateInputWithPicker } from '../components/common/DateInputWithPicker.tsx';
 import { useMyBookings } from '../hooks/queries/useBookingQueries.ts';
 import { useScheduleWebSocket } from '../hooks/useScheduleWebSocket.ts';
 import { useQueryClient } from '@tanstack/react-query';
@@ -181,6 +182,24 @@ const MyBookings: React.FC = () => {
   const handleClearKeyword = () => {
     setKeywordInput('');
     updateParams({ keyword: '', page: 1 });
+  };
+
+  // Xử lý thay đổi "Từ ngày" kèm validate từ ngày <= đến ngày
+  const handleFromDateChange = (val: string) => {
+    if (val && toDate && val > toDate) {
+      showToast('Thời gian bắt đầu (Từ ngày) phải nhỏ hơn hoặc bằng thời gian kết thúc (Đến ngày)', 'error');
+      return;
+    }
+    updateParams({ fromDate: val, page: 1 });
+  };
+
+  // Xử lý thay đổi "Đến ngày" kèm validate đến ngày >= từ ngày
+  const handleToDateChange = (val: string) => {
+    if (val && fromDate && val < fromDate) {
+      showToast('Thời gian kết thúc (Đến ngày) phải lớn hơn hoặc bằng thời gian bắt đầu (Từ ngày)', 'error');
+      return;
+    }
+    updateParams({ toDate: val, page: 1 });
   };
 
   // Xóa bộ lọc ngày
@@ -418,20 +437,20 @@ const MyBookings: React.FC = () => {
 
               {/* Lọc theo ngày đá: Từ ngày - Đến ngày */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <input
-                  type="date"
+                <DateInputWithPicker
                   value={fromDate}
-                  onChange={(e) => updateParams({ fromDate: e.target.value, page: 1 })}
-                  className="bookings-date-input"
-                  title="Từ ngày đá"
+                  max={toDate || undefined}
+                  onChange={handleFromDateChange}
+                  placeholder="Từ ngày"
+                  title="Từ ngày đá (dd/mm/yyyy)"
                 />
                 <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>
-                <input
-                  type="date"
+                <DateInputWithPicker
                   value={toDate}
-                  onChange={(e) => updateParams({ toDate: e.target.value, page: 1 })}
-                  className="bookings-date-input"
-                  title="Đến ngày đá"
+                  min={fromDate || undefined}
+                  onChange={handleToDateChange}
+                  placeholder="Đến ngày"
+                  title="Đến ngày đá (dd/mm/yyyy)"
                 />
                 {(fromDate || toDate) && (
                   <button
@@ -737,22 +756,22 @@ const MyBookings: React.FC = () => {
 
           {/* Lọc theo ngày đá Mobile: Từ ngày - Đến ngày */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
-            <input
-              type="date"
+            <DateInputWithPicker
               value={fromDate}
-              onChange={(e) => updateParams({ fromDate: e.target.value, page: 1 })}
-              className="bookings-date-input"
-              style={{ flex: 1, minWidth: 0 }}
-              title="Từ ngày đá"
+              max={toDate || undefined}
+              onChange={handleFromDateChange}
+              placeholder="Từ ngày"
+              title="Từ ngày đá (dd/mm/yyyy)"
+              style={{ flex: 1, minWidth: 0, width: 'auto' }}
             />
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>
-            <input
-              type="date"
+            <DateInputWithPicker
               value={toDate}
-              onChange={(e) => updateParams({ toDate: e.target.value, page: 1 })}
-              className="bookings-date-input"
-              style={{ flex: 1, minWidth: 0 }}
-              title="Đến ngày đá"
+              min={fromDate || undefined}
+              onChange={handleToDateChange}
+              placeholder="Đến ngày"
+              title="Đến ngày đá (dd/mm/yyyy)"
+              style={{ flex: 1, minWidth: 0, width: 'auto' }}
             />
             {(fromDate || toDate) && (
               <button
