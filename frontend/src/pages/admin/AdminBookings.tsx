@@ -309,7 +309,7 @@ const AdminBookings: React.FC = () => {
                 <th className="p-4 font-semibold text-muted text-sm">SÂN / GIỜ</th>
                 <th className="p-4 font-semibold text-muted text-sm">TRẠNG THÁI</th>
                 <th className="p-4 font-semibold text-muted text-sm">TÀI CHÍNH</th>
-                <th className="p-4 font-semibold text-muted text-sm">THAO TÁC</th>
+                <th className="p-4 font-semibold text-muted text-sm whitespace-nowrap">THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
@@ -373,44 +373,67 @@ const AdminBookings: React.FC = () => {
                           <div className="text-sm font-semibold text-danger">Còn nợ: {formatPrice(remaining)}</div>
                         )}
                       </td>
-                      <td className="p-4">
-                        <div className="flex gap-2">
+                      <td className="p-4 whitespace-nowrap" style={{ whiteSpace: 'nowrap' }}>
+                        <div className="flex gap-2 items-center flex-nowrap whitespace-nowrap" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                           {booking.status === 'WAITING_APPROVAL' && (
                             <>
-                              <button className="btn btn-primary" onClick={() => setApproveBooking(booking)}>
+                              <button
+                                className="btn btn-primary whitespace-nowrap"
+                                onClick={() => setApproveBooking(booking)}
+                              >
                                 Duyệt đơn
                               </button>
                               <button
-                                className="btn btn-secondary text-danger"
+                                className="btn btn-secondary text-danger whitespace-nowrap"
                                 onClick={() => setAdminCancelBooking(booking)}
+                                title="Admin tự hủy đơn cho khách"
                               >
-                                Hủy & Hoàn tiền
+                                Hủy đơn
                               </button>
                             </>
                           )}
-                          {(booking.status === 'IN_PROGRESS' ||
-                            (booking.status === 'CONFIRMED' && remaining > 0)) && (
+                          {booking.status === 'CONFIRMED' && (
+                            <>
+                              {remaining > 0 && (
+                                <button
+                                  className="btn btn-primary whitespace-nowrap"
+                                  style={{ backgroundColor: 'var(--color-secondary)' }}
+                                  onClick={() => setCheckoutBooking(booking)}
+                                >
+                                  Thu tiền
+                                </button>
+                              )}
+                              <button
+                                className="btn btn-secondary text-danger whitespace-nowrap"
+                                onClick={() => setAdminCancelBooking(booking)}
+                                title="Admin tự hủy đơn cho khách"
+                              >
+                                Hủy đơn
+                              </button>
+                            </>
+                          )}
+                          {booking.status === 'IN_PROGRESS' && (
                             <button
-                              className="btn btn-primary"
+                              className="btn btn-primary whitespace-nowrap"
                               style={{ backgroundColor: 'var(--color-secondary)' }}
                               onClick={() => setCheckoutBooking(booking)}
                             >
-                              Thu tiền & Đóng ca
+                              Thu tiền
                             </button>
                           )}
                           {booking.status === 'WAITING_CANCELLATION' && (
                             <button
-                              className="btn btn-primary"
+                              className="btn btn-primary whitespace-nowrap"
                               style={{ backgroundColor: 'var(--color-danger)' }}
                               onClick={() => setCancelBooking(booking)}
                             >
-                              Duyệt Hủy & Hoàn tiền
+                              Duyệt hủy
                             </button>
                           )}
                           {booking.status !== 'WAITING_APPROVAL' &&
+                            booking.status !== 'CONFIRMED' &&
                             booking.status !== 'WAITING_CANCELLATION' &&
-                            booking.status !== 'IN_PROGRESS' &&
-                            !(booking.status === 'CONFIRMED' && remaining > 0) && (
+                            booking.status !== 'IN_PROGRESS' && (
                               <span className="text-muted text-sm font-semibold select-none">—</span>
                             )}
                         </div>
