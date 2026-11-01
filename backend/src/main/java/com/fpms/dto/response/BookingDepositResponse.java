@@ -15,5 +15,6 @@ public class BookingDepositResponse {
     private String bookingCode;
     private Long bookingId;
     private BigDecimal depositAmount;
+    private BigDecimal remainingAmount;
     private String paymentUrl;
 }

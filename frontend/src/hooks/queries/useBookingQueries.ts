@@ -42,3 +42,14 @@ export const useCheckInBooking = () => {
     },
   });
 };
+
+export const useCheckOutBooking = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, data }: { bookingId: number; data: { paymentMethod: 'CASH' | 'BANK_TRANSFER'; note?: string } }) =>
+      bookingService.checkOutBooking(bookingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
+    },
+  });
+};

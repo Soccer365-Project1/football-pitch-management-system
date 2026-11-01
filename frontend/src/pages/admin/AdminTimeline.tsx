@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 import { useScheduleWebSocket } from '../../hooks/useScheduleWebSocket.ts';
 import { usePitches, useTimeSlots, usePitchTypes } from '../../hooks/queries/usePitchQueries.ts';
-import { useAdminTimeline, useApproveBooking, useCheckInBooking } from '../../hooks/queries/useBookingQueries.ts';
+import { useAdminTimeline, useApproveBooking, useCheckInBooking, useCheckOutBooking } from '../../hooks/queries/useBookingQueries.ts';
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
-import { TimelineDetailModal, canCheckInSlot } from '../../components/admin/timeline/index.ts';
+import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot } from '../../components/admin/timeline/index.ts';
 import { showToast, showAlert, showConfirm } from '../../utils/toast.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -73,6 +73,24 @@ const AdminTimeline: React.FC = () => {
   // 3. Mutations: Duyệt đơn & Nhận sân (Check-in)
   const approveMutation = useApproveBooking();
   const checkInMutation = useCheckInBooking();
+  const checkOutMutation = useCheckOutBooking();
+
+  const [checkOutSlot, setCheckOutSlot] = useState<AdminTimelineSlotResponse | null>(null);
+
+  const handleCheckOut = async (
+    bookingId: number,
+    data: { paymentMethod: 'CASH' | 'BANK_TRANSFER'; note?: string }
+  ) => {
+    try {
+      await checkOutMutation.mutateAsync({ bookingId, data });
+      showToast('Trả sân và thanh toán thành công!', 'success');
+      setCheckOutSlot(null);
+      setDetailSlot(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Không thể trả sân';
+      showToast(msg, 'error');
+    }
+  };
 
   const handleApprove = async (bookingId: number) => {
     try {
@@ -273,9 +291,9 @@ const AdminTimeline: React.FC = () => {
                               {status === 'IN_PROGRESS' && (
                                 <button
                                   type="button"
-                                  onClick={() => setDetailSlot(slotData || null)}
+                                  onClick={() => setCheckOutSlot(slotData || null)}
                                   className="timeline-btn-checkout"
-                                  title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đang sử dụng. Bấm xem chi tiết`}
+                                  title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đang sử dụng. Bấm để trả sân & thanh toán`}
                                 >
                                   <Square size={10} className="fill-current" />
                                   <span>Trả sân</span>
@@ -345,6 +363,20 @@ const AdminTimeline: React.FC = () => {
           onCheckIn={handleCheckIn}
           isApproving={approveMutation.isPending}
           isCheckingIn={checkInMutation.isPending}
+          onOpenCheckOut={(slot) => {
+            setDetailSlot(null);
+            setCheckOutSlot(slot);
+          }}
+        />
+      )}
+
+      {/* Modal Trả sân & Thanh toán nốt 70% */}
+      {checkOutSlot && (
+        <TimelineCheckOutModal
+          slot={checkOutSlot}
+          onClose={() => setCheckOutSlot(null)}
+          onCheckOut={handleCheckOut}
+          isCheckingOut={checkOutMutation.isPending}
         />
       )}
     </div>

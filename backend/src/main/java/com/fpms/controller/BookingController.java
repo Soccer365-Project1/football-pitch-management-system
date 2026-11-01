@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.fpms.security.UserPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
+import com.fpms.dto.request.BookingCheckOutRequest;
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
 import com.fpms.dto.request.BookingSearchRequest;
@@ -77,6 +78,18 @@ public class BookingController {
     ) {
         com.fpms.dto.response.BookingDepositResponse response = bookingService.repayBooking(id, userPrincipal, httpRequest);
         return ResponseEntity.ok(ApiResponse.success("Khởi tạo liên kết thanh toán lại thành công", response));
+    }
+
+    @Operation(summary = "Thanh toán nốt 70% qua VNPAY", description = "Khách hàng tạo URL thanh toán nốt 70% qua VNPAY khi ca đá đang diễn ra (IN_PROGRESS)")
+    @SecurityRequirement(name = "BearerAuth")
+    @PostMapping("/{id}/pay-remaining")
+    public ResponseEntity<ApiResponse<com.fpms.dto.response.BookingDepositResponse>> payRemaining(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        com.fpms.dto.response.BookingDepositResponse response = bookingService.payRemainingBooking(id, userPrincipal, httpRequest);
+        return ResponseEntity.ok(ApiResponse.success("Khởi tạo liên kết thanh toán nốt thành công", response));
     }
 
     @Operation(summary = "Lấy lịch sử đặt sân cá nhân", description = "Lấy danh sách các đơn đặt sân của tài khoản đang đăng nhập, hỗ trợ tìm kiếm theo từ khóa, lọc theo trạng thái, ngày đá và phân trang")
@@ -146,5 +159,18 @@ public class BookingController {
     ) {
         BookingResponse response = bookingService.checkInBooking(id, userPrincipal);
         return ResponseEntity.ok(ApiResponse.success("Nhận sân thành công", response));
+    }
+
+    @Operation(summary = "Trả sân & Kết thúc ca đá (Check-out)", description = "Thu tiền nốt 70% (CASH hoặc BANK_TRANSFER) và chuyển trạng thái sang Hoàn tất")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PutMapping("/admin/{id}/check-out")
+    public ResponseEntity<ApiResponse<BookingResponse>> checkOutBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingCheckOutRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        BookingResponse response = bookingService.checkOutBooking(id, request, userPrincipal);
+        return ResponseEntity.ok(ApiResponse.success("Trả sân và thanh toán thành công", response));
     }
 }
