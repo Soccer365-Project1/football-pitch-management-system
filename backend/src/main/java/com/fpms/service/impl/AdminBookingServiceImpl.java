@@ -258,7 +258,17 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
     @Override
     @Transactional
+    public AdminBookingDetailResponse cancelBooking(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser) {
+        return processCancellation(id, request, currentUser, request.getIsRefund());
+    }
+
+    @Override
+    @Transactional
     public AdminBookingDetailResponse cancelAndRefundBooking(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser) {
+        return processCancellation(id, request, currentUser, true);
+    }
+
+    private AdminBookingDetailResponse processCancellation(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser, Boolean forceRefund) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
 
@@ -284,14 +294,24 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                 ? booking.getCustomerNote() + " " + reasonText
                 : reasonText);
 
-        BigDecimal refundAmount = request.getRefundAmount() != null ? request.getRefundAmount() : booking.getDepositAmount();
-        boolean isRefund = refundAmount != null && refundAmount.compareTo(BigDecimal.ZERO) > 0;
+        boolean shouldRefund = Boolean.TRUE.equals(forceRefund) || Boolean.TRUE.equals(request.getIsRefund());
+        BigDecimal depositAmount = booking.getDepositAmount() != null ? booking.getDepositAmount() : BigDecimal.ZERO;
+        BigDecimal refundAmount = request.getRefundAmount() != null ? request.getRefundAmount() : depositAmount;
 
-        booking.setStatus(isRefund ? BookingStatus.REFUNDED : BookingStatus.CANCELLED);
+        if (shouldRefund && refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+            if (request.getRefundMethod() == null) {
+                throw new AppException(ErrorCode.REFUND_METHOD_REQUIRED);
+            }
+            booking.setStatus(BookingStatus.REFUNDED);
+        } else {
+            booking.setStatus(BookingStatus.CANCELLED);
+            shouldRefund = false;
+        }
+
         booking = bookingRepository.save(booking);
 
         // Lưu bản ghi giao dịch hoàn tiền nếu có
-        if (isRefund) {
+        if (shouldRefund) {
             PaymentMethod paymentMethod = paymentMethodRepository.findByCode(request.getRefundMethod()).orElse(null);
             String txnCode = "TXN_REFUND_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 

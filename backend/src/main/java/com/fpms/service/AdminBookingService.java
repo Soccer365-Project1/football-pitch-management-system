@@ -37,6 +37,11 @@ public interface AdminBookingService {
     AdminBookingDetailResponse cancelAndRefundBooking(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser);
 
     /**
+     * SRS UC011.5: Admin chủ động hủy đơn đặt sân cho khách (có tùy chọn hoàn cọc hoặc không hoàn cọc).
+     */
+    AdminBookingDetailResponse cancelBooking(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser);
+
+    /**
      * SRS UC011.4: Thu tiền còn lại (70%) + phụ phí phát sinh, lưu giao dịch và hoàn tất đóng ca.
      */
     AdminBookingDetailResponse collectPayment(Long id, CollectPaymentRequest request, UserPrincipal currentUser);

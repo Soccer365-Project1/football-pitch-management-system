@@ -188,6 +188,26 @@ class AdminBookingControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/admin/bookings/{id}/cancel: Admin tự hủy đơn thành công (UC011.5)")
+    void cancelBooking_Success() throws Exception {
+        sampleDetail.setStatus(BookingStatus.CANCELLED);
+        AdminBookingCancelRequest request = AdminBookingCancelRequest.builder()
+                .cancelReason("Khách bận đột xuất báo hủy qua hotline")
+                .isRefund(false)
+                .build();
+
+        when(adminBookingService.cancelBooking(eq(1L), any(AdminBookingCancelRequest.class), any()))
+                .thenReturn(sampleDetail);
+
+        mockMvc.perform(post("/api/v1/admin/bookings/1/cancel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+    }
+
+    @Test
     @DisplayName("POST /api/v1/admin/bookings/{id}/collect-payment: Thu tiền còn lại và đóng ca (UC011.4)")
     void collectPayment_Success() throws Exception {
         sampleDetail.setStatus(BookingStatus.COMPLETED);

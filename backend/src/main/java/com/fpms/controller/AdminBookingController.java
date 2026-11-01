@@ -75,6 +75,16 @@ public class AdminBookingController {
         return ResponseEntity.ok(ApiResponse.success("Hủy đơn đặt sân thành công", response));
     }
 
+    @Operation(summary = "UC011.5: Admin tự hủy đơn đặt sân cho khách", description = "Admin chủ động hủy đơn cho khách (CONFIRMED, WAITING_APPROVAL, WAITING_CANCELLATION) có tùy chọn hoàn cọc hoặc không hoàn cọc")
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<AdminBookingDetailResponse>> cancelBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminBookingCancelRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        AdminBookingDetailResponse response = adminBookingService.cancelBooking(id, request, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Hủy đơn đặt sân thành công", response));
+    }
+
     @Operation(summary = "UC011.4: Thu tiền còn lại và đóng ca đá", description = "Ghi nhận phụ phí phát sinh, tính số tiền 70% còn lại, lưu giao dịch thanh toán và chuyển trạng thái sang COMPLETED")
     @PostMapping("/{id}/collect-payment")
     public ResponseEntity<ApiResponse<AdminBookingDetailResponse>> collectPayment(

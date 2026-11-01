@@ -312,6 +312,44 @@ class AdminBookingServiceTest {
     }
 
     @Test
+    @DisplayName("cancelBooking: Admin hủy đơn không hoàn cọc (isRefund = false)")
+    void cancelBooking_WithoutRefund_Success() {
+        booking.setStatus(BookingStatus.CONFIRMED);
+        AdminBookingCancelRequest request = AdminBookingCancelRequest.builder()
+                .cancelReason("Khách bận việc đột xuất báo hủy")
+                .isRefund(false)
+                .build();
+
+        when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(staffUser));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AdminBookingDetailResponse response = adminBookingService.cancelBooking(10L, request, staffPrincipal);
+
+        assertNotNull(response);
+        assertEquals(BookingStatus.CANCELLED, response.getStatus());
+        verify(paymentTransactionRepository, never()).save(any(PaymentTransaction.class));
+    }
+
+    @Test
+    @DisplayName("cancelBooking: Ném lỗi REFUND_METHOD_REQUIRED khi isRefund = true nhưng không truyền refundMethod")
+    void cancelBooking_RefundWithoutMethod_ThrowsException() {
+        booking.setStatus(BookingStatus.CONFIRMED);
+        AdminBookingCancelRequest request = AdminBookingCancelRequest.builder()
+                .cancelReason("Sân ngập nước mưa to")
+                .isRefund(true)
+                .refundAmount(BigDecimal.valueOf(150000))
+                .refundMethod(null)
+                .build();
+
+        when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(staffUser));
+
+        AppException ex = assertThrows(AppException.class, () -> adminBookingService.cancelBooking(10L, request, staffPrincipal));
+        assertEquals(ErrorCode.REFUND_METHOD_REQUIRED, ex.getErrorCode());
+    }
+
+    @Test
     @DisplayName("collectPayment: Thu tiền 70% còn lại + phụ phí và đóng ca thành công (UC011.4)")
     void collectPayment_Success_CalculatesGrandTotal() {
         booking.setStatus(BookingStatus.CONFIRMED);
