@@ -22,13 +22,13 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [refundMethod, setRefundMethod] = useState<PaymentMethodCode>('VIETQR');
+  const [refundMethod, setRefundMethod] = useState<PaymentMethodCode>('BANK_TRANSFER');
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
 
   useEffect(() => {
     if (booking) {
-      setRefundMethod('VIETQR');
+      setRefundMethod('BANK_TRANSFER');
       setIsRejecting(false);
       setRejectReason('');
       setError(null);
@@ -72,7 +72,11 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
     setSubmitting(true);
     setError(null);
     try {
-      showToast(`Đã từ chối yêu cầu hủy đơn #${booking.bookingCode}. Lý do: ${trimmedReason}`, 'info');
+      await adminBookingService.cancelBooking(booking.id, {
+        cancelReason: trimmedReason,
+        isRefund: false,
+      });
+      showToast(`Đã từ chối yêu cầu hủy đơn #${booking.bookingCode}. Giữ cọc thành công!`, 'info');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -130,13 +134,13 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
           </div>
         )}
 
-        {/* 2. Khung thông tin chi tiết đơn hàng - margin rộng rãi, thoáng đãng */}
+        {/* 2. Khung thông tin chi tiết đơn hàng */}
         <div
           style={{
             background: 'var(--color-bg-base)',
             padding: '1.5rem',
             borderRadius: 'var(--radius-md)',
-            marginBottom: '1.5rem',
+            marginBottom: '1.25rem',
           }}
         >
           <p className="mb-2 text-sm leading-relaxed">
@@ -166,52 +170,74 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
           >
             <span className="font-bold text-warning block mb-1">Lý do khách xin hủy (BR3):</span>
             <span className="italic" style={{ color: 'var(--color-text-base)' }}>
-              "{booking.customerPhone ? 'Bận việc đột xuất cùng công ty' : 'Bận việc đột xuất cùng công ty'}"
+              "{booking.customerNote || 'Bận việc đột xuất cùng công ty'}"
             </span>
           </div>
 
-          {/* Box số tiền cọc cần hoàn trả - viền đứt nét đỏ chuẩn */}
-          <div
-            className="flex justify-between items-center mb-4"
-            style={{
-              padding: '0.9rem 1.25rem',
-              border: '1px dashed var(--color-danger)',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'rgba(239, 68, 68, 0.05)',
-            }}
-          >
-            <span className="font-semibold text-sm" style={{ color: 'var(--color-text-base)' }}>
-              Số tiền cọc cần hoàn trả:
-            </span>
-            <span className="text-xl font-bold" style={{ color: 'var(--color-text-base)' }}>
-              {formatPrice(deposit)}
-            </span>
-          </div>
+          {!isRejecting ? (
+            <>
+              {/* Box số tiền cọc cần hoàn trả - viền đứt nét đỏ chuẩn Image 1 */}
+              <div
+                className="flex justify-between items-center mb-4"
+                style={{
+                  padding: '0.9rem 1.25rem',
+                  border: '1px dashed var(--color-danger)',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                }}
+              >
+                <span className="font-semibold text-sm" style={{ color: 'var(--color-text-base)' }}>
+                  Số tiền cọc cần hoàn trả:
+                </span>
+                <span className="text-xl font-bold" style={{ color: 'var(--color-text-base)' }}>
+                  {formatPrice(deposit)}
+                </span>
+              </div>
 
-          {/* Phương thức hoàn tiền */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Phương thức hoàn tiền</label>
-            <select
-              className="w-full"
+              {/* Phương thức hoàn tiền */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">Phương thức hoàn tiền</label>
+                <select
+                  className="w-full"
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--color-bg-surface)',
+                    fontSize: '0.875rem',
+                  }}
+                  value={refundMethod}
+                  onChange={(e) => setRefundMethod(e.target.value as PaymentMethodCode)}
+                >
+                  <option value="BANK_TRANSFER">Chuyển khoản</option>
+                  <option value="CASH">Tiền mặt</option>
+                </select>
+              </div>
+            </>
+          ) : (
+            /* Box số tiền cọc đơn (Giữ cọc, không hoàn trả) - chuẩn Image 2 */
+            <div
+              className="flex justify-between items-center"
               style={{
-                padding: '0.65rem 0.85rem',
-                border: '1px solid var(--color-border)',
+                padding: '0.9rem 1.25rem',
+                border: '1px solid #e5e7eb',
                 borderRadius: 'var(--radius-md)',
-                background: 'var(--color-bg-surface)',
-                fontSize: '0.875rem',
+                backgroundColor: '#f3f4f6',
               }}
-              value={refundMethod}
-              onChange={(e) => setRefundMethod(e.target.value as PaymentMethodCode)}
             >
-              <option value="VIETQR">Chuyển khoản</option>
-              <option value="CASH">Tiền mặt</option>
-            </select>
-          </div>
+              <span className="text-sm font-medium" style={{ color: 'var(--color-text-base)' }}>
+                Số tiền cọc đơn:
+              </span>
+              <span className="text-sm font-bold" style={{ color: 'var(--color-danger)' }}>
+                {formatPrice(deposit)} (Giữ cọc, không hoàn trả)
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 3. Khung nhập lý do từ chối hủy (khi chuyển sang trạng thái từ chối) */}
         {isRejecting && (
-          <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.65rem', color: 'var(--color-text-base)' }}>
               Lý do từ chối hủy <span style={{ color: 'var(--color-danger)' }}>*</span>
             </label>
@@ -240,7 +266,6 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
             />
           </div>
         )}
-
       </div>
 
       {/* 4. Button thao tác */}
@@ -259,22 +284,32 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
           <>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn"
               onClick={() => {
                 setIsRejecting(false);
                 setRejectReason('');
                 setError(null);
               }}
               disabled={submitting}
-              style={{ height: '42px', padding: '0 1.65rem', fontSize: '0.9rem', fontWeight: 600 }}
+              style={{
+                height: '42px',
+                padding: '0 1.65rem',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                backgroundColor: '#ffffff',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-base)',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+              }}
             >
-              Hủy bỏ
+              Quay lại
             </button>
             <button
               type="button"
               className="btn flex items-center gap-2"
               style={{
-                backgroundColor: 'var(--color-warning)',
+                backgroundColor: '#b45309',
                 color: '#fff',
                 border: 'none',
                 fontSize: '0.9rem',
@@ -297,14 +332,15 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
               type="button"
               className="btn"
               style={{
-                backgroundColor: 'var(--color-warning)',
-                color: '#fff',
-                border: 'none',
+                backgroundColor: '#ffffff',
+                color: '#b45309',
+                border: '1px solid #b45309',
                 fontSize: '0.9rem',
                 padding: '0 1.65rem',
                 height: '42px',
                 borderRadius: 'var(--radius-md)',
                 fontWeight: 600,
+                cursor: submitting ? 'not-allowed' : 'pointer',
               }}
               onClick={() => {
                 setIsRejecting(true);
@@ -319,11 +355,14 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
               className="btn btn-primary flex items-center gap-2"
               style={{
                 backgroundColor: 'var(--color-danger)',
+                color: '#fff',
                 fontSize: '0.9rem',
                 padding: '0 1.65rem',
                 height: '42px',
                 borderRadius: 'var(--radius-md)',
                 fontWeight: 600,
+                border: 'none',
+                cursor: submitting ? 'not-allowed' : 'pointer',
               }}
               onClick={handleApproveRefund}
               disabled={submitting}

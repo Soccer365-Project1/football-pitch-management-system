@@ -24,7 +24,7 @@ public class CollectPaymentRequest {
     private BigDecimal additionalFee = BigDecimal.ZERO;
 
     @NotNull(message = "PAYMENT_METHOD_REQUIRED")
-    @Schema(description = "Phương thức thu tiền còn lại (CASH, VIETQR...)", example = "CASH", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Phương thức thu tiền còn lại (CASH, BANK_TRANSFER...)", example = "CASH", requiredMode = Schema.RequiredMode.REQUIRED)
     private PaymentMethodCode paymentMethod;
 
     @Schema(description = "Ghi chú thu tiền khi đóng ca", example = "Thu tiền mặt + 5 chai nước suối Lavie")

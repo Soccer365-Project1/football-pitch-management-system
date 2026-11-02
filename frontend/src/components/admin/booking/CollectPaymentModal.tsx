@@ -157,7 +157,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
               onChange={(e) => setPaymentMethod(e.target.value as PaymentMethodCode)}
             >
               <option value="CASH">Tiền mặt</option>
-              <option value="VIETQR">Chuyển khoản</option>
+              <option value="BANK_TRANSFER">Chuyển khoản</option>
             </select>
           </div>
         </div>

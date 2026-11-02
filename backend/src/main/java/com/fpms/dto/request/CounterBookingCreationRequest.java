@@ -55,6 +55,6 @@ public class CounterBookingCreationRequest {
     @Schema(description = "Hình thức thanh toán tại quầy: DEPOSIT_30 (Cọc 30%) hoặc FULL_PAYMENT (Thanh toán 100%)", example = "FULL_PAYMENT")
     private PaymentType paymentType;
 
-    @Schema(description = "Phương thức thanh toán nếu có trả trước (CASH hoặc VIETQR)", example = "CASH")
+    @Schema(description = "Phương thức thanh toán nếu có trả trước (CASH hoặc BANK_TRANSFER)", example = "CASH")
     private PaymentMethodCode paymentMethod;
 }
