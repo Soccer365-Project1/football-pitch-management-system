@@ -28,7 +28,7 @@ public class AdminBookingCancelRequest {
     @Builder.Default
     private Boolean isRefund = false;
 
-    @Schema(description = "Phương thức hoàn tiền nếu có hoàn cọc (CASH, VIETQR, hoặc VNPAY nếu hoàn tự động)", example = "CASH")
+    @Schema(description = "Phương thức hoàn tiền nếu có hoàn cọc (CASH, BANK_TRANSFER, hoặc VNPAY nếu hoàn tự động)", example = "CASH")
     private PaymentMethodCode refundMethod;
 
     @DecimalMin(value = "0.0", message = "REFUND_AMOUNT_INVALID")

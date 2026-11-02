@@ -15,7 +15,7 @@ export type BookingStatus =
 
 export type BookingType = 'ONLINE' | 'AT_COUNTER';
 
-export type PaymentMethodCode = 'CASH' | 'VIETQR' | 'VNPAY' | 'MOMO';
+export type PaymentMethodCode = 'CASH' | 'BANK_TRANSFER' | 'VNPAY';
 
 export type PaymentType = 'DEPOSIT_30' | 'REMAINING_70' | 'FULL_PAYMENT' | 'REFUND';
 
@@ -53,6 +53,7 @@ export interface AdminBookingSummary {
   bookingType: BookingType;
   status: BookingStatus;
   staffName?: string;
+  customerNote?: string;
   createdAt?: string;
 }
 
