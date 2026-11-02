@@ -350,7 +350,7 @@ const AdminBookings: React.FC = () => {
 
                   const price = booking.totalAmount || 0;
                   const deposit = booking.depositAmount || 0;
-                  const remaining = booking.remainingAmount || Math.max(0, price - deposit);
+                  const remaining = booking.remainingAmount ?? Math.max(0, price - deposit);
 
                   return (
                     <tr key={booking.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -367,11 +367,53 @@ const AdminBookings: React.FC = () => {
                       </td>
                       <td className="p-4">{getStatusBadge(booking.status)}</td>
                       <td className="p-4">
-                        <div className="text-sm">Tổng: {formatPrice(price)}</div>
-                        <div className="text-sm text-success">Đã cọc: {formatPrice(deposit)}</div>
-                        {(booking.status === 'IN_PROGRESS' || (booking.status === 'CONFIRMED' && remaining > 0)) && (
-                          <div className="text-sm font-semibold text-danger">Còn nợ: {formatPrice(remaining)}</div>
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <div className="text-sm">Tổng: {formatPrice(price)}</div>
+                          {booking.additionalFee > 0 && (
+                            <div className="text-sm text-muted">Gồm phụ phí: {formatPrice(booking.additionalFee)}</div>
+                          )}
+                          {booking.status === 'PENDING_HOLD' ? (
+                            <>
+                              <div className="text-sm text-warning">Cọc cần thu: {formatPrice(deposit)}</div>
+                              <div className="text-sm text-muted">Chưa thanh toán cọc</div>
+                            </>
+                          ) : booking.status === 'WAITING_APPROVAL' ? (
+                            <div className="text-sm text-warning">Cọc chờ xác nhận: {formatPrice(deposit)}</div>
+                          ) : booking.status === 'REFUNDED' ? (
+                            <>
+                              <div className="text-sm text-muted">Cọc ban đầu: {formatPrice(deposit)}</div>
+                              <div className="text-sm text-success">Đã hoàn tiền</div>
+                            </>
+                          ) : booking.status === 'CANCELLED' ? (
+                            <>
+                              <div className="text-sm text-muted">Mức cọc của đơn: {formatPrice(deposit)}</div>
+                              <div className="text-sm text-muted">Đã hủy · Không thu thêm</div>
+                            </>
+                          ) : booking.status === 'COMPLETED' ? (
+                            <>
+                              <div className="text-sm text-success">Đã thanh toán: {formatPrice(Math.max(0, price - remaining))}</div>
+                              {remaining > 0 ? (
+                                <div className="text-sm font-semibold text-danger">Còn phải thu: {formatPrice(remaining)}</div>
+                              ) : (
+                                <div className="text-sm text-success">Đã thanh toán đủ</div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-sm text-success">
+                                {deposit >= price ? 'Đã thanh toán' : 'Đã cọc'}: {formatPrice(deposit)}
+                              </div>
+                              {remaining > 0 ? (
+                                <div className="text-sm font-semibold text-danger">Còn phải thu: {formatPrice(remaining)}</div>
+                              ) : (
+                                <div className="text-sm text-success">Đã thanh toán đủ</div>
+                              )}
+                              {booking.status === 'WAITING_CANCELLATION' && (
+                                <div className="text-sm text-warning">Chờ xử lý hủy / hoàn cọc</div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 whitespace-nowrap" style={{ whiteSpace: 'nowrap' }}>
                         <div className="flex gap-2 items-center flex-nowrap whitespace-nowrap" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
