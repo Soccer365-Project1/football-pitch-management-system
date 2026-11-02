@@ -4,7 +4,6 @@ import com.fpms.entity.enums.PaymentMethodCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +16,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Yêu cầu hủy đơn đặt sân và hoàn cọc dành cho Admin/Staff (SRS UC011.3)")
+@Schema(description = "Yêu cầu hủy đơn đặt sân (hỗ trợ có hoàn cọc hoặc không hoàn cọc) dành cho Admin/Staff (SRS UC011.3 & UC011.5)")
 public class AdminBookingCancelRequest {
 
     @NotBlank(message = "BOOKING_CANCEL_REASON_REQUIRED")
@@ -25,8 +24,11 @@ public class AdminBookingCancelRequest {
     @Schema(description = "Lý do hủy đơn bắt buộc (5 - 500 ký tự)", example = "Sân ngập nước do mưa lớn bất khả kháng", requiredMode = Schema.RequiredMode.REQUIRED)
     private String cancelReason;
 
-    @NotNull(message = "REFUND_METHOD_REQUIRED")
-    @Schema(description = "Phương thức hoàn tiền (CASH, VIETQR, hoặc VNPAY nếu hoàn tự động)", example = "CASH", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Có hoàn trả tiền cọc cho khách hay không", example = "true")
+    @Builder.Default
+    private Boolean isRefund = false;
+
+    @Schema(description = "Phương thức hoàn tiền nếu có hoàn cọc (CASH, VIETQR, hoặc VNPAY nếu hoàn tự động)", example = "CASH")
     private PaymentMethodCode refundMethod;
 
     @DecimalMin(value = "0.0", message = "REFUND_AMOUNT_INVALID")
