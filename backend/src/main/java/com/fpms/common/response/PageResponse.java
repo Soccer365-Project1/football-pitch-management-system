@@ -14,7 +14,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PageResponse<T> {
+public class PageResponse<T> implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
 
     private int pageNo;          // Trang hiện tại (bắt đầu từ 1)
     private int pageSize;        // Số bản ghi trên 1 trang

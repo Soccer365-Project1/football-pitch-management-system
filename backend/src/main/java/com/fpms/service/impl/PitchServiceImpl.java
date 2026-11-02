@@ -26,6 +26,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -50,6 +52,7 @@ public class PitchServiceImpl implements PitchService {
     private final SimpMessagingTemplate messagingTemplate;
 
     @Override
+    @Cacheable(cacheNames = "pitches", keyGenerator = "catalogKeyGenerator")
     public PageResponse<PitchResponse> getPitches(String keyword, Long pitchTypeId, PitchStatus status, int page, int size) {
         log.info("Truy vấn danh sách sân bóng - keyword: {}, pitchTypeId: {}, status: {}, page: {}, size: {}",
                 keyword, pitchTypeId, status, page, size);
@@ -79,6 +82,7 @@ public class PitchServiceImpl implements PitchService {
     }
 
     @Override
+    @Cacheable(cacheNames = "pitches", keyGenerator = "catalogKeyGenerator")
     public PitchResponse getPitchById(Long id) {
         log.info("Lấy chi tiết sân bóng ID: {}", id);
         Pitch pitch = pitchRepository.findByIdAndIsDeletedFalse(id)
@@ -88,6 +92,7 @@ public class PitchServiceImpl implements PitchService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"pitches"}, allEntries = true)
     public PitchResponse createPitch(PitchRequest request) {
         String trimmedName = request.getName().trim();
         log.info("Tạo mới sân bóng với tên: {}, loại sân ID: {}", trimmedName, request.getPitchTypeId());
@@ -113,6 +118,7 @@ public class PitchServiceImpl implements PitchService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"pitches"}, allEntries = true)
     public PitchResponse updatePitch(Long id, PitchRequest request) {
         String trimmedName = request.getName().trim();
         log.info("Cập nhật sân bóng ID: {} với tên mới: {}", id, trimmedName);
@@ -141,6 +147,7 @@ public class PitchServiceImpl implements PitchService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"pitches"}, allEntries = true)
     public PitchResponse updatePitchStatus(Long id, UpdatePitchStatusRequest request) {
         log.info("Cập nhật trạng thái sân bóng ID: {} sang {}", id, request.getStatus());
 
@@ -176,6 +183,7 @@ public class PitchServiceImpl implements PitchService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"pitches"}, allEntries = true)
     public void deletePitch(Long id) {
         log.info("Xóa sân bóng ID: {}", id);
         Pitch pitch = pitchRepository.findByIdAndIsDeletedFalse(id)
@@ -193,6 +201,7 @@ public class PitchServiceImpl implements PitchService {
     }
 
     @Override
+    @Cacheable(cacheNames = "pitchTypes", keyGenerator = "catalogKeyGenerator")
     public List<PitchTypeResponse> getAllPitchTypes() {
         log.info("Lấy danh sách các loại sân bóng");
         List<PitchType> pitchTypes = pitchTypeRepository.findAllByIsDeletedFalse();
@@ -200,6 +209,7 @@ public class PitchServiceImpl implements PitchService {
     }
 
     @Override
+    @Cacheable(cacheNames = "pitches", keyGenerator = "catalogKeyGenerator")
     public List<PublicPitchResponse> getActivePitches(Long pitchTypeId) {
         log.info("Lấy danh sách sân bóng cho khách hàng - pitchTypeId: {}", pitchTypeId);
         

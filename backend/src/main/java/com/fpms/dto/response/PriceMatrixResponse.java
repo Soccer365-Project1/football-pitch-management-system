@@ -12,7 +12,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 @Schema(description = "Thông tin chi tiết một ô cấu hình giá phẳng")
-public class PriceMatrixResponse {
+public class PriceMatrixResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "ID ô giá", example = "1")
     private Long id;

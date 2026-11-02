@@ -12,7 +12,8 @@ import java.time.format.DateTimeFormatter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TimeSlotResponse {
+public class TimeSlotResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
 
     private Long id;
 
