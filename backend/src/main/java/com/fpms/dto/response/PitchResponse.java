@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PitchResponse {
+public class PitchResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
 
     private Long id;
     private String name;

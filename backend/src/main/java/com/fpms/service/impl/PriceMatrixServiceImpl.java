@@ -16,6 +16,8 @@ import com.fpms.service.PriceMatrixService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
@@ -31,6 +33,7 @@ public class PriceMatrixServiceImpl implements PriceMatrixService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "prices", keyGenerator = "catalogKeyGenerator")
     public PitchTypePricingMatrixResponse getPricingByPitchTypeId(Long pitchTypeId) {
         log.info("Lấy bảng giá theo loại sân, pitchTypeId: {}", pitchTypeId);
         PitchType pitchType = pitchTypeRepository.findByIdAndIsDeletedFalse(pitchTypeId)
@@ -51,6 +54,7 @@ public class PriceMatrixServiceImpl implements PriceMatrixService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"prices", "timeSlots"}, allEntries = true)
     public PitchTypePricingMatrixResponse savePricingForPitchType(Long pitchTypeId, SavePitchTypePricingRequest request) {
         log.info("Lưu bảng giá (Upsert) cho loại sân ID: {}, số lượng ô giá: {}", pitchTypeId, request.getRates().size());
         PitchType pitchType = pitchTypeRepository.findByIdAndIsDeletedFalse(pitchTypeId)
@@ -91,6 +95,7 @@ public class PriceMatrixServiceImpl implements PriceMatrixService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "prices", keyGenerator = "catalogKeyGenerator")
     public List<PitchTypePricingMatrixResponse> getAllPricingMatrices() {
         log.info("Lấy ma trận biểu giá toàn bộ loại sân");
         List<PriceMatrix> allMatrices = priceMatrixRepository.findAllByOrderByPitchTypeIdAscDayTypeAscIsPeakHourAsc();
@@ -116,6 +121,7 @@ public class PriceMatrixServiceImpl implements PriceMatrixService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "prices", keyGenerator = "catalogKeyGenerator")
     public List<PriceMatrixResponse> getAllPrices(Long pitchTypeId) {
         List<PriceMatrix> matrices;
         if (pitchTypeId != null) {
@@ -128,6 +134,7 @@ public class PriceMatrixServiceImpl implements PriceMatrixService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "prices", keyGenerator = "catalogKeyGenerator")
     public PriceMatrixResponse getPriceById(Long id) {
         PriceMatrix matrix = priceMatrixRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRICE_MATRIX_NOT_FOUND));
@@ -136,6 +143,7 @@ public class PriceMatrixServiceImpl implements PriceMatrixService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"prices", "timeSlots"}, allEntries = true)
     public void deleteSinglePrice(Long id) {
         if (!priceMatrixRepository.existsById(id)) {
             throw new AppException(ErrorCode.PRICE_MATRIX_NOT_FOUND);
