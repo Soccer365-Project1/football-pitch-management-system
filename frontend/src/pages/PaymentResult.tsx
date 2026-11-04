@@ -86,7 +86,7 @@ const PaymentResult: React.FC = () => {
             >
               <CheckCircle2 size={42} />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Đặt cọc thành công!</h1>
+            <h1 className="text-2xl font-bold mb-2">Thanh toán thành công!</h1>
             <p className="text-muted text-sm mb-6">
               {result?.message || 'Khung giờ của bạn đã được đảm bảo và gửi tới quản lý sân.'}
             </p>
@@ -103,7 +103,7 @@ const PaymentResult: React.FC = () => {
                 <span className="font-semibold">{result?.bookingCode || '---'}</span>
               </div>
               <div className="flex justify-between items-center py-1">
-                <span className="text-muted">Tiền cọc đã thanh toán (30%):</span>
+                <span className="text-muted"> Số tiền đã thanh toán:</span>
                 <span className="font-bold text-primary">
                   {result?.amount ? formatPrice(result.amount) : '---'}
                 </span>
