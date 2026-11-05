@@ -624,44 +624,6 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
-    @Override
-    @Transactional
-    public BookingResponse approveBooking(Long bookingId, UserPrincipal currentUser) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
-
-        if (booking.getStatus() != BookingStatus.WAITING_APPROVAL) {
-            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_APPROVAL);
-        }
-
-        if (currentUser != null && currentUser.getId() != null) {
-            userRepository.findById(currentUser.getId()).ifPresent(booking::setStaff);
-        }
-
-        booking.setStatus(BookingStatus.CONFIRMED);
-        booking = bookingRepository.save(booking);
-
-        BookingEventDto event = BookingEventDto.builder()
-                .action("BOOKING_CONFIRMED")
-                .pitchId(booking.getPitch().getId())
-                .timeSlotId(booking.getTimeSlot().getId())
-                .date(booking.getBookingDate().toString())
-                .status(BookingStatus.CONFIRMED.name())
-                .build();
-
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    messagingTemplate.convertAndSend("/topic/schedule", event);
-                }
-            });
-        } else {
-            messagingTemplate.convertAndSend("/topic/schedule", event);
-        }
-
-        return bookingMapper.toBookingResponse(booking);
-    }
 
     @Override
     @Transactional
