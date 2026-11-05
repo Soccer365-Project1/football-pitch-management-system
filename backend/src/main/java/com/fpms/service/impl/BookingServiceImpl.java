@@ -807,29 +807,72 @@ public class BookingServiceImpl implements BookingService {
         PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
 
-        PaymentTransaction transaction = paymentTransactionService.createTransaction(
-                TransactionRequest.builder()
-                        .booking(booking)
-                        .paymentMethod(vnpayMethod)
-                        .amount(remainingAmount)
-                        .paymentType(PaymentType.REMAINING_70)
-                        .status(TransactionStatus.PENDING)
-                        .processedBy(null)
-                        .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
-                        .build()
-        );
+        // Kiểm tra xem đơn đã có giao dịch REMAINING_70 đang ở trạng thái PENDING chưa
+        Optional<PaymentTransaction> pendingTxnOpt = paymentTransactionRepository
+                .findFirstByBookingIdAndPaymentTypeAndStatusOrderByCreatedAtDesc(
+                        booking.getId(),
+                        PaymentType.REMAINING_70,
+                        TransactionStatus.PENDING
+                );
+
+        PaymentTransaction transaction;
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDateTime expireTime;
+
+        if (pendingTxnOpt.isPresent()) {
+            PaymentTransaction existingTxn = pendingTxnOpt.get();
+            LocalDateTime originalCreatedAt = existingTxn.getCreatedAt() != null ? existingTxn.getCreatedAt() : now;
+            LocalDateTime originalExpireTime = originalCreatedAt.plusMinutes(15);
+
+            // Nếu phiên cũ còn trên 2 phút hiệu lực -> Tái sử dụng phiên cũ, giữ nguyên mốc hết hạn gốc
+            if (now.isBefore(originalExpireTime.minusMinutes(2))) {
+                transaction = existingTxn;
+                expireTime = originalExpireTime;
+            } else {
+                // Phiên cũ đã hết hạn hoặc cận kề hết hạn (<= 2 phút) -> Đánh dấu FAILED và tạo phiên mới 15 phút
+                existingTxn.setStatus(TransactionStatus.FAILED);
+                String oldNote = existingTxn.getNote() != null ? existingTxn.getNote() : "";
+                existingTxn.setNote((oldNote + " [Hủy do hết hạn thanh toán]").trim());
+                paymentTransactionRepository.save(existingTxn);
+
+                transaction = paymentTransactionService.createTransaction(
+                        TransactionRequest.builder()
+                                .booking(booking)
+                                .paymentMethod(vnpayMethod)
+                                .amount(remainingAmount)
+                                .paymentType(PaymentType.REMAINING_70)
+                                .status(TransactionStatus.PENDING)
+                                .processedBy(null)
+                                .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                                .build()
+                );
+                expireTime = now.plusMinutes(15);
+            }
+        } else {
+            transaction = paymentTransactionService.createTransaction(
+                    TransactionRequest.builder()
+                            .booking(booking)
+                            .paymentMethod(vnpayMethod)
+                            .amount(remainingAmount)
+                            .paymentType(PaymentType.REMAINING_70)
+                            .status(TransactionStatus.PENDING)
+                            .processedBy(null)
+                            .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                            .build()
+            );
+            expireTime = now.plusMinutes(15);
+        }
+
         String txnCode = transaction.getTransactionCode();
 
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         String paymentUrl = buildVNPayUrl(
                 booking,
                 txnCode,
                 remainingAmount,
                 "Thanh toan not 70% don " + booking.getBookingCode(),
-                now.plusMinutes(15),
+                expireTime,
                 httpRequest
         );
-
         return BookingDepositResponse.builder()
                 .bookingCode(booking.getBookingCode())
                 .bookingId(booking.getId())
