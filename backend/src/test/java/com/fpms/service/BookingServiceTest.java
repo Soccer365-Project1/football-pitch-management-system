@@ -885,4 +885,57 @@ class BookingServiceTest {
         verify(paymentTransactionService, times(1)).createTransaction(any(TransactionRequest.class));
         assertTrue(response.getPaymentUrl().contains("vnp_TxnRef=TXN_NEW_FRESH"));
     }
+
+    @Test
+    @DisplayName("checkInBooking - Thất bại khi thời gian hiện tại đã qua endTime ca đá")
+    void checkInBooking_Fails_WhenPastEndTime() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B100")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now())
+                .startTimeSnapshot(LocalTime.now().minusHours(2))
+                .endTimeSnapshot(LocalTime.now().minusHours(1))
+                .customer(user)
+                .build();
+        booking.setId(100L);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.checkInBooking(100L, userPrincipal)
+        );
+
+        assertEquals(ErrorCode.CHECK_IN_TIME_EXPIRED, ex.getErrorCode());
+        assertEquals("Ca đá đã kết thúc, không thể nhận sân", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkInBooking - Thành công khi thời gian hiện tại nằm trong khung giờ ca đá")
+    void checkInBooking_Success_WhenWithinTime() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B101")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now())
+                .startTimeSnapshot(LocalTime.now().minusMinutes(10))
+                .endTimeSnapshot(LocalTime.now().plusHours(1))
+                .pitch(pitch)
+                .timeSlot(timeSlot)
+                .customer(user)
+                .build();
+        booking.setId(101L);
+
+        when(bookingRepository.findById(101L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.fpms.dto.response.BookingResponse mockRes = new com.fpms.dto.response.BookingResponse();
+        mockRes.setStatus(BookingStatus.IN_PROGRESS);
+        when(bookingMapper.toBookingResponse(any(Booking.class))).thenReturn(mockRes);
+
+        com.fpms.dto.response.BookingResponse response = bookingService.checkInBooking(101L, userPrincipal);
+
+        assertNotNull(response);
+        assertEquals(BookingStatus.IN_PROGRESS, response.getStatus());
+        assertEquals(BookingStatus.IN_PROGRESS, booking.getStatus());
+        verify(bookingRepository, times(1)).save(booking);
+    }
 }

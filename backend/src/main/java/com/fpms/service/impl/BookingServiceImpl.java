@@ -645,6 +645,21 @@ public class BookingServiceImpl implements BookingService {
             throw new AppException(ErrorCode.CHECK_IN_TIME_NOT_REACHED);
         }
 
+        LocalTime startTime = booking.getStartTimeSnapshot();
+        LocalTime endTime = booking.getEndTimeSnapshot();
+        if (endTime != null) {
+            boolean isPastEnd;
+            if (startTime != null && endTime.isBefore(startTime)) {
+                // Ca đá vắt qua đêm (kết thúc vào rạng sáng hôm sau)
+                isPastEnd = false;
+            } else {
+                isPastEnd = now.isAfter(endTime);
+            }
+            if (isPastEnd) {
+                throw new AppException(ErrorCode.CHECK_IN_TIME_EXPIRED);
+            }
+        }
+
         if (currentUser != null && currentUser.getId() != null) {
             userRepository.findById(currentUser.getId()).ifPresent(booking::setStaff);
         }
