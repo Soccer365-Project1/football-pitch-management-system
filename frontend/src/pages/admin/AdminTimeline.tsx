@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useScheduleWebSocket } from '../../hooks/useScheduleWebSocket.ts';
 import { usePitches, useTimeSlots, usePitchTypes } from '../../hooks/queries/usePitchQueries.ts';
-import { useAdminTimeline, useApproveBooking, useCheckInBooking, useCheckOutBooking } from '../../hooks/queries/useBookingQueries.ts';
+import { useAdminTimeline, useCheckInBooking, useCheckOutBooking } from '../../hooks/queries/useBookingQueries.ts';
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
 import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot } from '../../components/admin/timeline/index.ts';
@@ -71,7 +71,6 @@ const AdminTimeline: React.FC = () => {
   const loading = isLoadingPitches || isLoadingTimeline;
 
   // 3. Mutations: Duyệt đơn & Nhận sân (Check-in)
-  const approveMutation = useApproveBooking();
   const checkInMutation = useCheckInBooking();
   const checkOutMutation = useCheckOutBooking();
 
@@ -92,16 +91,6 @@ const AdminTimeline: React.FC = () => {
     }
   };
 
-  const handleApprove = async (bookingId: number) => {
-    try {
-      await approveMutation.mutateAsync(bookingId);
-      showToast('Duyệt đơn đặt sân thành công!', 'success');
-      setDetailSlot(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Không thể duyệt đơn đặt sân';
-      showToast(msg, 'error');
-    }
-  };
 
   const handleCheckIn = async (slot: AdminTimelineSlotResponse) => {
     if (!slot.bookingId) return;
@@ -317,7 +306,7 @@ const AdminTimeline: React.FC = () => {
                                 <div
                                   className="timeline-badge-waiting"
                                   onClick={() => setDetailSlot(slotData || null)}
-                                  title="Đơn đang chờ duyệt. Bấm để duyệt đơn"
+                                  title="Đơn đang chờ duyệt. Bấm để xem chi tiết"
                                 >
                                   Chờ duyệt
                                 </div>
@@ -359,9 +348,7 @@ const AdminTimeline: React.FC = () => {
         <TimelineDetailModal
           slot={detailSlot}
           onClose={() => setDetailSlot(null)}
-          onApprove={handleApprove}
           onCheckIn={handleCheckIn}
-          isApproving={approveMutation.isPending}
           isCheckingIn={checkInMutation.isPending}
           onOpenCheckOut={(slot) => {
             setDetailSlot(null);

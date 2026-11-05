@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle, Play, Square, Loader2, AlertCircle } from 'lucide-react';
+import { X, Play, Square, Loader2, AlertCircle } from 'lucide-react';
 import { ModalOverlay } from '../../common/ModalOverlay.tsx';
 import type { AdminTimelineSlotResponse } from '../../../types/adminTimeline.ts';
 import { formatPrice, formatDate } from '../../../utils/formatUtils.ts';
@@ -7,9 +7,7 @@ import { formatPrice, formatDate } from '../../../utils/formatUtils.ts';
 interface TimelineDetailModalProps {
   slot: AdminTimelineSlotResponse;
   onClose: () => void;
-  onApprove?: (bookingId: number) => void;
   onCheckIn?: (slot: AdminTimelineSlotResponse) => void;
-  isApproving?: boolean;
   isCheckingIn?: boolean;
   onOpenCheckOut?: (slot: AdminTimelineSlotResponse) => void;
 }
@@ -45,9 +43,7 @@ export const canCheckInSlot = (slot: AdminTimelineSlotResponse): { canCheckIn: b
 export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
   slot,
   onClose,
-  onApprove,
   onCheckIn,
-  isApproving = false,
   isCheckingIn = false,
   onOpenCheckOut,
 }) => {
@@ -174,7 +170,7 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
             <div className="timeline-modal-notice-box orange">
               <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
               <div>
-                <strong>Chờ nhân viên duyệt đơn:</strong> Đơn đặt sân đã hoàn tất đặt cọc. Nhân viên kiểm tra thông tin và bấm nút <b>"Duyệt đơn đặt sân"</b> bên dưới để chuyển sang trạng thái đã xác nhận.
+                <strong>Chờ nhân viên duyệt đơn:</strong> Đơn đặt sân đã hoàn tất đặt cọc và đang chờ xác nhận từ phía ban quản lý.
               </div>
             </div>
           )}
@@ -211,29 +207,6 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
           >
             Đóng
           </button>
-
-          {/* Nút Duyệt sân cho WAITING_APPROVAL */}
-          {slot.status === 'WAITING_APPROVAL' && slot.bookingId && onApprove && (
-            <button
-              type="button"
-              disabled={isApproving}
-              onClick={() => onApprove(slot.bookingId!)}
-              className="timeline-btn-confirm-checkin"
-              style={{ backgroundColor: '#10b981' }}
-            >
-              {isApproving ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Đang duyệt...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle size={16} />
-                  <span>Duyệt đơn đặt sân</span>
-                </>
-              )}
-            </button>
-          )}
 
           {/* Nút Nhận sân cho CONFIRMED */}
           {slot.status === 'CONFIRMED' && slot.bookingId && onCheckIn && (
