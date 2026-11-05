@@ -12,29 +12,92 @@ interface TimelineDetailModalProps {
   onOpenCheckOut?: (slot: AdminTimelineSlotResponse) => void;
 }
 
-export const canCheckInSlot = (slot: AdminTimelineSlotResponse): { canCheckIn: boolean; reason?: string } => {
-  if (slot.status !== 'CONFIRMED') {
-    return { canCheckIn: false, reason: 'Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận' };
-  }
+export const normalizeDateString = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.trim();
+};
+
+export const isSlotPastEndTime = (
+  slot?: { bookingDate?: string | null; startTime?: string | null; endTime?: string | null } | null,
+  fallbackDate?: string | null,
+  fallbackEndTime?: string | null,
+  fallbackStartTime?: string | null
+): boolean => {
+  const rawDate = normalizeDateString(slot?.bookingDate) || normalizeDateString(fallbackDate);
+  const rawEndTime = slot?.endTime || fallbackEndTime;
+  const rawStartTime = slot?.startTime || fallbackStartTime;
+
+  if (!rawDate || !rawEndTime) return false;
 
   const now = new Date();
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-  if (slot.bookingDate && slot.bookingDate !== todayStr) {
+  // Nếu ngày đá trong quá khứ -> Chắc chắn đã qua
+  if (rawDate < todayStr) {
+    return true;
+  }
+  // Nếu ngày đá trong tương lai -> Chưa qua
+  if (rawDate > todayStr) {
+    return false;
+  }
+
+  // Ngày đá là hôm nay -> So sánh giờ kết thúc (endTime)
+  const [startH] = (rawStartTime || '00:00').split(':').map(Number);
+  const [endH, endM] = rawEndTime.split(':').map(Number);
+  const slotEnd = new Date();
+  slotEnd.setHours(endH, endM, 0, 0);
+
+  // Xử lý ca đá vắt qua đêm (ví dụ: 23:00 - 00:30)
+  if (endH < startH) {
+    slotEnd.setDate(slotEnd.getDate() + 1);
+  }
+
+  return now > slotEnd;
+};
+
+export const canCheckInSlot = (
+  slot: AdminTimelineSlotResponse,
+  fallbackDate?: string | null,
+  fallbackEndTime?: string | null,
+  fallbackStartTime?: string | null
+): { canCheckIn: boolean; reason?: string } => {
+  if (slot.status !== 'CONFIRMED') {
+    return { canCheckIn: false, reason: 'Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận' };
+  }
+
+  const dateStr = normalizeDateString(slot.bookingDate) || normalizeDateString(fallbackDate);
+  const startTimeStr = slot.startTime || fallbackStartTime;
+  const endTimeStr = slot.endTime || fallbackEndTime;
+
+  const now = new Date();
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+  if (dateStr && dateStr < todayStr) {
+    return { canCheckIn: false, reason: 'Ca đá đã kết thúc trong quá khứ' };
+  }
+
+  if (dateStr && dateStr > todayStr) {
     return { canCheckIn: false, reason: 'Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay' };
   }
 
-  if (slot.startTime) {
-    const [h, m] = slot.startTime.split(':').map(Number);
+  if (startTimeStr) {
+    const [h, m] = startTimeStr.split(':').map(Number);
     const slotStart = new Date();
     slotStart.setHours(h, m, 0, 0);
 
     if (now < slotStart) {
       return {
         canCheckIn: false,
-        reason: `Chưa đến giờ nhận sân (Ca đá bắt đầu lúc ${slot.startTime.substring(0, 5)})`,
+        reason: `Chưa đến giờ nhận sân (Ca đá bắt đầu lúc ${startTimeStr.substring(0, 5)})`,
       };
     }
+  }
+
+  if (isSlotPastEndTime(slot, fallbackDate, fallbackEndTime, fallbackStartTime)) {
+    return {
+      canCheckIn: false,
+      reason: `Đã quá giờ nhận sân (Ca đá đã kết thúc lúc ${(endTimeStr || '').substring(0, 5)})`,
+    };
   }
 
   return { canCheckIn: true };
@@ -213,8 +276,20 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
             <button
               type="button"
               disabled={isCheckingIn || !checkInCheck.canCheckIn}
-              onClick={() => onCheckIn(slot)}
-              className="timeline-btn-confirm-checkin"
+              onClick={!checkInCheck.canCheckIn ? undefined : () => onCheckIn(slot)}
+              className={`timeline-btn-confirm-checkin ${!checkInCheck.canCheckIn ? 'timeline-btn-disabled' : ''}`}
+              style={
+                !checkInCheck.canCheckIn
+                  ? {
+                      backgroundColor: '#94a3b8',
+                      backgroundImage: 'none',
+                      color: '#ffffff',
+                      cursor: 'not-allowed',
+                      opacity: 0.65,
+                      boxShadow: 'none',
+                    }
+                  : undefined
+              }
               title={!checkInCheck.canCheckIn ? checkInCheck.reason : 'Xác nhận nhận sân'}
             >
               {isCheckingIn ? (

@@ -12,7 +12,7 @@ import { usePitches, useTimeSlots, usePitchTypes } from '../../hooks/queries/use
 import { useAdminTimeline, useCheckInBooking, useCheckOutBooking } from '../../hooks/queries/useBookingQueries.ts';
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
-import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot } from '../../components/admin/timeline/index.ts';
+import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot, isSlotPastEndTime } from '../../components/admin/timeline/index.ts';
 import { showToast, showAlert, showConfirm } from '../../utils/toast.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -96,7 +96,7 @@ const AdminTimeline: React.FC = () => {
     if (!slot.bookingId) return;
 
     // 1. Kiểm tra điều kiện thời gian (>= startTime và đúng ngày)
-    const check = canCheckInSlot(slot);
+    const check = canCheckInSlot(slot, selectedDate);
     if (!check.canCheckIn) {
       showAlert('Không thể nhận sân', check.reason || 'Chưa đủ điều kiện nhận sân', 'warning');
       return;
@@ -264,17 +264,38 @@ const AdminTimeline: React.FC = () => {
                               )}
 
                               {/* 3. Đã xác nhận -> HIỆN NÚT CHECK-IN "Nhận sân" */}
-                              {status === 'CONFIRMED' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCheckIn(slotData!)}
-                                  className="timeline-btn-checkin"
-                                  title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã xác nhận. Bấm để nhận sân`}
-                                >
-                                  <Play size={11} className="fill-current" />
-                                  <span>Nhận sân</span>
-                                </button>
-                              )}
+                              {status === 'CONFIRMED' && (() => {
+                                const isPast = isSlotPastEndTime(slotData, selectedDate, slot.endTime, slot.startTime);
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={isPast}
+                                    onClick={isPast ? undefined : () => handleCheckIn(slotData!)}
+                                    className={`timeline-btn-checkin ${isPast ? 'timeline-btn-disabled' : ''}`}
+                                    style={
+                                      isPast
+                                        ? {
+                                            backgroundColor: '#94a3b8',
+                                            backgroundImage: 'none',
+                                            color: '#f8fafc',
+                                            cursor: 'not-allowed',
+                                            opacity: 0.65,
+                                            border: 'none',
+                                            boxShadow: 'none',
+                                          }
+                                        : undefined
+                                    }
+                                    title={
+                                      isPast
+                                        ? `Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã quá giờ kết thúc ca đá (${(slotData?.endTime || slot.endTime)?.substring(0, 5)}). Không thể nhận sân`
+                                        : `Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã xác nhận. Bấm để nhận sân`
+                                    }
+                                  >
+                                    <Play size={11} className="fill-current" />
+                                    <span>Nhận sân</span>
+                                  </button>
+                                );
+                              })()}
 
                               {/* 4. Đang sử dụng sân (IN_PROGRESS) -> HIỆN NÚT CHECK-OUT "Trả sân" */}
                               {status === 'IN_PROGRESS' && (
