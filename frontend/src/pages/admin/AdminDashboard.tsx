@@ -169,8 +169,23 @@ const AdminDashboard: React.FC = () => {
           {payload.map((entry: any, index: number) => {
             const isRevenue =
               entry.dataKey === 'revenue' ||
-              entry.name === 'Doanh thu' ||
-              entry.payload?.revenue !== undefined;
+              entry.name === 'Doanh thu';
+            const isPercentage =
+              entry.unit === '%' ||
+              entry.dataKey === 'percentage' ||
+              entry.payload?.unit === '%' ||
+              (entry.payload?.revenue !== undefined && entry.payload?.percentage !== undefined);
+
+            let valueDisplay: string;
+            if (isRevenue && typeof entry.value === 'number') {
+              valueDisplay = formatCurrency(entry.value);
+            } else if (isPercentage) {
+              const revFormatted = entry.payload?.revenue ? ` (${formatCurrency(entry.payload.revenue)})` : '';
+              valueDisplay = `${entry.value}%${revFormatted}`;
+            } else {
+              valueDisplay = `${entry.value} đơn`;
+            }
+
             return (
               <p
                 key={index}
@@ -181,12 +196,7 @@ const AdminDashboard: React.FC = () => {
                   margin: '4px 0',
                 }}
               >
-                {entry.name}:{' '}
-                {isRevenue && typeof entry.value === 'number' && entry.dataKey === 'revenue'
-                  ? formatCurrency(entry.value)
-                  : entry.unit === '%' || entry.dataKey === 'percentage'
-                  ? `${entry.value}%`
-                  : `${entry.value} đơn`}
+                {entry.name}: {valueDisplay}
               </p>
             );
           })}
@@ -607,6 +617,7 @@ const AdminDashboard: React.FC = () => {
                         value: item.percentage,
                         revenue: item.revenue,
                         bookingCount: item.bookingCount,
+                        unit: '%',
                       }))}
                       cx="50%"
                       cy="48%"
