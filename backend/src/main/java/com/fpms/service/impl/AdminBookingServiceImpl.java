@@ -109,6 +109,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         if (request.getBookingDate().isBefore(today)) {
             throw new AppException(ErrorCode.BOOKING_DATE_INVALID);
         }
+        if (request.getBookingDate().isAfter(today.plusDays(30))) {
+            throw new AppException(ErrorCode.BOOKING_DATE_EXCEEDS_LIMIT);
+        }
         if (request.getBookingDate().isEqual(today) && timeSlot.getEndTime().isBefore(LocalTime.now())) {
             throw new AppException(ErrorCode.TIME_SLOT_ALREADY_PASSED);
         }
@@ -147,19 +150,24 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         BigDecimal totalPitchAmount = priceMatrix.getPrice();
         BigDecimal deposit30Percent = totalPitchAmount.multiply(new BigDecimal("0.3"));
 
+        // Kiểm tra tiền cọc / tiền trả trước không được vượt quá giá trị ca đá
+        if (request.getPaidAmount() != null && request.getPaidAmount().compareTo(totalPitchAmount) > 0) {
+            throw new AppException(ErrorCode.PAID_AMOUNT_EXCEEDS_TOTAL);
+        }
+
         // Xác định số tiền thanh toán trước dựa trên lựa chọn (DEPOSIT_30 hoặc FULL_PAYMENT)
         BigDecimal paidAmount;
         PaymentType pType;
 
-        if (request.getPaymentType() == PaymentType.DEPOSIT_30) {
+        if (request.getPaidAmount() != null) {
+            paidAmount = request.getPaidAmount();
+            pType = paidAmount.compareTo(totalPitchAmount) >= 0 ? PaymentType.FULL_PAYMENT : PaymentType.DEPOSIT_30;
+        } else if (request.getPaymentType() == PaymentType.DEPOSIT_30) {
             paidAmount = deposit30Percent;
             pType = PaymentType.DEPOSIT_30;
         } else if (request.getPaymentType() == PaymentType.FULL_PAYMENT) {
             paidAmount = totalPitchAmount;
             pType = PaymentType.FULL_PAYMENT;
-        } else if (request.getPaidAmount() != null) {
-            paidAmount = request.getPaidAmount();
-            pType = paidAmount.compareTo(totalPitchAmount) >= 0 ? PaymentType.FULL_PAYMENT : PaymentType.DEPOSIT_30;
         } else {
             // Mặc định tại quầy: thanh toán 100% toàn bộ tiền sân
             paidAmount = totalPitchAmount;

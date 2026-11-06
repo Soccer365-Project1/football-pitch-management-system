@@ -165,8 +165,8 @@ const AdminBookings: React.FC = () => {
     <div style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
       <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Toolbar chuẩn SRS */}
-        <div className="flex items-center justify-between mb-6 gap-4" style={{ flexShrink: 0 }}>
-          <div className="flex gap-4 items-center">
+        <div className="flex flex-wrap items-center justify-between mb-6 gap-4" style={{ flexShrink: 0 }}>
+          <div className="flex flex-wrap gap-4 items-center">
             <h2 className="text-xl font-semibold mr-2 whitespace-nowrap">Danh sách Đơn</h2>
             <select
               className="btn btn-secondary"
@@ -190,7 +190,7 @@ const AdminBookings: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center">
             <div
               className="flex items-center gap-2"
               style={{
@@ -301,7 +301,7 @@ const AdminBookings: React.FC = () => {
 
         {/* Table danh sách đơn */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', borderTop: '1px solid var(--color-border)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table style={{ width: '100%', minWidth: '920px', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-bg-surface)', zIndex: 10 }}>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <th className="p-4 font-semibold text-muted text-sm">MÃ ĐƠN</th>

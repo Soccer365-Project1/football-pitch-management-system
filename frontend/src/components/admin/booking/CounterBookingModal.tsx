@@ -30,14 +30,18 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
   // Field validation states (chỉ hiển thị inline dưới ô bị lỗi)
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
   // Form states
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 30);
+  const maxDateStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
 
-  const [guestName, setGuestName] = useState<string>('Khách vãng lai');
+  const [guestName, setGuestName] = useState<string>('');
   const [guestPhone, setGuestPhone] = useState<string>('');
   const [selectedPitchId, setSelectedPitchId] = useState<number | ''>('');
   const [bookingDate, setBookingDate] = useState<string>(todayStr);
@@ -52,9 +56,10 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
     if (isOpen) {
       setPhoneError(null);
       setNameError(null);
+      setDateError(null);
       setSlotError(null);
       setServerError(null);
-      setGuestName('Khách vãng lai');
+      setGuestName('');
       setGuestPhone('');
       setSelectedSlotId('');
       setPaymentType('DEPOSIT_30');
@@ -165,8 +170,12 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
 
     let hasError = false;
 
-    if (!guestName.trim()) {
-      setNameError('Vui lòng nhập tên khách hàng');
+    const trimmedName = guestName.trim();
+    if (!trimmedName) {
+      setNameError('Tên khách hàng không được để trống hoặc chỉ chứa khoảng trắng');
+      hasError = true;
+    } else if (trimmedName.length > 100) {
+      setNameError('Tên khách hàng tối đa 100 ký tự');
       hasError = true;
     } else {
       setNameError(null);
@@ -182,6 +191,19 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
       setPhoneError(null);
     }
 
+    if (!bookingDate) {
+      setDateError('Vui lòng chọn ngày đặt sân');
+      hasError = true;
+    } else if (bookingDate < todayStr) {
+      setDateError('Ngày đặt sân không được ở trong quá khứ');
+      hasError = true;
+    } else if (bookingDate > maxDateStr) {
+      setDateError('Ngày đặt sân không hợp lệ (không được vượt quá 30 ngày kể từ hôm nay)');
+      hasError = true;
+    } else {
+      setDateError(null);
+    }
+
     if (!selectedSlotId) {
       setSlotError('Vui lòng chọn một khung giờ thi đấu');
       hasError = true;
@@ -195,7 +217,7 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
       pitchId: Number(selectedPitchId),
       timeSlotId: Number(selectedSlotId),
       bookingDate,
-      guestName: guestName.trim(),
+      guestName: trimmedName,
       guestPhone: guestPhone.trim(),
       paidAmount,
       paymentType,
@@ -249,17 +271,11 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
               <input
                 type="text"
                 className="w-full"
-                placeholder="Nhập tên khách..."
+                placeholder="Nhập tên khách hàng..."
                 value={guestName}
                 onChange={(e) => {
                   setGuestName(e.target.value);
                   if (nameError) setNameError(null);
-                }}
-                onFocus={(e) => {
-                  if (e.target.value === 'Khách vãng lai') setGuestName('');
-                }}
-                onBlur={(e) => {
-                  if (e.target.value.trim() === '') setGuestName('Khách vãng lai');
                 }}
                 style={{
                   padding: '0.6rem 1rem',
@@ -326,15 +342,29 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
                   className="w-full"
                   style={{
                     padding: '0.6rem 1rem',
-                    border: '1px solid var(--color-border)',
+                    border: dateError ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--color-bg-base)',
                     outline: 'none',
+                    cursor: 'pointer',
                   }}
                   value={bookingDate}
                   min={todayStr}
-                  onChange={(e) => setBookingDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBookingDate(val);
+                    if (!val) {
+                      setDateError('Vui lòng chọn ngày đặt sân');
+                    } else if (val < todayStr) {
+                      setDateError('Ngày đặt sân không được ở trong quá khứ');
+                    } else if (val > maxDateStr) {
+                      setDateError('Ngày đặt sân không hợp lệ (không được vượt quá 30 ngày kể từ hôm nay)');
+                    } else {
+                      setDateError(null);
+                    }
+                  }}
                 />
+                {dateError && <span className="text-xs text-danger mt-1 block">{dateError}</span>}
               </div>
             </div>
 

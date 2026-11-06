@@ -111,6 +111,9 @@ public class BookingServiceImpl implements BookingService {
         if (request.getBookingDate().isBefore(today)) {
             throw new AppException(ErrorCode.BOOKING_DATE_INVALID);
         }
+        if (request.getBookingDate().isAfter(today.plusDays(30))) {
+            throw new AppException(ErrorCode.BOOKING_DATE_EXCEEDS_LIMIT);
+        }
         if (request.getBookingDate().isEqual(today)) {
             if (timeSlot.getEndTime().isBefore(java.time.LocalTime.now())) {
                 throw new AppException(ErrorCode.TIME_SLOT_ALREADY_PASSED);
