@@ -3267,12 +3267,19 @@ option {
   box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .timeline-header-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
   .timeline-actions-bar {
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .timeline-legend-list {
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
 }
