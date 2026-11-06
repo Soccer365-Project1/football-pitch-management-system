@@ -37,7 +37,7 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  const [guestName, setGuestName] = useState<string>('Khách vãng lai');
+  const [guestName, setGuestName] = useState<string>('');
   const [guestPhone, setGuestPhone] = useState<string>('');
   const [selectedPitchId, setSelectedPitchId] = useState<number | ''>('');
   const [bookingDate, setBookingDate] = useState<string>(todayStr);
@@ -54,7 +54,7 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
       setNameError(null);
       setSlotError(null);
       setServerError(null);
-      setGuestName('Khách vãng lai');
+      setGuestName('');
       setGuestPhone('');
       setSelectedSlotId('');
       setPaymentType('DEPOSIT_30');
@@ -165,8 +165,12 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
 
     let hasError = false;
 
-    if (!guestName.trim()) {
-      setNameError('Vui lòng nhập tên khách hàng');
+    const trimmedName = guestName.trim();
+    if (!trimmedName) {
+      setNameError('Tên khách hàng không được để trống hoặc chỉ chứa khoảng trắng');
+      hasError = true;
+    } else if (trimmedName.length > 100) {
+      setNameError('Tên khách hàng tối đa 100 ký tự');
       hasError = true;
     } else {
       setNameError(null);
@@ -195,7 +199,7 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
       pitchId: Number(selectedPitchId),
       timeSlotId: Number(selectedSlotId),
       bookingDate,
-      guestName: guestName.trim(),
+      guestName: trimmedName,
       guestPhone: guestPhone.trim(),
       paidAmount,
       paymentType,
@@ -249,17 +253,11 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
               <input
                 type="text"
                 className="w-full"
-                placeholder="Nhập tên khách..."
+                placeholder="Nhập tên khách hàng..."
                 value={guestName}
                 onChange={(e) => {
                   setGuestName(e.target.value);
                   if (nameError) setNameError(null);
-                }}
-                onFocus={(e) => {
-                  if (e.target.value === 'Khách vãng lai') setGuestName('');
-                }}
-                onBlur={(e) => {
-                  if (e.target.value.trim() === '') setGuestName('Khách vãng lai');
                 }}
                 style={{
                   padding: '0.6rem 1rem',
