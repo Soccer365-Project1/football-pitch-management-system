@@ -5,7 +5,7 @@ import { adminBookingService } from '../../../services/adminBookingService';
 import { pitchService } from '../../../services/pitchService';
 import type { Pitch, TimeSlot, ScheduleGridResponse } from '../../../types/pitch';
 import type { PaymentMethodCode, PaymentType, CounterBookingCreationPayload } from '../../../types/adminBooking';
-import { formatPrice, formatDate } from '../../../utils/formatUtils';
+import { formatPrice } from '../../../utils/formatUtils';
 import { showToast } from '../../../utils/toast';
 
 export interface CounterBookingModalProps {
@@ -192,13 +192,13 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
     }
 
     if (!bookingDate) {
-      setDateError('Vui lòng chọn ngày đá');
+      setDateError('Vui lòng chọn ngày đặt sân');
       hasError = true;
     } else if (bookingDate < todayStr) {
-      setDateError('Ngày đá không được ở trong quá khứ');
+      setDateError('Ngày đặt sân không được ở trong quá khứ');
       hasError = true;
     } else if (bookingDate > maxDateStr) {
-      setDateError(`Ngày đá không hợp lệ (ngày không được lớn hơn ${formatDate(maxDateStr)})`);
+      setDateError('Ngày đặt sân không hợp lệ (không được vượt quá 30 ngày kể từ hôm nay)');
       hasError = true;
     } else {
       setDateError(null);
@@ -354,11 +354,11 @@ export const CounterBookingModal: React.FC<CounterBookingModalProps> = ({
                     const val = e.target.value;
                     setBookingDate(val);
                     if (!val) {
-                      setDateError('Vui lòng chọn ngày đá');
+                      setDateError('Vui lòng chọn ngày đặt sân');
                     } else if (val < todayStr) {
-                      setDateError('Ngày đá không được ở trong quá khứ');
+                      setDateError('Ngày đặt sân không được ở trong quá khứ');
                     } else if (val > maxDateStr) {
-                      setDateError(`Ngày đá không hợp lệ (ngày không được lớn hơn ${formatDate(maxDateStr)})`);
+                      setDateError('Ngày đặt sân không hợp lệ (không được vượt quá 30 ngày kể từ hôm nay)');
                     } else {
                       setDateError(null);
                     }
