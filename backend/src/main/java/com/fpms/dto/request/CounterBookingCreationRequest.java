@@ -1,5 +1,6 @@
 package com.fpms.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fpms.entity.enums.PaymentMethodCode;
 import com.fpms.entity.enums.PaymentType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,6 +49,7 @@ public class CounterBookingCreationRequest {
     @Schema(description = "Ghi chú của khách hàng khi đặt sân", example = "Chuẩn bị bóng thi đấu tiêu chuẩn số 5")
     private String customerNote;
 
+    @JsonAlias({"depositAmount", "paidAmount"})
     @DecimalMin(value = "0.0", message = "PAID_AMOUNT_INVALID")
     @Schema(description = "Số tiền khách thanh toán trước tại quầy (tùy chọn nếu không dùng paymentType)", example = "300000")
     private BigDecimal paidAmount;

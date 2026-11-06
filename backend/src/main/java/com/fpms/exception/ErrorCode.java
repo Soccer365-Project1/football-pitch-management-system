@@ -118,7 +118,7 @@ public enum ErrorCode {
     ADDITIONAL_FEE_INVALID(3059, HttpStatus.BAD_REQUEST, "Phụ phí phát sinh không hợp lệ, phải là số không âm"),
     BOOKING_ALREADY_CANCELLED_OR_COMPLETED(3060, HttpStatus.BAD_REQUEST, "Không thể thao tác trên đơn đã bị hủy hoặc đã hoàn thành"),
     BOOKING_CANCEL_REASON_LENGTH_INVALID(3061, HttpStatus.BAD_REQUEST, "Lý do hủy đơn phải từ 5 đến 500 ký tự"),
-    PAID_AMOUNT_EXCEEDS_TOTAL(3062, HttpStatus.BAD_REQUEST, "Số tiền thanh toán vượt quá tổng giá trị đơn đặt sân"),
+    PAID_AMOUNT_EXCEEDS_TOTAL(3062, HttpStatus.BAD_REQUEST, "Số tiền cọc không được vượt quá giá trị ca đá"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc"),
