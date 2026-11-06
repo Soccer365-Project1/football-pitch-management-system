@@ -23,15 +23,6 @@ export const useAdminTimeline = (date: string, pitchTypeId?: string | number) =>
   });
 };
 
-export const useApproveBooking = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (bookingId: number) => bookingService.approveBooking(bookingId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
-    },
-  });
-};
 
 export const useCheckInBooking = () => {
   const queryClient = useQueryClient();

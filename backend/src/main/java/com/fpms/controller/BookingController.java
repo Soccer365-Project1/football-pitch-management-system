@@ -137,17 +137,6 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin ca đá thành công", response));
     }
 
-    @Operation(summary = "Duyệt đơn đặt sân", description = "Chuyển trạng thái từ Chờ duyệt sang Đã xác nhận")
-    @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    @PutMapping("/admin/{id}/approve")
-    public ResponseEntity<ApiResponse<BookingResponse>> approveBooking(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal userPrincipal
-    ) {
-        BookingResponse response = bookingService.approveBooking(id, userPrincipal);
-        return ResponseEntity.ok(ApiResponse.success("Duyệt đơn đặt sân thành công", response));
-    }
 
     @Operation(summary = "Nhận sân (Check-in)", description = "Chuyển trạng thái từ Đã xác nhận sang Đang sử dụng khi giờ hiện tại >= giờ bắt đầu ca đá")
     @SecurityRequirement(name = "BearerAuth")

@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 import { useScheduleWebSocket } from '../../hooks/useScheduleWebSocket.ts';
 import { usePitches, useTimeSlots, usePitchTypes } from '../../hooks/queries/usePitchQueries.ts';
-import { useAdminTimeline, useApproveBooking, useCheckInBooking, useCheckOutBooking } from '../../hooks/queries/useBookingQueries.ts';
+import { useAdminTimeline, useCheckInBooking, useCheckOutBooking } from '../../hooks/queries/useBookingQueries.ts';
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
-import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot } from '../../components/admin/timeline/index.ts';
+import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot, isSlotPastEndTime } from '../../components/admin/timeline/index.ts';
 import { showToast, showAlert, showConfirm } from '../../utils/toast.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -71,7 +71,6 @@ const AdminTimeline: React.FC = () => {
   const loading = isLoadingPitches || isLoadingTimeline;
 
   // 3. Mutations: Duyệt đơn & Nhận sân (Check-in)
-  const approveMutation = useApproveBooking();
   const checkInMutation = useCheckInBooking();
   const checkOutMutation = useCheckOutBooking();
 
@@ -92,22 +91,12 @@ const AdminTimeline: React.FC = () => {
     }
   };
 
-  const handleApprove = async (bookingId: number) => {
-    try {
-      await approveMutation.mutateAsync(bookingId);
-      showToast('Duyệt đơn đặt sân thành công!', 'success');
-      setDetailSlot(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Không thể duyệt đơn đặt sân';
-      showToast(msg, 'error');
-    }
-  };
 
   const handleCheckIn = async (slot: AdminTimelineSlotResponse) => {
     if (!slot.bookingId) return;
 
     // 1. Kiểm tra điều kiện thời gian (>= startTime và đúng ngày)
-    const check = canCheckInSlot(slot);
+    const check = canCheckInSlot(slot, selectedDate);
     if (!check.canCheckIn) {
       showAlert('Không thể nhận sân', check.reason || 'Chưa đủ điều kiện nhận sân', 'warning');
       return;
@@ -275,17 +264,38 @@ const AdminTimeline: React.FC = () => {
                               )}
 
                               {/* 3. Đã xác nhận -> HIỆN NÚT CHECK-IN "Nhận sân" */}
-                              {status === 'CONFIRMED' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCheckIn(slotData!)}
-                                  className="timeline-btn-checkin"
-                                  title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã xác nhận. Bấm để nhận sân`}
-                                >
-                                  <Play size={11} className="fill-current" />
-                                  <span>Nhận sân</span>
-                                </button>
-                              )}
+                              {status === 'CONFIRMED' && (() => {
+                                const isPast = isSlotPastEndTime(slotData, selectedDate, slot.endTime, slot.startTime);
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={isPast}
+                                    onClick={isPast ? undefined : () => handleCheckIn(slotData!)}
+                                    className={`timeline-btn-checkin ${isPast ? 'timeline-btn-disabled' : ''}`}
+                                    style={
+                                      isPast
+                                        ? {
+                                            backgroundColor: '#94a3b8',
+                                            backgroundImage: 'none',
+                                            color: '#f8fafc',
+                                            cursor: 'not-allowed',
+                                            opacity: 0.65,
+                                            border: 'none',
+                                            boxShadow: 'none',
+                                          }
+                                        : undefined
+                                    }
+                                    title={
+                                      isPast
+                                        ? `Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã quá giờ kết thúc ca đá (${(slotData?.endTime || slot.endTime)?.substring(0, 5)}). Không thể nhận sân`
+                                        : `Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đã xác nhận. Bấm để nhận sân`
+                                    }
+                                  >
+                                    <Play size={11} className="fill-current" />
+                                    <span>Nhận sân</span>
+                                  </button>
+                                );
+                              })()}
 
                               {/* 4. Đang sử dụng sân (IN_PROGRESS) -> HIỆN NÚT CHECK-OUT "Trả sân" */}
                               {status === 'IN_PROGRESS' && (
@@ -317,7 +327,7 @@ const AdminTimeline: React.FC = () => {
                                 <div
                                   className="timeline-badge-waiting"
                                   onClick={() => setDetailSlot(slotData || null)}
-                                  title="Đơn đang chờ duyệt. Bấm để duyệt đơn"
+                                  title="Đơn đang chờ duyệt. Bấm để xem chi tiết"
                                 >
                                   Chờ duyệt
                                 </div>
@@ -359,9 +369,7 @@ const AdminTimeline: React.FC = () => {
         <TimelineDetailModal
           slot={detailSlot}
           onClose={() => setDetailSlot(null)}
-          onApprove={handleApprove}
           onCheckIn={handleCheckIn}
-          isApproving={approveMutation.isPending}
           isCheckingIn={checkInMutation.isPending}
           onOpenCheckOut={(slot) => {
             setDetailSlot(null);

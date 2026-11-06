@@ -1,5 +1,6 @@
 package com.fpms.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,9 +23,16 @@ public class AdminTimelineSlotResponse {
     private String pitchName;
     private String pitchTypeName;
     private Long timeSlotId;
+
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime startTime;
+
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
+
     private String status; // AVAILABLE, CONFIRMED, IN_PROGRESS, WAITING_CANCELLATION, WAITING_APPROVAL, COMPLETED, MAINTENANCE, PENDING_HOLD
 
     // Thông tin chi tiết đơn đặt sân (nếu có)

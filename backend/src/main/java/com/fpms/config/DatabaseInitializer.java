@@ -31,5 +31,17 @@ public class DatabaseInitializer {
         } catch (Exception e) {
             log.warn("Could not create partial unique index (This is expected if not using PostgreSQL or if syntax differs): {}", e.getMessage());
         }
+
+        try {
+            // Partial unique index for payment_transactions:
+            // Mỗi booking chỉ được có tối đa 1 giao dịch REMAINING_70 ở trạng thái PENDING
+            String txnIndexSql = "CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_pending_remaining_booking " +
+                                 "ON payment_transactions (booking_id) " +
+                                 "WHERE payment_type = 'REMAINING_70' AND status = 'PENDING'";
+            jdbcTemplate.execute(txnIndexSql);
+            log.info("Partial unique index 'idx_unique_pending_remaining_booking' initialized successfully.");
+        } catch (Exception e) {
+            log.warn("Could not create partial unique index 'idx_unique_pending_remaining_booking': {}", e.getMessage());
+        }
     }
 }

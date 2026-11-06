@@ -99,6 +99,7 @@ public enum ErrorCode {
     INVALID_BOOKING_STATUS_FOR_CHECK_IN(3053, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận"),
     CHECK_IN_TIME_NOT_REACHED(3054, HttpStatus.BAD_REQUEST, "Chưa đến giờ nhận sân (giờ nhận sân phải từ giờ bắt đầu ca đá)"),
     BOOKING_DATE_NOT_TODAY(3055, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay"),
+    CHECK_IN_TIME_EXPIRED(3065, HttpStatus.BAD_REQUEST, "Ca đá đã kết thúc, không thể nhận sân"),
     INVALID_BOOKING_STATUS_FOR_CHECK_OUT(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể kết thúc và trả sân cho ca đá đang diễn ra (đang sử dụng)"),
     PAYMENT_METHOD_NOT_SUPPORTED_FOR_CHECKOUT(3057, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ thanh toán nốt bằng Tiền mặt (CASH) hoặc Chuyển khoản (BANK_TRANSFER)"),
     CHECKOUT_PAYMENT_METHOD_REQUIRED(3058, HttpStatus.BAD_REQUEST, "Vui lòng chọn hình thức thanh toán nốt"),

@@ -12,6 +12,8 @@ import com.fpms.entity.enums.BookingType;
 import com.fpms.entity.enums.DayType;
 import com.fpms.entity.enums.PitchStatus;
 import com.fpms.entity.enums.RoleName;
+import com.fpms.entity.enums.PaymentType;
+import com.fpms.entity.enums.TransactionStatus;
 import com.fpms.exception.AppException;
 import com.fpms.exception.ErrorCode;
 import com.fpms.mapper.BookingMapper;
@@ -59,6 +61,8 @@ class BookingServiceTest {
     private UserRepository userRepository;
     @Mock
     private PaymentMethodRepository paymentMethodRepository;
+    @Mock
+    private PaymentTransactionRepository paymentTransactionRepository;
     @Mock
     private PaymentTransactionService paymentTransactionService;
     @Mock
@@ -761,5 +765,177 @@ class BookingServiceTest {
                 bookingService.payRemainingBooking(99L, userPrincipal, httpRequest)
         );
         assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("payRemainingBooking - Tái sử dụng phiên PENDING cũ khi thời gian còn lại > 2 phút")
+    void payRemainingBooking_ReusesExistingPendingTransaction_WhenTimeRemains() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B999")
+                .status(BookingStatus.IN_PROGRESS)
+                .depositAmount(BigDecimal.valueOf(90000))
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .customer(user)
+                .build();
+        booking.setId(99L);
+
+        PaymentMethod vnpayMethod = PaymentMethod.builder()
+                .code(com.fpms.entity.enums.PaymentMethodCode.VNPAY)
+                .name("VNPAY")
+                .isMaintenance(false)
+                .build();
+
+        PaymentTransaction existingPendingTxn = PaymentTransaction.builder()
+                .transactionCode("TXN_EXISTING_PENDING")
+                .booking(booking)
+                .paymentMethod(vnpayMethod)
+                .amount(BigDecimal.valueOf(210000))
+                .paymentType(PaymentType.REMAINING_70)
+                .status(TransactionStatus.PENDING)
+                .createdAt(LocalDateTime.now().minusMinutes(5)) // Còn lại 10 phút (> 2 phút)
+                .build();
+
+        when(bookingRepository.findById(99L)).thenReturn(Optional.of(booking));
+        when(paymentMethodRepository.findByCode(com.fpms.entity.enums.PaymentMethodCode.VNPAY))
+                .thenReturn(Optional.of(vnpayMethod));
+        when(paymentTransactionRepository.findFirstByBookingIdAndPaymentTypeAndStatusOrderByCreatedAtDesc(
+                99L, PaymentType.REMAINING_70, TransactionStatus.PENDING))
+                .thenReturn(Optional.of(existingPendingTxn));
+
+        when(vnPayConfig.getVersion()).thenReturn("2.1.0");
+        when(vnPayConfig.getCommand()).thenReturn("pay");
+        when(vnPayConfig.getTmnCode()).thenReturn("TMNTEST");
+        when(vnPayConfig.getReturnUrl()).thenReturn("http://localhost:5173/payment-result");
+        when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+        when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        httpRequest.setRemoteAddr("127.0.0.1");
+
+        com.fpms.dto.response.BookingDepositResponse response =
+                bookingService.payRemainingBooking(99L, userPrincipal, httpRequest);
+
+        assertNotNull(response);
+        assertEquals("#B999", response.getBookingCode());
+        assertTrue(response.getPaymentUrl().contains("vnp_TxnRef=TXN_EXISTING_PENDING"));
+        // Không tạo mới transaction
+        verify(paymentTransactionService, never()).createTransaction(any(TransactionRequest.class));
+    }
+
+    @Test
+    @DisplayName("payRemainingBooking - Hủy phiên PENDING cũ và tạo mới khi thời gian còn lại <= 2 phút")
+    void payRemainingBooking_CancelsOldPendingAndCreatesNew_WhenTimeExpiredOrNearExpiration() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B999")
+                .status(BookingStatus.IN_PROGRESS)
+                .depositAmount(BigDecimal.valueOf(90000))
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .customer(user)
+                .build();
+        booking.setId(99L);
+
+        PaymentMethod vnpayMethod = PaymentMethod.builder()
+                .code(com.fpms.entity.enums.PaymentMethodCode.VNPAY)
+                .name("VNPAY")
+                .isMaintenance(false)
+                .build();
+
+        PaymentTransaction oldPendingTxn = PaymentTransaction.builder()
+                .transactionCode("TXN_OLD_PENDING")
+                .booking(booking)
+                .paymentMethod(vnpayMethod)
+                .amount(BigDecimal.valueOf(210000))
+                .paymentType(PaymentType.REMAINING_70)
+                .status(TransactionStatus.PENDING)
+                .createdAt(LocalDateTime.now().minusMinutes(14)) // Chỉ còn 1 phút (<= 2 phút)
+                .build();
+
+        PaymentTransaction newTxn = PaymentTransaction.builder()
+                .transactionCode("TXN_NEW_FRESH")
+                .build();
+
+        when(bookingRepository.findById(99L)).thenReturn(Optional.of(booking));
+        when(paymentMethodRepository.findByCode(com.fpms.entity.enums.PaymentMethodCode.VNPAY))
+                .thenReturn(Optional.of(vnpayMethod));
+        when(paymentTransactionRepository.findFirstByBookingIdAndPaymentTypeAndStatusOrderByCreatedAtDesc(
+                99L, PaymentType.REMAINING_70, TransactionStatus.PENDING))
+                .thenReturn(Optional.of(oldPendingTxn));
+        when(paymentTransactionService.createTransaction(any(TransactionRequest.class)))
+                .thenReturn(newTxn);
+
+        when(vnPayConfig.getVersion()).thenReturn("2.1.0");
+        when(vnPayConfig.getCommand()).thenReturn("pay");
+        when(vnPayConfig.getTmnCode()).thenReturn("TMNTEST");
+        when(vnPayConfig.getReturnUrl()).thenReturn("http://localhost:5173/payment-result");
+        when(vnPayConfig.getPayUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+        when(vnPayConfig.getHashSecret()).thenReturn("HASHSECRET123");
+
+        org.springframework.mock.web.MockHttpServletRequest httpRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        httpRequest.setRemoteAddr("127.0.0.1");
+
+        com.fpms.dto.response.BookingDepositResponse response =
+                bookingService.payRemainingBooking(99L, userPrincipal, httpRequest);
+
+        assertNotNull(response);
+        assertEquals("#B999", response.getBookingCode());
+        // Phiên cũ bị hủy
+        assertEquals(TransactionStatus.FAILED, oldPendingTxn.getStatus());
+        verify(paymentTransactionRepository, times(1)).save(oldPendingTxn);
+        // Tạo phiên mới toanh
+        verify(paymentTransactionService, times(1)).createTransaction(any(TransactionRequest.class));
+        assertTrue(response.getPaymentUrl().contains("vnp_TxnRef=TXN_NEW_FRESH"));
+    }
+
+    @Test
+    @DisplayName("checkInBooking - Thất bại khi thời gian hiện tại đã qua endTime ca đá")
+    void checkInBooking_Fails_WhenPastEndTime() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B100")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now())
+                .startTimeSnapshot(LocalTime.now().minusHours(2))
+                .endTimeSnapshot(LocalTime.now().minusHours(1))
+                .customer(user)
+                .build();
+        booking.setId(100L);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        AppException ex = assertThrows(AppException.class, () ->
+                bookingService.checkInBooking(100L, userPrincipal)
+        );
+
+        assertEquals(ErrorCode.CHECK_IN_TIME_EXPIRED, ex.getErrorCode());
+        assertEquals("Ca đá đã kết thúc, không thể nhận sân", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkInBooking - Thành công khi thời gian hiện tại nằm trong khung giờ ca đá")
+    void checkInBooking_Success_WhenWithinTime() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B101")
+                .status(BookingStatus.CONFIRMED)
+                .bookingDate(LocalDate.now())
+                .startTimeSnapshot(LocalTime.now().minusMinutes(10))
+                .endTimeSnapshot(LocalTime.now().plusHours(1))
+                .pitch(pitch)
+                .timeSlot(timeSlot)
+                .customer(user)
+                .build();
+        booking.setId(101L);
+
+        when(bookingRepository.findById(101L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.fpms.dto.response.BookingResponse mockRes = new com.fpms.dto.response.BookingResponse();
+        mockRes.setStatus(BookingStatus.IN_PROGRESS);
+        when(bookingMapper.toBookingResponse(any(Booking.class))).thenReturn(mockRes);
+
+        com.fpms.dto.response.BookingResponse response = bookingService.checkInBooking(101L, userPrincipal);
+
+        assertNotNull(response);
+        assertEquals(BookingStatus.IN_PROGRESS, response.getStatus());
+        assertEquals(BookingStatus.IN_PROGRESS, booking.getStatus());
+        verify(bookingRepository, times(1)).save(booking);
     }
 }

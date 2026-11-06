@@ -624,44 +624,6 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
-    @Override
-    @Transactional
-    public BookingResponse approveBooking(Long bookingId, UserPrincipal currentUser) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
-
-        if (booking.getStatus() != BookingStatus.WAITING_APPROVAL) {
-            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_APPROVAL);
-        }
-
-        if (currentUser != null && currentUser.getId() != null) {
-            userRepository.findById(currentUser.getId()).ifPresent(booking::setStaff);
-        }
-
-        booking.setStatus(BookingStatus.CONFIRMED);
-        booking = bookingRepository.save(booking);
-
-        BookingEventDto event = BookingEventDto.builder()
-                .action("BOOKING_CONFIRMED")
-                .pitchId(booking.getPitch().getId())
-                .timeSlotId(booking.getTimeSlot().getId())
-                .date(booking.getBookingDate().toString())
-                .status(BookingStatus.CONFIRMED.name())
-                .build();
-
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    messagingTemplate.convertAndSend("/topic/schedule", event);
-                }
-            });
-        } else {
-            messagingTemplate.convertAndSend("/topic/schedule", event);
-        }
-
-        return bookingMapper.toBookingResponse(booking);
-    }
 
     @Override
     @Transactional
@@ -681,6 +643,21 @@ public class BookingServiceImpl implements BookingService {
         LocalTime now = LocalTime.now();
         if (now.isBefore(booking.getStartTimeSnapshot())) {
             throw new AppException(ErrorCode.CHECK_IN_TIME_NOT_REACHED);
+        }
+
+        LocalTime startTime = booking.getStartTimeSnapshot();
+        LocalTime endTime = booking.getEndTimeSnapshot();
+        if (endTime != null) {
+            boolean isPastEnd;
+            if (startTime != null && endTime.isBefore(startTime)) {
+                // Ca đá vắt qua đêm (kết thúc vào rạng sáng hôm sau)
+                isPastEnd = false;
+            } else {
+                isPastEnd = now.isAfter(endTime);
+            }
+            if (isPastEnd) {
+                throw new AppException(ErrorCode.CHECK_IN_TIME_EXPIRED);
+            }
         }
 
         if (currentUser != null && currentUser.getId() != null) {
@@ -807,29 +784,72 @@ public class BookingServiceImpl implements BookingService {
         PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
 
-        PaymentTransaction transaction = paymentTransactionService.createTransaction(
-                TransactionRequest.builder()
-                        .booking(booking)
-                        .paymentMethod(vnpayMethod)
-                        .amount(remainingAmount)
-                        .paymentType(PaymentType.REMAINING_70)
-                        .status(TransactionStatus.PENDING)
-                        .processedBy(null)
-                        .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
-                        .build()
-        );
+        // Kiểm tra xem đơn đã có giao dịch REMAINING_70 đang ở trạng thái PENDING chưa
+        Optional<PaymentTransaction> pendingTxnOpt = paymentTransactionRepository
+                .findFirstByBookingIdAndPaymentTypeAndStatusOrderByCreatedAtDesc(
+                        booking.getId(),
+                        PaymentType.REMAINING_70,
+                        TransactionStatus.PENDING
+                );
+
+        PaymentTransaction transaction;
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDateTime expireTime;
+
+        if (pendingTxnOpt.isPresent()) {
+            PaymentTransaction existingTxn = pendingTxnOpt.get();
+            LocalDateTime originalCreatedAt = existingTxn.getCreatedAt() != null ? existingTxn.getCreatedAt() : now;
+            LocalDateTime originalExpireTime = originalCreatedAt.plusMinutes(15);
+
+            // Nếu phiên cũ còn trên 2 phút hiệu lực -> Tái sử dụng phiên cũ, giữ nguyên mốc hết hạn gốc
+            if (now.isBefore(originalExpireTime.minusMinutes(2))) {
+                transaction = existingTxn;
+                expireTime = originalExpireTime;
+            } else {
+                // Phiên cũ đã hết hạn hoặc cận kề hết hạn (<= 2 phút) -> Đánh dấu FAILED và tạo phiên mới 15 phút
+                existingTxn.setStatus(TransactionStatus.FAILED);
+                String oldNote = existingTxn.getNote() != null ? existingTxn.getNote() : "";
+                existingTxn.setNote((oldNote + " [Hủy do hết hạn thanh toán]").trim());
+                paymentTransactionRepository.save(existingTxn);
+
+                transaction = paymentTransactionService.createTransaction(
+                        TransactionRequest.builder()
+                                .booking(booking)
+                                .paymentMethod(vnpayMethod)
+                                .amount(remainingAmount)
+                                .paymentType(PaymentType.REMAINING_70)
+                                .status(TransactionStatus.PENDING)
+                                .processedBy(null)
+                                .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                                .build()
+                );
+                expireTime = now.plusMinutes(15);
+            }
+        } else {
+            transaction = paymentTransactionService.createTransaction(
+                    TransactionRequest.builder()
+                            .booking(booking)
+                            .paymentMethod(vnpayMethod)
+                            .amount(remainingAmount)
+                            .paymentType(PaymentType.REMAINING_70)
+                            .status(TransactionStatus.PENDING)
+                            .processedBy(null)
+                            .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                            .build()
+            );
+            expireTime = now.plusMinutes(15);
+        }
+
         String txnCode = transaction.getTransactionCode();
 
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         String paymentUrl = buildVNPayUrl(
                 booking,
                 txnCode,
                 remainingAmount,
                 "Thanh toan not 70% don " + booking.getBookingCode(),
-                now.plusMinutes(15),
+                expireTime,
                 httpRequest
         );
-
         return BookingDepositResponse.builder()
                 .bookingCode(booking.getBookingCode())
                 .bookingId(booking.getId())
