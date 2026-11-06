@@ -64,6 +64,7 @@ public enum ErrorCode {
     BOOKING_GUEST_PHONE_INVALID(3991, HttpStatus.BAD_REQUEST, "Số điện thoại không đúng định dạng"),
     BOOKING_TIME_SLOT_ALREADY_BOOKED(3990, HttpStatus.BAD_REQUEST, "Ca đá này đã có người đặt, vui lòng chọn khung giờ khác"),
     TIME_SLOT_ALREADY_PASSED(3989, HttpStatus.BAD_REQUEST, "Ca đá này đã kết thúc, vui lòng chọn ca khác"),
+    BOOKING_DATE_EXCEEDS_LIMIT(3987, HttpStatus.BAD_REQUEST, "Ngày đặt sân không hợp lệ (không được vượt quá 30 ngày kể từ hôm nay)"),
 
     // Holiday Error Codes (3020 - 3029)
     HOLIDAY_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin ngày lễ"),
