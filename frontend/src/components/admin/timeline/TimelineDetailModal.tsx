@@ -184,11 +184,11 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
                 {getStatusLabel(slot.status)}
               </span>
             </div>
-            {slot.guestName && (
+            {(slot.guestName || slot.bookingId) && (
               <div className="timeline-modal-row">
                 <span className="timeline-modal-label">Khách hàng:</span>
                 <span className="timeline-modal-val">
-                  {slot.guestName} {slot.guestPhone ? `(${slot.guestPhone})` : ''}
+                  {slot.guestName || 'Khách vãng lai'} {slot.guestPhone ? `(${slot.guestPhone})` : ''}
                 </span>
               </div>
             )}
@@ -281,13 +281,13 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
               style={
                 !checkInCheck.canCheckIn
                   ? {
-                      backgroundColor: '#94a3b8',
-                      backgroundImage: 'none',
-                      color: '#ffffff',
-                      cursor: 'not-allowed',
-                      opacity: 0.65,
-                      boxShadow: 'none',
-                    }
+                    backgroundColor: '#94a3b8',
+                    backgroundImage: 'none',
+                    color: '#ffffff',
+                    cursor: 'not-allowed',
+                    opacity: 0.65,
+                    boxShadow: 'none',
+                  }
                   : undefined
               }
               title={!checkInCheck.canCheckIn ? checkInCheck.reason : 'Xác nhận nhận sân'}

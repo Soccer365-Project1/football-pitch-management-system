@@ -13,7 +13,7 @@ import { useAdminTimeline, useCheckInBooking, useCheckOutBooking } from '../../h
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
 import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot, isSlotPastEndTime } from '../../components/admin/timeline/index.ts';
-import { showToast, showAlert, showConfirm } from '../../utils/toast.ts';
+import { showToast, showAlert, showConfirmHtml } from '../../utils/toast.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
   return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -102,11 +102,50 @@ const AdminTimeline: React.FC = () => {
       return;
     }
 
-    // 2. Xác nhận nhận sân
-    const confirmed = await showConfirm(
+    // 2. Xác nhận nhận sân với đầy đủ thông tin khách hàng để nhân viên đối chiếu
+    const guestName = slot.guestName || 'Khách vãng lai';
+    const guestPhone = slot.guestPhone || 'Chưa cập nhật SĐT';
+    const bookingCode = slot.bookingCode || `#${slot.bookingId}`;
+    const slotTime = `${slot.startTime?.substring(0, 5)} - ${slot.endTime?.substring(0, 5)}`;
+
+    const checkInHtml = `
+      <div style="text-align: left; font-size: 14px; margin-top: 10px;">
+        <p class="swal-checkin-text-muted" style="color: #475569; margin-bottom: 12px; font-size: 13.5px; text-align: center;">
+          Vui lòng đối chiếu thông tin khách hàng trước khi bàn giao sân:
+        </p>
+        <div class="swal-checkin-info-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; line-height: 1.6;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #e2e8f0;">
+            <span class="swal-checkin-text-muted" style="color: #64748b; font-size: 13px;">Khách hàng:</span>
+            <span class="swal-checkin-guest-name" style="font-weight: 700; color: #0f172a; font-size: 15px;">${guestName}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #e2e8f0;">
+            <span class="swal-checkin-text-muted" style="color: #64748b; font-size: 13px;">Số điện thoại:</span>
+            <span style="font-weight: 700; color: #2563eb; font-size: 14px;">${guestPhone}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="swal-checkin-text-muted" style="color: #64748b; font-size: 13px;">Mã đặt sân:</span>
+            <span style="font-weight: 700; color: #0284c7; font-family: monospace;">${bookingCode}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="swal-checkin-text-muted" style="color: #64748b; font-size: 13px;">Sân nhận:</span>
+            <span style="font-weight: 600; color: #059669;">${slot.pitchName}${slot.pitchTypeName ? ` (${slot.pitchTypeName})` : ''}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="swal-checkin-text-muted" style="color: #64748b; font-size: 13px;">Ca đá:</span>
+            <span class="swal-checkin-time" style="font-weight: 600; color: #1e293b;">${slotTime}</span>
+          </div>
+        </div>
+        <div class="swal-checkin-text-muted" style="font-size: 13px; color: #64748b; text-align: center;">
+          Trạng thái ca đá sẽ chuyển sang <b style="color: #d97706;">Đang sử dụng</b>.
+        </div>
+      </div>
+    `;
+
+    const confirmed = await showConfirmHtml(
       'Xác nhận nhận sân?',
-      `Khách hàng sẽ nhận sân ${slot.pitchName} (ca ${slot.startTime?.substring(0, 5)} - ${slot.endTime?.substring(0, 5)}). Trạng thái chuyển thành Đang sử dụng.`,
-      'Xác nhận nhận sân'
+      checkInHtml,
+      'Xác nhận nhận sân',
+      '#6366f1'
     );
     if (!confirmed) return;
 

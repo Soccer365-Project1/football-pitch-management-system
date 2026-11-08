@@ -55,6 +55,29 @@ export const showConfirm = async (
     confirmButtonText: confirmText,
     cancelButtonText: 'Hủy'
   });
-  
+
+  return result.isConfirmed;
+};
+
+/**
+ * Show a confirmation modal with custom HTML content
+ */
+export const showConfirmHtml = async (
+  title: string,
+  html: string,
+  confirmText: string = 'Đồng ý',
+  confirmButtonColor: string = '#6366f1'
+): Promise<boolean> => {
+  const result = await Swal.fire({
+    title,
+    html,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor,
+    cancelButtonColor: '#64748b',
+    confirmButtonText: confirmText,
+    cancelButtonText: 'Hủy'
+  });
+
   return result.isConfirmed;
 };
