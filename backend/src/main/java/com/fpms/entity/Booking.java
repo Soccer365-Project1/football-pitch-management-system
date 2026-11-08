@@ -16,7 +16,14 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "bookings")
+@Table(
+    name = "bookings",
+    indexes = {
+        @Index(name = "idx_bookings_date_status", columnList = "booking_date, status, is_deleted"),
+        @Index(name = "idx_bookings_customer_date_status", columnList = "customer_id, booking_date, status"),
+        @Index(name = "idx_bookings_pitch_slot_date", columnList = "pitch_id, time_slot_id, booking_date, status")
+    }
+)
 public class Booking extends BaseEntity {
 
     @Column(name = "booking_code", length = 30, nullable = false, unique = true)
