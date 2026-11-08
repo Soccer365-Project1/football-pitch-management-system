@@ -50,24 +50,18 @@ class AdminReportServiceTest {
         LocalDate prevStartDate = LocalDate.of(2026, 8, 10);
         LocalDate prevEndDate = LocalDate.of(2026, 8, 16);
 
-        // Doanh thu
-        when(bookingRepository.sumRevenueBetweenDates(startDate, endDate))
-                .thenReturn(BigDecimal.valueOf(10000000));
-        when(bookingRepository.sumRevenueBetweenDates(prevStartDate, prevEndDate))
-                .thenReturn(BigDecimal.valueOf(8000000));
-
-        // Trạng thái đơn kỳ này: 8 COMPLETED, 2 CANCELLED -> Tổng 10 đơn
+        // Trạng thái đơn và doanh thu kỳ này (Single-pass Aggregate): 8 COMPLETED (10tr), 2 CANCELLED -> Tổng 10 đơn
         List<Object[]> currentStatusRows = new ArrayList<>();
-        currentStatusRows.add(new Object[]{BookingStatus.COMPLETED, 8L});
-        currentStatusRows.add(new Object[]{BookingStatus.CANCELLED, 2L});
-        when(bookingRepository.countBookingsByStatusBetweenDates(startDate, endDate))
+        currentStatusRows.add(new Object[]{BookingStatus.COMPLETED, 8L, BigDecimal.valueOf(10000000)});
+        currentStatusRows.add(new Object[]{BookingStatus.CANCELLED, 2L, BigDecimal.ZERO});
+        when(bookingRepository.getBookingStatsByStatusBetweenDates(startDate, endDate))
                 .thenReturn(currentStatusRows);
 
-        // Trạng thái đơn kỳ trước: 9 COMPLETED, 1 CANCELLED -> Tổng 10 đơn
+        // Trạng thái đơn và doanh thu kỳ trước: 9 COMPLETED (8tr), 1 CANCELLED -> Tổng 10 đơn
         List<Object[]> prevStatusRows = new ArrayList<>();
-        prevStatusRows.add(new Object[]{BookingStatus.COMPLETED, 9L});
-        prevStatusRows.add(new Object[]{BookingStatus.CANCELLED, 1L});
-        when(bookingRepository.countBookingsByStatusBetweenDates(prevStartDate, prevEndDate))
+        prevStatusRows.add(new Object[]{BookingStatus.COMPLETED, 9L, BigDecimal.valueOf(8000000)});
+        prevStatusRows.add(new Object[]{BookingStatus.CANCELLED, 1L, BigDecimal.ZERO});
+        when(bookingRepository.getBookingStatsByStatusBetweenDates(prevStartDate, prevEndDate))
                 .thenReturn(prevStatusRows);
 
         // Khách hàng mới
@@ -78,11 +72,8 @@ class AdminReportServiceTest {
         // Tỷ lệ khách quay lại
         when(bookingRepository.countDistinctCustomersBetweenDates(startDate, endDate))
                 .thenReturn(10L);
-        List<Object[]> repeatCustomerRows = new ArrayList<>();
-        repeatCustomerRows.add(new Object[]{101L, 3L});
-        repeatCustomerRows.add(new Object[]{102L, 2L});
-        when(bookingRepository.findRepeatCustomerIdsBetweenDates(startDate, endDate))
-                .thenReturn(repeatCustomerRows);
+        when(bookingRepository.countRepeatCustomersBetweenDates(startDate, endDate))
+                .thenReturn(2L);
 
         DashboardSummaryResponse response = adminReportService.getDashboardSummary(request);
 
