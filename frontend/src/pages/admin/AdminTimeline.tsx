@@ -13,7 +13,7 @@ import { useAdminTimeline, useCheckInBooking, useCheckOutBooking } from '../../h
 import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
 import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot, isSlotPastEndTime } from '../../components/admin/timeline/index.ts';
-import { showToast, showAlert, showConfirm, showConfirmHtml } from '../../utils/toast.ts';
+import { showToast, showAlert, showConfirmHtml } from '../../utils/toast.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
   return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
