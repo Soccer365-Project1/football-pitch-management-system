@@ -36,5 +36,6 @@ public class BookingCreationRequest {
     @Pattern(regexp = "^(0[35789])[0-9]{8}$", message = "BOOKING_GUEST_PHONE_INVALID")
     private String guestPhone;
 
+    @Size(max = 500, message = "BOOKING_CUSTOMER_NOTE_TOO_LONG")
     private String customerNote;
 }

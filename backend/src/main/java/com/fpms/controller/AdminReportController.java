@@ -3,14 +3,19 @@ package com.fpms.controller;
 import com.fpms.common.response.ApiResponse;
 import com.fpms.dto.request.ReportFilterRequest;
 import com.fpms.dto.response.report.*;
+import com.fpms.security.UserPrincipal;
 import com.fpms.service.AdminReportService;
+import com.fpms.service.ExcelExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +29,7 @@ import java.util.List;
 public class AdminReportController {
 
     private final AdminReportService adminReportService;
+    private final ExcelExportService excelExportService;
 
     @Operation(summary = "Lấy dữ liệu 4 thẻ KPI Dashboard", description = "Tính toán Doanh thu, Tổng số đơn, Tỉ lệ hủy đơn và Lượt khách mới trong kỳ (kèm so sánh % với kỳ trước)")
     @GetMapping("/summary")
@@ -66,5 +72,23 @@ public class AdminReportController {
     public ResponseEntity<ApiResponse<UserStatisticResponse>> getUserStatistic() {
         UserStatisticResponse response = adminReportService.getUserStatistic();
         return ResponseEntity.ok(ApiResponse.success("Lấy thống kê người dùng thành công", response));
+    }
+
+    @Operation(summary = "Xuất file báo cáo Excel doanh thu & đơn đặt sân (SRS UC018.2)",
+               description = "Xuất file Excel .xlsx 2 sheet gồm Tổng quan KPI và Danh sách chi tiết đơn đặt sân")
+    @GetMapping("/export-excel")
+    public ResponseEntity<byte[]> exportReportExcel(
+            @Valid @ModelAttribute ReportFilterRequest filterRequest,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        byte[] excelData = excelExportService.exportRevenueReport(filterRequest, currentUser);
+        String fileName = String.format("BaoCao_DoanhThu_FPMS_%s_%s.xlsx",
+                filterRequest.getStartDate(), filterRequest.getEndDate());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excelData);
     }
 }

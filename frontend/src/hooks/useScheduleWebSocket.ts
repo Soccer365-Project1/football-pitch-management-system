@@ -24,6 +24,7 @@ export const useScheduleWebSocket = (selectedDate?: string) => {
           queryClient.invalidateQueries({ queryKey: ['scheduleGrid'] });
           queryClient.invalidateQueries({ queryKey: ['pitches'] });
           queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+          queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
         });
       },
       onStompError: (frame) => {

@@ -12,7 +12,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PublicPitchResponse {
+public class PublicPitchResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private Long id;
     private String name;
     private PitchTypeResponse pitchType;

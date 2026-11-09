@@ -123,6 +123,35 @@ export const bookingService = {
   repayBooking: async (id: number) => {
     const response = await api.post<ApiResponse<BookingDepositResponse>>(`/bookings/${id}/repay`);
     return response.data;
+  },
+
+  payRemainingBooking: async (id: number) => {
+    const response = await api.post<ApiResponse<BookingDepositResponse>>(`/bookings/${id}/pay-remaining`);
+    return response.data;
+  },
+
+  getAdminTimeline: async (date: string, pitchTypeId?: number | string) => {
+    const params: any = { date };
+    if (pitchTypeId && pitchTypeId !== 'all') {
+      params.pitchTypeId = pitchTypeId;
+    }
+    const response = await api.get<ApiResponse<import('../types/adminTimeline.ts').AdminTimelineResponse>>('/bookings/admin/timeline', { params });
+    return response.data?.data;
+  },
+
+  approveBooking: async (id: number) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/approve`);
+    return response.data;
+  },
+
+  checkInBooking: async (id: number) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/check-in`);
+    return response.data;
+  },
+
+  checkOutBooking: async (id: number, data: { paymentMethod: 'CASH' | 'BANK_TRANSFER'; note?: string }) => {
+    const response = await api.put<ApiResponse<BookingResponse>>(`/bookings/admin/${id}/check-out`, data);
+    return response.data;
   }
 };
 

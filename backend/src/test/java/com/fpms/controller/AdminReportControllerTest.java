@@ -3,7 +3,10 @@ package com.fpms.controller;
 import com.fpms.dto.request.ReportFilterRequest;
 import com.fpms.dto.response.report.*;
 import com.fpms.exception.GlobalExceptionHandler;
+import com.fpms.exception.AppException;
+import com.fpms.exception.ErrorCode;
 import com.fpms.service.AdminReportService;
+import com.fpms.service.ExcelExportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -22,8 +26,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class AdminReportControllerTest {
@@ -32,6 +35,9 @@ class AdminReportControllerTest {
 
     @Mock
     private AdminReportService adminReportService;
+
+    @Mock
+    private ExcelExportService excelExportService;
 
     @InjectMocks
     private AdminReportController adminReportController;
@@ -170,5 +176,34 @@ class AdminReportControllerTest {
         mockMvc.perform(get("/api/v1/admin/reports/summary")
                         .param("startDate", "2026-08-17")) // Thiếu endDate
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/admin/reports/export-excel: Thành công trả về file Excel nhị phân")
+    void exportReportExcel_Success() throws Exception {
+        byte[] mockBytes = new byte[]{0x50, 0x4B, 0x03, 0x04}; // PK zip header
+        when(excelExportService.exportRevenueReport(any(), any())).thenReturn(mockBytes);
+
+        mockMvc.perform(get("/api/v1/admin/reports/export-excel")
+                        .param("startDate", "2026-08-17")
+                        .param("endDate", "2026-08-23"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"BaoCao_DoanhThu_FPMS_2026-08-17_2026-08-23.xlsx\""))
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(content().bytes(mockBytes));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/admin/reports/export-excel: Không có dữ liệu trả về lỗi 400 và mã 5002 (Luồng 4a SRS)")
+    void exportReportExcel_EmptyData_Returns400() throws Exception {
+        when(excelExportService.exportRevenueReport(any(), any()))
+                .thenThrow(new AppException(ErrorCode.REPORT_DATA_EMPTY));
+
+        mockMvc.perform(get("/api/v1/admin/reports/export-excel")
+                        .param("startDate", "2026-08-17")
+                        .param("endDate", "2026-08-23"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(5002))
+                .andExpect(jsonPath("$.message").value("Không có dữ liệu để xuất báo cáo"));
     }
 }

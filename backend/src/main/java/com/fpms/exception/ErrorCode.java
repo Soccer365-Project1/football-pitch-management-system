@@ -64,6 +64,7 @@ public enum ErrorCode {
     BOOKING_GUEST_PHONE_INVALID(3991, HttpStatus.BAD_REQUEST, "Số điện thoại không đúng định dạng"),
     BOOKING_TIME_SLOT_ALREADY_BOOKED(3990, HttpStatus.BAD_REQUEST, "Ca đá này đã có người đặt, vui lòng chọn khung giờ khác"),
     TIME_SLOT_ALREADY_PASSED(3989, HttpStatus.BAD_REQUEST, "Ca đá này đã kết thúc, vui lòng chọn ca khác"),
+    BOOKING_DATE_EXCEEDS_LIMIT(3987, HttpStatus.BAD_REQUEST, "Ngày đặt sân không hợp lệ (không được vượt quá 30 ngày kể từ hôm nay)"),
 
     // Holiday Error Codes (3020 - 3029)
     HOLIDAY_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "Không tìm thấy thông tin ngày lễ"),
@@ -95,9 +96,35 @@ public enum ErrorCode {
     BOOKING_CANNOT_REPAY(3049, HttpStatus.BAD_REQUEST, "Chỉ có thể thanh toán lại cho đơn đặt sân đang chờ đặt cọc"),
     HOLDING_TIME_EXPIRED(3050, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ của đơn đặt sân đã hết hạn. Vui lòng đặt lại đơn mới"),
     HOLDING_TIME_TOO_SHORT(3051, HttpStatus.BAD_REQUEST, "Thời gian giữ chỗ còn lại dưới 2 phút không đủ để thanh toán. Đơn đặt sân đã được hủy, vui lòng chọn lại khung giờ mới"),
+    INVALID_BOOKING_STATUS_FOR_APPROVAL(3052, HttpStatus.BAD_REQUEST, "Chỉ có thể duyệt đơn đặt sân đang ở trạng thái chờ duyệt"),
+    INVALID_BOOKING_STATUS_FOR_CHECK_IN(3053, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận"),
+    CHECK_IN_TIME_NOT_REACHED(3054, HttpStatus.BAD_REQUEST, "Chưa đến giờ nhận sân (giờ nhận sân phải từ giờ bắt đầu ca đá)"),
+    BOOKING_DATE_NOT_TODAY(3055, HttpStatus.BAD_REQUEST, "Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay"),
+    CHECK_IN_TIME_EXPIRED(3065, HttpStatus.BAD_REQUEST, "Ca đá đã kết thúc, không thể nhận sân"),
+    INVALID_BOOKING_STATUS_FOR_CHECK_OUT(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể kết thúc và trả sân cho ca đá đang diễn ra (đang sử dụng)"),
+    PAYMENT_METHOD_NOT_SUPPORTED_FOR_CHECKOUT(3057, HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ thanh toán nốt bằng Tiền mặt (CASH) hoặc Chuyển khoản (BANK_TRANSFER)"),
+    CHECKOUT_PAYMENT_METHOD_REQUIRED(3058, HttpStatus.BAD_REQUEST, "Vui lòng chọn hình thức thanh toán nốt"),
+    CHECKOUT_NOTE_TOO_LONG(3059, HttpStatus.BAD_REQUEST, "Ghi chú trả sân không được vượt quá 500 ký tự"),
+    BOOKING_CUSTOMER_NOTE_TOO_LONG(3988, HttpStatus.BAD_REQUEST, "Ghi chú đặt sân không được vượt quá 500 ký tự"),
+    TRANSACTION_BOOKING_REQUIRED(3060, HttpStatus.BAD_REQUEST, "Thông tin đơn đặt sân của giao dịch không được để trống"),
+    TRANSACTION_AMOUNT_REQUIRED(3061, HttpStatus.BAD_REQUEST, "Số tiền giao dịch không được để trống"),
+    TRANSACTION_PAYMENT_TYPE_REQUIRED(3062, HttpStatus.BAD_REQUEST, "Loại thanh toán không được để trống"),
+    TRANSACTION_NOTE_TOO_LONG(3063, HttpStatus.BAD_REQUEST, "Ghi chú giao dịch không được vượt quá 1000 ký tự"),
+    INVALID_BOOKING_STATUS_FOR_PAY_REMAINING(3064, HttpStatus.BAD_REQUEST, "Chỉ có thể thanh toán nốt khi ca đá đang diễn ra (đang sử dụng)"),
+
+    // Booking Admin Management Error Codes (3056 - 3062)
+    BOOKING_NOT_WAITING_APPROVAL(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể duyệt đơn đặt sân ở trạng thái chờ duyệt"),
+    BOOKING_CANNOT_COLLECT_PAYMENT(3057, HttpStatus.BAD_REQUEST, "Chỉ có thể thu tiền và đóng ca cho đơn ở trạng thái đã xác nhận hoặc đang diễn ra"),
+    REFUND_METHOD_REQUIRED(3058, HttpStatus.BAD_REQUEST, "Vui lòng chọn phương thức hoàn tiền khi hủy đơn"),
+    ADDITIONAL_FEE_INVALID(3059, HttpStatus.BAD_REQUEST, "Phụ phí phát sinh không hợp lệ, phải là số không âm"),
+    BOOKING_ALREADY_CANCELLED_OR_COMPLETED(3060, HttpStatus.BAD_REQUEST, "Không thể thao tác trên đơn đã bị hủy hoặc đã hoàn thành"),
+    BOOKING_CANCEL_REASON_LENGTH_INVALID(3061, HttpStatus.BAD_REQUEST, "Lý do hủy đơn phải từ 5 đến 500 ký tự"),
+    PAID_AMOUNT_EXCEEDS_TOTAL(3062, HttpStatus.BAD_REQUEST, "Số tiền cọc không được vượt quá giá trị ca đá"),
 
     // Report & Analytics Error Codes (5000 - 5099)
-    INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
+    INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc"),
+    REPORT_DATA_EMPTY(5002, HttpStatus.BAD_REQUEST, "Không có dữ liệu để xuất báo cáo"),
+    EXCEL_EXPORT_FAILED(5003, HttpStatus.INTERNAL_SERVER_ERROR, "Xuất báo cáo thất bại. Vui lòng thử lại");
 
 
     private final int code;

@@ -11,7 +11,8 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Schema(description = "Thông tin bảng giá của một loại sân bóng")
-public class PitchTypePricingMatrixResponse {
+public class PitchTypePricingMatrixResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "ID loại sân", example = "1")
     private Long pitchTypeId;

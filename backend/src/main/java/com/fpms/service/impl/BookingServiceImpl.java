@@ -2,7 +2,10 @@ package com.fpms.service.impl;
 
 import com.fpms.dto.request.BookingCancelRequest;
 import com.fpms.dto.request.BookingCreationRequest;
+import com.fpms.dto.request.BookingCheckOutRequest;
+import com.fpms.dto.request.TransactionRequest;
 import com.fpms.dto.request.BookingSearchRequest;
+import com.fpms.service.PaymentTransactionService;
 import com.fpms.repository.specification.BookingSpecification;
 import org.springframework.data.jpa.domain.Specification;
 import com.fpms.dto.response.BookingEventDto;
@@ -76,6 +79,8 @@ public class BookingServiceImpl implements BookingService {
     private final VNPayConfig vnPayConfig;
     private final SimpMessagingTemplate messagingTemplate;
     private final BookingCancellationService bookingCancellationService;
+    private final BookingCancellationRepository bookingCancellationRepository;
+    private final PaymentTransactionService paymentTransactionService;
 
     private DayType determineDayType(LocalDate date) {
         if (holidayRepository.existsByHolidayDate(date)) {
@@ -105,6 +110,9 @@ public class BookingServiceImpl implements BookingService {
         java.time.LocalDate today = java.time.LocalDate.now();
         if (request.getBookingDate().isBefore(today)) {
             throw new AppException(ErrorCode.BOOKING_DATE_INVALID);
+        }
+        if (request.getBookingDate().isAfter(today.plusDays(30))) {
+            throw new AppException(ErrorCode.BOOKING_DATE_EXCEEDS_LIMIT);
         }
         if (request.getBookingDate().isEqual(today)) {
             if (timeSlot.getEndTime().isBefore(java.time.LocalTime.now())) {
@@ -209,18 +217,19 @@ public class BookingServiceImpl implements BookingService {
         PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
 
-        // 3. Khởi tạo PaymentTransaction PENDING
-        String txnCode = "TXN_" + System.currentTimeMillis() + "_" + booking.getId();
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .transactionCode(txnCode)
-                .booking(booking)
-                .paymentMethod(vnpayMethod)
-                .amount(booking.getDepositAmount())
-                .paymentType(PaymentType.DEPOSIT_30)
-                .status(TransactionStatus.PENDING)
-                .note("Đặt cọc 30% đơn " + booking.getBookingCode())
-                .build();
-        paymentTransactionRepository.save(transaction);
+        // 3. Khởi tạo PaymentTransaction PENDING qua PaymentTransactionService
+        PaymentTransaction transaction = paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethod(vnpayMethod)
+                        .amount(booking.getDepositAmount())
+                        .paymentType(PaymentType.DEPOSIT_30)
+                        .status(TransactionStatus.PENDING)
+                        .processedBy(null)
+                        .note("Đặt cọc 30% đơn " + booking.getBookingCode())
+                        .build()
+        );
+        String txnCode = transaction.getTransactionCode();
 
         // 4. Sinh URL thanh toán VNPAY (thời gian hết hạn đồng bộ theo holdExpiresAt của booking)
         String paymentUrl = buildVNPayUrl(booking, txnCode, httpRequest);
@@ -277,17 +286,18 @@ public class BookingServiceImpl implements BookingService {
         PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
 
-        String txnCode = "TXN_" + System.currentTimeMillis() + "_" + booking.getId();
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .transactionCode(txnCode)
-                .booking(booking)
-                .paymentMethod(vnpayMethod)
-                .amount(booking.getDepositAmount())
-                .paymentType(PaymentType.DEPOSIT_30)
-                .status(TransactionStatus.PENDING)
-                .note("Thanh toán lại cọc 30% đơn " + booking.getBookingCode())
-                .build();
-        paymentTransactionRepository.save(transaction);
+        PaymentTransaction transaction = paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethod(vnpayMethod)
+                        .amount(booking.getDepositAmount())
+                        .paymentType(PaymentType.DEPOSIT_30)
+                        .status(TransactionStatus.PENDING)
+                        .processedBy(null)
+                        .note("Thanh toán lại cọc 30% đơn " + booking.getBookingCode())
+                        .build()
+        );
+        String txnCode = transaction.getTransactionCode();
 
         String paymentUrl = buildVNPayUrl(booking, txnCode, httpRequest);
 
@@ -299,8 +309,15 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
-    private String buildVNPayUrl(Booking booking, String txnCode, HttpServletRequest httpRequest) {
-        long amountInVnpay = booking.getDepositAmount().multiply(BigDecimal.valueOf(100)).longValue();
+    private String buildVNPayUrl(
+            Booking booking,
+            String txnCode,
+            BigDecimal amount,
+            String orderInfo,
+            LocalDateTime expireTime,
+            HttpServletRequest httpRequest
+    ) {
+        long amountInVnpay = amount.multiply(BigDecimal.valueOf(100)).longValue();
         Map<String, String> vnpParams = new HashMap<>();
         vnpParams.put("vnp_Version", vnPayConfig.getVersion());
         vnpParams.put("vnp_Command", vnPayConfig.getCommand());
@@ -308,7 +325,7 @@ public class BookingServiceImpl implements BookingService {
         vnpParams.put("vnp_Amount", String.valueOf(amountInVnpay));
         vnpParams.put("vnp_CurrCode", "VND");
         vnpParams.put("vnp_TxnRef", txnCode);
-        vnpParams.put("vnp_OrderInfo", "Dat coc san bong don " + booking.getBookingCode());
+        vnpParams.put("vnp_OrderInfo", orderInfo);
         vnpParams.put("vnp_OrderType", "other");
         vnpParams.put("vnp_Locale", "vn");
         vnpParams.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
@@ -319,11 +336,10 @@ public class BookingServiceImpl implements BookingService {
         ZonedDateTime now = ZonedDateTime.now(vnZone);
         vnpParams.put("vnp_CreateDate", now.format(formatter));
 
-        LocalDateTime holdExpiresAt = booking.getHoldExpiresAt();
-        if (holdExpiresAt == null) {
-            holdExpiresAt = now.toLocalDateTime().plusMinutes(10);
+        if (expireTime == null) {
+            expireTime = now.toLocalDateTime().plusMinutes(15);
         }
-        ZonedDateTime expireZoned = holdExpiresAt.atZone(vnZone);
+        ZonedDateTime expireZoned = expireTime.atZone(vnZone);
         vnpParams.put("vnp_ExpireDate", expireZoned.format(formatter));
 
         List<String> fieldNames = new ArrayList<>(vnpParams.keySet());
@@ -347,6 +363,21 @@ public class BookingServiceImpl implements BookingService {
 
         String secureHash = VNPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
         return vnPayConfig.getPayUrl() + "?" + query.toString() + "&vnp_SecureHash=" + secureHash;
+    }
+
+    private String buildVNPayUrl(Booking booking, String txnCode, HttpServletRequest httpRequest) {
+        LocalDateTime holdExpiresAt = booking.getHoldExpiresAt();
+        if (holdExpiresAt == null) {
+            holdExpiresAt = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusMinutes(10);
+        }
+        return buildVNPayUrl(
+                booking,
+                txnCode,
+                booking.getDepositAmount(),
+                "Dat coc san bong don " + booking.getBookingCode(),
+                holdExpiresAt,
+                httpRequest
+        );
     }
 
     @Override
@@ -393,6 +424,10 @@ public class BookingServiceImpl implements BookingService {
         }
 
         BookingSearchRequest searchRequest = (request != null) ? request : new BookingSearchRequest();
+        if (searchRequest.getFromDate() != null && searchRequest.getToDate() != null
+                && searchRequest.getFromDate().isAfter(searchRequest.getToDate())) {
+            throw new AppException(ErrorCode.INVALID_DATE_RANGE);
+        }
         Specification<Booking> spec = BookingSpecification.filterMyBookings(searchRequest, currentUser.getId());
         Pageable pageable = searchRequest.toPageable("createdAt", Sort.Direction.DESC);
 
@@ -493,5 +528,337 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return bookingMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    public com.fpms.dto.response.AdminTimelineResponse getAdminTimeline(LocalDate date, Long pitchTypeId) {
+        if (date == null) {
+            date = LocalDate.now();
+        }
+
+        // 1. Lấy danh sách sân
+        List<com.fpms.entity.Pitch> pitches = pitchRepository.findAllByIsDeletedFalse();
+        if (pitchTypeId != null && pitchTypeId > 0) {
+            pitches = pitches.stream()
+                    .filter(p -> p.getPitchType() != null && p.getPitchType().getId().equals(pitchTypeId))
+                    .collect(Collectors.toList());
+        }
+
+        // 2. Lấy danh sách khung giờ hoạt động
+        List<com.fpms.entity.TimeSlot> timeSlots = timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc();
+
+        // 3. Lấy tất cả đơn đặt sân trong ngày
+        List<Booking> bookings = bookingRepository.findOccupyingBookings(date, pitchTypeId);
+        Map<String, Booking> bookingMap = new HashMap<>();
+        for (Booking b : bookings) {
+            if (b.getPitch() != null && b.getTimeSlot() != null) {
+                String key = b.getPitch().getId() + "_" + b.getTimeSlot().getId();
+                bookingMap.put(key, b);
+            }
+        }
+
+        List<com.fpms.dto.response.AdminTimelineSlotResponse> slotResponses = new ArrayList<>();
+
+        for (com.fpms.entity.Pitch pitch : pitches) {
+            for (com.fpms.entity.TimeSlot slot : timeSlots) {
+                String key = pitch.getId() + "_" + slot.getId();
+                Booking booking = bookingMap.get(key);
+
+                String status;
+                Long bookingId = null;
+                String bookingCode = null;
+                String guestName = null;
+                String guestPhone = null;
+                BigDecimal totalAmount = null;
+                BigDecimal depositAmount = null;
+                BigDecimal remainingAmount = null;
+                String customerNote = null;
+                String cancellationReason = null;
+
+                if (pitch.getStatus() == com.fpms.entity.enums.PitchStatus.MAINTENANCE || pitch.getStatus() == com.fpms.entity.enums.PitchStatus.INACTIVE) {
+                    status = "MAINTENANCE";
+                } else if (booking != null) {
+                    status = booking.getStatus().name();
+                    bookingId = booking.getId();
+                    bookingCode = booking.getBookingCode();
+                    guestName = booking.getGuestName();
+                    guestPhone = booking.getGuestPhone();
+                    totalAmount = booking.getTotalPitchAmount() != null
+                            ? booking.getTotalPitchAmount().add(booking.getAdditionalFee() != null ? booking.getAdditionalFee() : BigDecimal.ZERO)
+                            : BigDecimal.ZERO;
+                    depositAmount = booking.getDepositAmount();
+                    remainingAmount = booking.getRemainingAmount();
+                    customerNote = booking.getCustomerNote();
+
+                    if (booking.getStatus() == BookingStatus.WAITING_CANCELLATION) {
+                        cancellationReason = bookingCancellationRepository.findByBookingId(booking.getId())
+                                .map(com.fpms.entity.BookingCancellation::getReason)
+                                .orElse(null);
+                    }
+                } else {
+                    status = "AVAILABLE";
+                }
+
+                slotResponses.add(com.fpms.dto.response.AdminTimelineSlotResponse.builder()
+                        .pitchId(pitch.getId())
+                        .pitchName(pitch.getName())
+                        .pitchTypeName(pitch.getPitchType() != null ? pitch.getPitchType().getName() : "")
+                        .timeSlotId(slot.getId())
+                        .startTime(slot.getStartTime())
+                        .endTime(slot.getEndTime())
+                        .bookingDate(date)
+                        .status(status)
+                        .bookingId(bookingId)
+                        .bookingCode(bookingCode)
+                        .guestName(guestName)
+                        .guestPhone(guestPhone)
+                        .totalAmount(totalAmount)
+                        .depositAmount(depositAmount)
+                        .remainingAmount(remainingAmount)
+                        .customerNote(customerNote)
+                        .cancellationReason(cancellationReason)
+                        .build());
+            }
+        }
+
+        return com.fpms.dto.response.AdminTimelineResponse.builder()
+                .date(date)
+                .bookings(slotResponses)
+                .build();
+    }
+
+
+    @Override
+    @Transactional
+    public BookingResponse checkInBooking(Long bookingId, UserPrincipal currentUser) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_CHECK_IN);
+        }
+
+        LocalDate today = LocalDate.now();
+        if (!booking.getBookingDate().isEqual(today)) {
+            throw new AppException(ErrorCode.BOOKING_DATE_NOT_TODAY);
+        }
+
+        LocalTime now = LocalTime.now();
+        if (now.isBefore(booking.getStartTimeSnapshot())) {
+            throw new AppException(ErrorCode.CHECK_IN_TIME_NOT_REACHED);
+        }
+
+        LocalTime startTime = booking.getStartTimeSnapshot();
+        LocalTime endTime = booking.getEndTimeSnapshot();
+        if (endTime != null) {
+            boolean isPastEnd;
+            if (startTime != null && endTime.isBefore(startTime)) {
+                // Ca đá vắt qua đêm (kết thúc vào rạng sáng hôm sau)
+                isPastEnd = false;
+            } else {
+                isPastEnd = now.isAfter(endTime);
+            }
+            if (isPastEnd) {
+                throw new AppException(ErrorCode.CHECK_IN_TIME_EXPIRED);
+            }
+        }
+
+        if (currentUser != null && currentUser.getId() != null) {
+            userRepository.findById(currentUser.getId()).ifPresent(booking::setStaff);
+        }
+
+        booking.setStatus(BookingStatus.IN_PROGRESS);
+        booking = bookingRepository.save(booking);
+
+        BookingEventDto event = BookingEventDto.builder()
+                .action("BOOKING_CHECKED_IN")
+                .pitchId(booking.getPitch().getId())
+                .timeSlotId(booking.getTimeSlot().getId())
+                .date(booking.getBookingDate().toString())
+                .status(BookingStatus.IN_PROGRESS.name())
+                .build();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend("/topic/schedule", event);
+                }
+            });
+        } else {
+            messagingTemplate.convertAndSend("/topic/schedule", event);
+        }
+
+        return bookingMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse checkOutBooking(Long bookingId, BookingCheckOutRequest request, UserPrincipal currentUser) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getStatus() != BookingStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_CHECK_OUT);
+        }
+
+        if (request.getPaymentMethod() != PaymentMethodCode.CASH && request.getPaymentMethod() != PaymentMethodCode.BANK_TRANSFER) {
+            throw new AppException(ErrorCode.PAYMENT_METHOD_NOT_SUPPORTED_FOR_CHECKOUT);
+        }
+
+        User staff = null;
+        if (currentUser != null && currentUser.getId() != null) {
+            staff = userRepository.findById(currentUser.getId()).orElse(null);
+            if (staff != null) {
+                booking.setStaff(staff);
+            }
+        }
+
+        String note = "Thanh toán nốt 70% ca đá đơn " + booking.getBookingCode();
+        if (request.getNote() != null && !request.getNote().trim().isEmpty()) {
+            note += " - Ghi chú: " + request.getNote().trim();
+        }
+
+        paymentTransactionService.createTransaction(
+                TransactionRequest.builder()
+                        .booking(booking)
+                        .paymentMethodCode(request.getPaymentMethod())
+                        .amount(booking.getRemainingAmount())
+                        .paymentType(PaymentType.REMAINING_70)
+                        .status(TransactionStatus.SUCCESS)
+                        .processedBy(staff)
+                        .note(note)
+                        .build()
+        );
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking = bookingRepository.save(booking);
+
+        BookingEventDto event = BookingEventDto.builder()
+                .action("BOOKING_COMPLETED")
+                .pitchId(booking.getPitch().getId())
+                .timeSlotId(booking.getTimeSlot().getId())
+                .date(booking.getBookingDate().toString())
+                .status(BookingStatus.COMPLETED.name())
+                .build();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend("/topic/schedule", event);
+                }
+            });
+        } else {
+            messagingTemplate.convertAndSend("/topic/schedule", event);
+        }
+
+        return bookingMapper.toBookingResponse(booking);
+    }
+    @Override
+    @Transactional
+    public BookingDepositResponse payRemainingBooking(Long bookingId, UserPrincipal userPrincipal, HttpServletRequest httpRequest) {
+        if (userPrincipal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(booking.getIsDeleted())) {
+            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
+        }
+
+        // Chỉ chính khách hàng (chủ đơn đặt sân) mới được tự thanh toán nốt qua VNPAY
+        if (booking.getCustomer() == null || !booking.getCustomer().getId().equals(userPrincipal.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Chỉ cho phép thanh toán nốt khi ca đá đang ở trạng thái IN_PROGRESS (đang sử dụng)
+        if (booking.getStatus() != BookingStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_PAY_REMAINING);
+        }
+
+        BigDecimal remainingAmount = booking.getRemainingAmount();
+        if (remainingAmount == null || remainingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS_FOR_CHECK_OUT);
+        }
+
+        PaymentMethod vnpayMethod = paymentMethodRepository.findByCode(PaymentMethodCode.VNPAY)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
+
+        // Kiểm tra xem đơn đã có giao dịch REMAINING_70 đang ở trạng thái PENDING chưa
+        Optional<PaymentTransaction> pendingTxnOpt = paymentTransactionRepository
+                .findFirstByBookingIdAndPaymentTypeAndStatusOrderByCreatedAtDesc(
+                        booking.getId(),
+                        PaymentType.REMAINING_70,
+                        TransactionStatus.PENDING
+                );
+
+        PaymentTransaction transaction;
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDateTime expireTime;
+
+        if (pendingTxnOpt.isPresent()) {
+            PaymentTransaction existingTxn = pendingTxnOpt.get();
+            LocalDateTime originalCreatedAt = existingTxn.getCreatedAt() != null ? existingTxn.getCreatedAt() : now;
+            LocalDateTime originalExpireTime = originalCreatedAt.plusMinutes(15);
+
+            // Nếu phiên cũ còn trên 2 phút hiệu lực -> Tái sử dụng phiên cũ, giữ nguyên mốc hết hạn gốc
+            if (now.isBefore(originalExpireTime.minusMinutes(2))) {
+                transaction = existingTxn;
+                expireTime = originalExpireTime;
+            } else {
+                // Phiên cũ đã hết hạn hoặc cận kề hết hạn (<= 2 phút) -> Đánh dấu FAILED và tạo phiên mới 15 phút
+                existingTxn.setStatus(TransactionStatus.FAILED);
+                String oldNote = existingTxn.getNote() != null ? existingTxn.getNote() : "";
+                existingTxn.setNote((oldNote + " [Hủy do hết hạn thanh toán]").trim());
+                paymentTransactionRepository.save(existingTxn);
+
+                transaction = paymentTransactionService.createTransaction(
+                        TransactionRequest.builder()
+                                .booking(booking)
+                                .paymentMethod(vnpayMethod)
+                                .amount(remainingAmount)
+                                .paymentType(PaymentType.REMAINING_70)
+                                .status(TransactionStatus.PENDING)
+                                .processedBy(null)
+                                .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                                .build()
+                );
+                expireTime = now.plusMinutes(15);
+            }
+        } else {
+            transaction = paymentTransactionService.createTransaction(
+                    TransactionRequest.builder()
+                            .booking(booking)
+                            .paymentMethod(vnpayMethod)
+                            .amount(remainingAmount)
+                            .paymentType(PaymentType.REMAINING_70)
+                            .status(TransactionStatus.PENDING)
+                            .processedBy(null)
+                            .note("thanh toán nốt 70% qua VNPAY cho đơn " + booking.getBookingCode())
+                            .build()
+            );
+            expireTime = now.plusMinutes(15);
+        }
+
+        String txnCode = transaction.getTransactionCode();
+
+        String paymentUrl = buildVNPayUrl(
+                booking,
+                txnCode,
+                remainingAmount,
+                "Thanh toan not 70% don " + booking.getBookingCode(),
+                expireTime,
+                httpRequest
+        );
+        return BookingDepositResponse.builder()
+                .bookingCode(booking.getBookingCode())
+                .bookingId(booking.getId())
+                .depositAmount(booking.getDepositAmount())
+                .remainingAmount(remainingAmount)
+                .paymentUrl(paymentUrl)
+                .build();
     }
 }

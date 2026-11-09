@@ -17,6 +17,8 @@ import com.fpms.service.TimeSlotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -44,6 +46,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     );
 
     @Override
+    @Cacheable(cacheNames = "timeSlots", keyGenerator = "catalogKeyGenerator")
     public List<TimeSlotResponse> getAllTimeSlots(Boolean activeOnly) {
         log.info("Lấy danh sách khung giờ - activeOnly: {}", activeOnly);
         List<TimeSlot> slots;
@@ -60,6 +63,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     }
 
     @Override
+    @Cacheable(cacheNames = "timeSlots", keyGenerator = "catalogKeyGenerator")
     public TimeSlotResponse getTimeSlotById(Long id) {
         log.info("Lấy thông tin chi tiết khung giờ ID: {}", id);
         TimeSlot timeSlot = timeSlotRepository.findById(id)
@@ -72,6 +76,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"timeSlots"}, allEntries = true)
     public TimeSlotResponse createTimeSlot(TimeSlotRequest request) {
         log.info("Tạo mới khung giờ: {} - {}, isPeakHour: {}",
                 request.getStartTime(), request.getEndTime(), request.getIsPeakHour());
@@ -99,6 +104,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"timeSlots"}, allEntries = true)
     public TimeSlotResponse updateTimeSlot(Long id, TimeSlotRequest request) {
         log.info("Cập nhật khung giờ ID: {} - {} - {}, isPeakHour: {}",
                 id, request.getStartTime(), request.getEndTime(), request.getIsPeakHour());
@@ -130,6 +136,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"timeSlots"}, allEntries = true)
     public void deleteTimeSlot(Long id) {
         log.info("Xóa khung giờ ID: {}", id);
         TimeSlot timeSlot = timeSlotRepository.findById(id)
@@ -179,6 +186,7 @@ public class TimeSlotServiceImpl implements TimeSlotService {
     }
 
     @Override
+    @Cacheable(cacheNames = "timeSlots", keyGenerator = "catalogKeyGenerator")
     public List<PublicTimeSlotResponse> getPublicTimeSlots() {
         log.info("Lấy danh sách khung giờ đang hoạt động cho khách hàng");
         List<TimeSlot> slots = timeSlotRepository.findAllByIsActiveTrueOrderByStartTimeAsc();

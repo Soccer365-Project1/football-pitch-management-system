@@ -1,0 +1,324 @@
+import React from 'react';
+import { X, Play, Square, Loader2, AlertCircle } from 'lucide-react';
+import { ModalOverlay } from '../../common/ModalOverlay.tsx';
+import type { AdminTimelineSlotResponse } from '../../../types/adminTimeline.ts';
+import { formatPrice, formatDate } from '../../../utils/formatUtils.ts';
+
+interface TimelineDetailModalProps {
+  slot: AdminTimelineSlotResponse;
+  onClose: () => void;
+  onCheckIn?: (slot: AdminTimelineSlotResponse) => void;
+  isCheckingIn?: boolean;
+  onOpenCheckOut?: (slot: AdminTimelineSlotResponse) => void;
+}
+
+export const normalizeDateString = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.trim();
+};
+
+export const isSlotPastEndTime = (
+  slot?: { bookingDate?: string | null; startTime?: string | null; endTime?: string | null } | null,
+  fallbackDate?: string | null,
+  fallbackEndTime?: string | null,
+  fallbackStartTime?: string | null
+): boolean => {
+  const rawDate = normalizeDateString(slot?.bookingDate) || normalizeDateString(fallbackDate);
+  const rawEndTime = slot?.endTime || fallbackEndTime;
+  const rawStartTime = slot?.startTime || fallbackStartTime;
+
+  if (!rawDate || !rawEndTime) return false;
+
+  const now = new Date();
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+  // Nếu ngày đá trong quá khứ -> Chắc chắn đã qua
+  if (rawDate < todayStr) {
+    return true;
+  }
+  // Nếu ngày đá trong tương lai -> Chưa qua
+  if (rawDate > todayStr) {
+    return false;
+  }
+
+  // Ngày đá là hôm nay -> So sánh giờ kết thúc (endTime)
+  const [startH] = (rawStartTime || '00:00').split(':').map(Number);
+  const [endH, endM] = rawEndTime.split(':').map(Number);
+  const slotEnd = new Date();
+  slotEnd.setHours(endH, endM, 0, 0);
+
+  // Xử lý ca đá vắt qua đêm (ví dụ: 23:00 - 00:30)
+  if (endH < startH) {
+    slotEnd.setDate(slotEnd.getDate() + 1);
+  }
+
+  return now > slotEnd;
+};
+
+export const canCheckInSlot = (
+  slot: AdminTimelineSlotResponse,
+  fallbackDate?: string | null,
+  fallbackEndTime?: string | null,
+  fallbackStartTime?: string | null
+): { canCheckIn: boolean; reason?: string } => {
+  if (slot.status !== 'CONFIRMED') {
+    return { canCheckIn: false, reason: 'Chỉ có thể nhận sân cho đơn đặt sân đã được xác nhận' };
+  }
+
+  const dateStr = normalizeDateString(slot.bookingDate) || normalizeDateString(fallbackDate);
+  const startTimeStr = slot.startTime || fallbackStartTime;
+  const endTimeStr = slot.endTime || fallbackEndTime;
+
+  const now = new Date();
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+  if (dateStr && dateStr < todayStr) {
+    return { canCheckIn: false, reason: 'Ca đá đã kết thúc trong quá khứ' };
+  }
+
+  if (dateStr && dateStr > todayStr) {
+    return { canCheckIn: false, reason: 'Chỉ có thể nhận sân cho các ca đá diễn ra trong ngày hôm nay' };
+  }
+
+  if (startTimeStr) {
+    const [h, m] = startTimeStr.split(':').map(Number);
+    const slotStart = new Date();
+    slotStart.setHours(h, m, 0, 0);
+
+    if (now < slotStart) {
+      return {
+        canCheckIn: false,
+        reason: `Chưa đến giờ nhận sân (Ca đá bắt đầu lúc ${startTimeStr.substring(0, 5)})`,
+      };
+    }
+  }
+
+  if (isSlotPastEndTime(slot, fallbackDate, fallbackEndTime, fallbackStartTime)) {
+    return {
+      canCheckIn: false,
+      reason: `Đã quá giờ nhận sân (Ca đá đã kết thúc lúc ${(endTimeStr || '').substring(0, 5)})`,
+    };
+  }
+
+  return { canCheckIn: true };
+};
+
+export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
+  slot,
+  onClose,
+  onCheckIn,
+  isCheckingIn = false,
+  onOpenCheckOut,
+}) => {
+  const checkInCheck = canCheckInSlot(slot);
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'WAITING_APPROVAL':
+        return 'Chờ duyệt';
+      case 'CONFIRMED':
+        return 'Đã xác nhận';
+      case 'IN_PROGRESS':
+        return 'Đang sử dụng';
+      case 'COMPLETED':
+        return 'Đã hoàn thành';
+      case 'WAITING_CANCELLATION':
+        return 'Yêu cầu hủy';
+      case 'CANCELLED':
+        return 'Đã hủy';
+      case 'PENDING_HOLD':
+        return 'Đang giữ chỗ';
+      case 'MAINTENANCE':
+        return 'Bảo trì';
+      default:
+        return status;
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose} maxWidth="500px">
+      <div className="timeline-modal-container">
+        <div className="timeline-modal-header">
+          <div className="timeline-modal-header-left">
+            <h3 className="timeline-modal-title">Chi tiết Ca Đá</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="timeline-modal-close"
+            aria-label="Đóng"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="timeline-modal-body">
+          <div className="timeline-modal-card">
+            <div className="timeline-modal-row">
+              <span className="timeline-modal-label">Mã đơn:</span>
+              <span className="timeline-modal-val">
+                #{slot.bookingCode ? slot.bookingCode.replace('#', '') : slot.bookingId}
+              </span>
+            </div>
+            <div className="timeline-modal-row">
+              <span className="timeline-modal-label">Sân bóng:</span>
+              <span className="timeline-modal-val highlight">
+                {slot.pitchName} {slot.pitchTypeName ? `(${slot.pitchTypeName})` : ''}
+              </span>
+            </div>
+            <div className="timeline-modal-row">
+              <span className="timeline-modal-label">Khung giờ:</span>
+              <span className="timeline-modal-val">
+                {slot.startTime?.substring(0, 5)} - {slot.endTime?.substring(0, 5)}
+              </span>
+            </div>
+            {slot.bookingDate && (
+              <div className="timeline-modal-row">
+                <span className="timeline-modal-label">Ngày đá:</span>
+                <span className="timeline-modal-val">{formatDate(slot.bookingDate)}</span>
+              </div>
+            )}
+            <div className="timeline-modal-row">
+              <span className="timeline-modal-label">Trạng thái:</span>
+              <span className="timeline-modal-val" style={{ fontWeight: 700 }}>
+                {getStatusLabel(slot.status)}
+              </span>
+            </div>
+            {(slot.guestName || slot.bookingId) && (
+              <div className="timeline-modal-row">
+                <span className="timeline-modal-label">Khách hàng:</span>
+                <span className="timeline-modal-val">
+                  {slot.guestName || 'Khách vãng lai'} {slot.guestPhone ? `(${slot.guestPhone})` : ''}
+                </span>
+              </div>
+            )}
+            {slot.depositAmount != null && Number(slot.depositAmount) > 0 && (
+              <div className="timeline-modal-row">
+                <span className="timeline-modal-label">Tiền đã cọc:</span>
+                <span className="timeline-modal-val" style={{ color: '#10b981' }}>
+                  {formatPrice(Number(slot.depositAmount))}
+                </span>
+              </div>
+            )}
+            {slot.remainingAmount != null && (
+              <div className="timeline-modal-row">
+                <span className="timeline-modal-label">Tiền còn lại:</span>
+                <span className="timeline-modal-val">
+                  {formatPrice(Number(slot.remainingAmount))}
+                </span>
+              </div>
+            )}
+            {slot.totalAmount != null && (
+              <div className="timeline-modal-row highlight-remaining">
+                <span className="timeline-modal-label">Tổng tiền sân:</span>
+                <span className="timeline-modal-val" style={{ fontSize: '1rem', color: 'var(--color-primary)' }}>
+                  {formatPrice(Number(slot.totalAmount))}
+                </span>
+              </div>
+            )}
+            {slot.customerNote && (
+              <div className="timeline-modal-note-box">
+                <strong>Ghi chú:</strong> {slot.customerNote}
+              </div>
+            )}
+            {slot.cancellationReason && (
+              <div className="timeline-modal-cancel-reason">
+                <strong>Lý do hủy:</strong> {slot.cancellationReason}
+              </div>
+            )}
+          </div>
+
+          {/* Hộp thông báo theo từng trạng thái */}
+          {slot.status === 'WAITING_APPROVAL' && (
+            <div className="timeline-modal-notice-box orange">
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong>Chờ nhân viên duyệt đơn:</strong> Đơn đặt sân đã hoàn tất đặt cọc và đang chờ xác nhận từ phía ban quản lý.
+              </div>
+            </div>
+          )}
+
+          {slot.status === 'CONFIRMED' && (
+            <div className={`timeline-modal-notice-box ${checkInCheck.canCheckIn ? 'green' : 'orange'}`}>
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong>Ca đá đã xác nhận:</strong>{' '}
+                {checkInCheck.canCheckIn ? (
+                  <span>Đã đến giờ ca đá! Bấm nút <b>"Nhận sân"</b> để chuyển sang trạng thái đang đá.</span>
+                ) : (
+                  <span>{checkInCheck.reason}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {slot.status === 'IN_PROGRESS' && (
+            <div className="timeline-modal-notice-box orange">
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong>Trận đấu đang diễn ra:</strong> Bấm nút <b>"Trả sân & Thanh toán"</b> bên dưới để thu nốt số tiền 70% còn lại và kết thúc ca đá.
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="timeline-modal-footer">
+          <button
+            type="button"
+            onClick={onClose}
+            className="timeline-btn-cancel-modal"
+          >
+            Đóng
+          </button>
+
+          {/* Nút Nhận sân cho CONFIRMED */}
+          {slot.status === 'CONFIRMED' && slot.bookingId && onCheckIn && (
+            <button
+              type="button"
+              disabled={isCheckingIn || !checkInCheck.canCheckIn}
+              onClick={!checkInCheck.canCheckIn ? undefined : () => onCheckIn(slot)}
+              className={`timeline-btn-confirm-checkin ${!checkInCheck.canCheckIn ? 'timeline-btn-disabled' : ''}`}
+              style={
+                !checkInCheck.canCheckIn
+                  ? {
+                    backgroundColor: '#94a3b8',
+                    backgroundImage: 'none',
+                    color: '#ffffff',
+                    cursor: 'not-allowed',
+                    opacity: 0.65,
+                    boxShadow: 'none',
+                  }
+                  : undefined
+              }
+              title={!checkInCheck.canCheckIn ? checkInCheck.reason : 'Xác nhận nhận sân'}
+            >
+              {isCheckingIn ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Đang nhận sân...</span>
+                </>
+              ) : (
+                <>
+                  <Play size={14} className="fill-current" />
+                  <span>Nhận sân</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Nút Trả sân cho IN_PROGRESS */}
+          {slot.status === 'IN_PROGRESS' && slot.bookingId && onOpenCheckOut && (
+            <button
+              type="button"
+              onClick={() => onOpenCheckOut(slot)}
+              className="timeline-btn-confirm-checkout"
+            >
+              <Square size={12} className="fill-current" />
+              <span>Trả sân & Thanh toán</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </ModalOverlay>
+  );
+};

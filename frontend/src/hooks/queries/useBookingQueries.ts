@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingService, type BookingFilterParams } from '../../services/bookingService.ts';
 
 export const useMyBookings = (params: BookingFilterParams = { page: 1, pageSize: 10 }) => {
@@ -12,3 +12,35 @@ export const useMyBookings = (params: BookingFilterParams = { page: 1, pageSize:
   });
 };
 
+export const useAdminTimeline = (date: string, pitchTypeId?: string | number) => {
+  return useQuery({
+    queryKey: ['adminTimeline', date, pitchTypeId],
+    queryFn: async () => {
+      const res = await bookingService.getAdminTimeline(date, pitchTypeId);
+      return res;
+    },
+    refetchOnWindowFocus: true,
+  });
+};
+
+
+export const useCheckInBooking = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingId: number) => bookingService.checkInBooking(bookingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
+    },
+  });
+};
+
+export const useCheckOutBooking = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, data }: { bookingId: number; data: { paymentMethod: 'CASH' | 'BANK_TRANSFER'; note?: string } }) =>
+      bookingService.checkOutBooking(bookingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
+    },
+  });
+};

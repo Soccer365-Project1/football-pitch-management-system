@@ -12,6 +12,7 @@ import { showToast, showAlert } from '../utils/toast.ts';
 import { formatDate } from '../utils/formatUtils.ts';
 import { BookingCancelModal } from '../components/booking/BookingCancelModal.tsx';
 import { BookingDetailModal } from '../components/booking/BookingDetailModal.tsx';
+import { DateInputWithPicker } from '../components/common/DateInputWithPicker.tsx';
 import { useMyBookings } from '../hooks/queries/useBookingQueries.ts';
 import { useScheduleWebSocket } from '../hooks/useScheduleWebSocket.ts';
 import { useQueryClient } from '@tanstack/react-query';
@@ -54,6 +55,7 @@ const MyBookings: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null);
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [repayingId, setRepayingId] = useState<number | null>(null);
+  const [payingRemainingId, setPayingRemainingId] = useState<number | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<BookingSummaryResponse | null>(null);
 
   const queryClient = useQueryClient();
@@ -182,6 +184,24 @@ const MyBookings: React.FC = () => {
     updateParams({ keyword: '', page: 1 });
   };
 
+  // Xử lý thay đổi "Từ ngày" kèm validate từ ngày <= đến ngày
+  const handleFromDateChange = (val: string) => {
+    if (val && toDate && val > toDate) {
+      showToast('Thời gian bắt đầu (Từ ngày) phải nhỏ hơn hoặc bằng thời gian kết thúc (Đến ngày)', 'error');
+      return;
+    }
+    updateParams({ fromDate: val, page: 1 });
+  };
+
+  // Xử lý thay đổi "Đến ngày" kèm validate đến ngày >= từ ngày
+  const handleToDateChange = (val: string) => {
+    if (val && fromDate && val < fromDate) {
+      showToast('Thời gian kết thúc (Đến ngày) phải lớn hơn hoặc bằng thời gian bắt đầu (Từ ngày)', 'error');
+      return;
+    }
+    updateParams({ toDate: val, page: 1 });
+  };
+
   // Xóa bộ lọc ngày
   const handleClearDateFilter = () => {
     updateParams({ fromDate: '', toDate: '', page: 1 });
@@ -215,6 +235,24 @@ const MyBookings: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
     } finally {
       setRepayingId(null);
+    }
+  };
+
+  // Thanh toán nốt 70% qua VNPAY
+  const handlePayRemaining = async (bookingId: number) => {
+    try {
+      setPayingRemainingId(bookingId);
+      const res = await bookingService.payRemainingBooking(bookingId);
+      if (res && res.data && res.data.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      } else {
+        showToast('Không nhận được liên kết thanh toán từ máy chủ', 'error');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Không thể tạo liên kết thanh toán nốt';
+      showToast(msg, 'error');
+    } finally {
+      setPayingRemainingId(null);
     }
   };
 
@@ -399,20 +437,20 @@ const MyBookings: React.FC = () => {
 
               {/* Lọc theo ngày đá: Từ ngày - Đến ngày */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <input
-                  type="date"
+                <DateInputWithPicker
                   value={fromDate}
-                  onChange={(e) => updateParams({ fromDate: e.target.value, page: 1 })}
-                  className="bookings-date-input"
-                  title="Từ ngày đá"
+                  max={toDate || undefined}
+                  onChange={handleFromDateChange}
+                  placeholder="Từ ngày"
+                  title="Từ ngày đá (dd/mm/yyyy)"
                 />
                 <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>
-                <input
-                  type="date"
+                <DateInputWithPicker
                   value={toDate}
-                  onChange={(e) => updateParams({ toDate: e.target.value, page: 1 })}
-                  className="bookings-date-input"
-                  title="Đến ngày đá"
+                  min={fromDate || undefined}
+                  onChange={handleToDateChange}
+                  placeholder="Đến ngày"
+                  title="Đến ngày đá (dd/mm/yyyy)"
                 />
                 {(fromDate || toDate) && (
                   <button
@@ -582,14 +620,14 @@ const MyBookings: React.FC = () => {
                             </button>
                           )}
 
-                          {booking.status === 'COMPLETED' && (
+                          {booking.status === 'IN_PROGRESS' && (
                             <button
                               type="button"
-                              disabled={detailLoadingId === booking.id}
-                              onClick={() => handleOpenDetail(booking.id)}
+                              disabled={payingRemainingId === booking.id}
+                              onClick={() => handlePayRemaining(booking.id)}
                               className="booking-btn-pay"
                             >
-                              {detailLoadingId === booking.id ? (
+                              {payingRemainingId === booking.id ? (
                                 <Loader2 size={13} className="animate-spin inline mr-1" />
                               ) : null}
                               Thanh toán nốt
@@ -718,22 +756,22 @@ const MyBookings: React.FC = () => {
 
           {/* Lọc theo ngày đá Mobile: Từ ngày - Đến ngày */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
-            <input
-              type="date"
+            <DateInputWithPicker
               value={fromDate}
-              onChange={(e) => updateParams({ fromDate: e.target.value, page: 1 })}
-              className="bookings-date-input"
-              style={{ flex: 1, minWidth: 0 }}
-              title="Từ ngày đá"
+              max={toDate || undefined}
+              onChange={handleFromDateChange}
+              placeholder="Từ ngày"
+              title="Từ ngày đá (dd/mm/yyyy)"
+              style={{ flex: 1, minWidth: 0, width: 'auto' }}
             />
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>
-            <input
-              type="date"
+            <DateInputWithPicker
               value={toDate}
-              onChange={(e) => updateParams({ toDate: e.target.value, page: 1 })}
-              className="bookings-date-input"
-              style={{ flex: 1, minWidth: 0 }}
-              title="Đến ngày đá"
+              min={fromDate || undefined}
+              onChange={handleToDateChange}
+              placeholder="Đến ngày"
+              title="Đến ngày đá (dd/mm/yyyy)"
+              style={{ flex: 1, minWidth: 0, width: 'auto' }}
             />
             {(fromDate || toDate) && (
               <button
@@ -851,14 +889,14 @@ const MyBookings: React.FC = () => {
                     </button>
                   )}
 
-                  {booking.status === 'COMPLETED' && (
+                  {booking.status === 'IN_PROGRESS' && (
                     <button
                       type="button"
-                      disabled={detailLoadingId === booking.id}
-                      onClick={() => handleOpenDetail(booking.id)}
+                      disabled={payingRemainingId === booking.id}
+                      onClick={() => handlePayRemaining(booking.id)}
                       className="booking-btn-pay"
                     >
-                      {detailLoadingId === booking.id ? (
+                      {payingRemainingId === booking.id ? (
                         <Loader2 size={13} className="animate-spin inline mr-1" />
                       ) : null}
                       Thanh toán nốt
@@ -918,6 +956,8 @@ const MyBookings: React.FC = () => {
         getStatusBadge={getStatusBadge}
         onRepay={handleRepay}
         repaying={repayingId === selectedBooking?.id}
+        onPayRemaining={handlePayRemaining}
+        payingRemaining={payingRemainingId === selectedBooking?.id}
       />
 
       {/* Modal Popup Yêu Cầu Hủy Đơn Đặt Sân */}
