@@ -15,7 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Download, X, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Download, X, Loader2, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { adminReportService } from '../../services/adminReportService';
 import type {
   DashboardSummary,
@@ -27,22 +27,52 @@ import { showToast } from '../../utils/toast';
 
 /**
  * =========================================================================================
+ * SUB-COMPONENT: KpiCardSkeleton (Hiệu ứng Shimmer mượt mà cho 4 thẻ chỉ số)
+ * =========================================================================================
+ */
+const KpiCardSkeleton: React.FC = () => (
+  <div className="animate-pulse space-y-2 py-1">
+    <div className="h-8 w-36 rounded bg-slate-200 dark:bg-slate-700/60" />
+    <div className="h-4 w-44 rounded bg-slate-100 dark:bg-slate-800/60" />
+  </div>
+);
+
+/**
+ * =========================================================================================
+ * SUB-COMPONENT: ChartLoadingSkeleton (Hiệu ứng Skeleton giả lập cột/đường khi đang tải)
+ * =========================================================================================
+ */
+const ChartLoadingSkeleton: React.FC<{ message: string }> = ({ message }) => (
+  <div className="h-full w-full flex flex-col items-center justify-center text-muted gap-3">
+    <div className="flex items-center gap-2">
+      <Loader2 size={24} className="animate-spin text-[var(--color-primary)]" />
+      <span className="text-sm font-medium">{message}</span>
+    </div>
+    <div className="w-full max-w-md h-32 flex items-end gap-3 px-4 pt-4 opacity-30 animate-pulse">
+      <div className="w-1/6 bg-slate-300 dark:bg-slate-700 h-1/3 rounded-t" />
+      <div className="w-1/6 bg-slate-300 dark:bg-slate-700 h-2/3 rounded-t" />
+      <div className="w-1/6 bg-slate-300 dark:bg-slate-700 h-full rounded-t" />
+      <div className="w-1/6 bg-slate-300 dark:bg-slate-700 h-1/2 rounded-t" />
+      <div className="w-1/6 bg-slate-300 dark:bg-slate-700 h-3/4 rounded-t" />
+      <div className="w-1/6 bg-slate-300 dark:bg-slate-700 h-2/5 rounded-t" />
+    </div>
+  </div>
+);
+
+/**
+ * =========================================================================================
  * COMPONENT CHÍNH: AdminDashboard (Màn hình Báo cáo Thống kê & Phân tích Doanh thu)
  * =========================================================================================
- * Hiện thực hóa Use Case UC018.1 trong tài liệu đặc tả SRS:
- * 1. Khối bộ lọc thời gian đồng bộ (startDate - endDate) kèm các nút chọn nhanh (Quick Presets).
- * 2. 4 Thẻ chỉ số KPI quan trọng: Doanh thu kỳ này, Tổng số đơn, Tỉ lệ hủy đơn, Lượt khách mới.
- * 3. 3 Biểu đồ phân tích trực quan sử dụng thư viện Recharts:
- *    - Biểu đồ đường (LineChart): Doanh thu theo ngày liên tục.
- *    - Biểu đồ cột (BarChart): Tần suất đơn đặt sân theo thứ trong tuần (T2 -> CN).
- *    - Biểu đồ tròn (PieChart/Donut): Cơ cấu tỷ trọng doanh thu giữa Sân 5 và Sân 7.
- * 4. Modal xác nhận xuất file báo cáo Excel (.xlsx) qua React Portal.
+ * Hiện thực hóa Use Case UC018.1 trong SRS & Tối ưu theo FPMS-208:
+ * 1. Khối bộ lọc thời gian đồng bộ kèm Quick Date Presets (Hôm nay, 7 ngày qua, Tháng này, Tháng trước).
+ * 2. 4 Thẻ chỉ số KPI quan trọng với hiệu ứng Skeleton Shimmer mượt mà khi tải lại.
+ * 3. 3 Biểu đồ phân tích trực quan Recharts chuẩn responsive (Zero CLS, không tràn khung ngang).
+ * 4. Modal xác nhận xuất file Excel kèm trạng thái tiến trình isExporting & Spinner mượt mà.
  */
 const AdminDashboard: React.FC = () => {
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Thời gian lọc & Modal
   // ---------------------------------------------------------------------------------------
-  /** Tính toán khoảng ngày mặc định: 7 ngày gần nhất (từ 6 ngày trước đến hôm nay) */
   const getDefaultDateRange = () => {
     const end = new Date();
     const start = new Date();
@@ -56,6 +86,7 @@ const AdminDashboard: React.FC = () => {
   const defaultDates = getDefaultDateRange();
   const [startDate, setStartDate] = useState<string>(defaultDates.start);
   const [endDate, setEndDate] = useState<string>(defaultDates.end);
+  const [activePreset, setActivePreset] = useState<'today' | '7days' | 'thisMonth' | 'prevMonth' | null>('7days');
 
   /** Trạng thái hiển thị Modal xác nhận xuất file */
   const [showConfirmExport, setShowConfirmExport] = useState<boolean>(false);
@@ -63,19 +94,15 @@ const AdminDashboard: React.FC = () => {
   /** Trạng thái loading khi đang tải dữ liệu từ server */
   const [loading, setLoading] = useState<boolean>(false);
 
+  /** Trạng thái tiến trình khi đang xuất file Excel (.xlsx) */
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
   // ---------------------------------------------------------------------------------------
   // 2. Dữ liệu Báo cáo Thống kê từ Backend Spring Boot
   // ---------------------------------------------------------------------------------------
-  /** Số liệu tổng quan 4 thẻ KPI */
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-
-  /** Dữ liệu biểu đồ đường doanh thu theo ngày */
   const [revenueTrend, setRevenueTrend] = useState<RevenueTrendPoint[]>([]);
-
-  /** Dữ liệu biểu đồ cột tần suất đặt sân theo thứ trong tuần */
   const [bookingFrequency, setBookingFrequency] = useState<BookingFrequencyPoint[]>([]);
-
-  /** Dữ liệu biểu đồ tròn tỷ trọng doanh thu theo loại sân */
   const [pitchTypeRevenue, setPitchTypeRevenue] = useState<RevenueByPitchType[]>([]);
 
   /** Bảng màu chuẩn nhận diện cho biểu đồ tròn */
@@ -119,7 +146,6 @@ const AdminDashboard: React.FC = () => {
       setPitchTypeRevenue(pitchTypeRes);
     } catch (error) {
       console.error('Lỗi khi tải dữ liệu báo cáo thống kê:', error);
-      // Lỗi đã được xử lý hiển thị toast thông qua axios interceptor
     } finally {
       setLoading(false);
     }
@@ -130,17 +156,47 @@ const AdminDashboard: React.FC = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // ---------------------------------------------------------------------------------------
+  // 4. Xử lý Quick Date Presets (Hôm nay, 7 ngày qua, Tháng này, Tháng trước)
+  // ---------------------------------------------------------------------------------------
+  const applyDatePreset = (preset: 'today' | '7days' | 'thisMonth' | 'prevMonth') => {
+    setActivePreset(preset);
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    let start = '';
+    let end = toYMD(now);
+
+    if (preset === 'today') {
+      start = toYMD(now);
+      end = toYMD(now);
+    } else if (preset === '7days') {
+      const s = new Date(now);
+      s.setDate(now.getDate() - 6);
+      start = toYMD(s);
+    } else if (preset === 'thisMonth') {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = toYMD(s);
+    } else if (preset === 'prevMonth') {
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const e = new Date(now.getFullYear(), now.getMonth(), 0);
+      start = toYMD(s);
+      end = toYMD(e);
+    }
+
+    setStartDate(start);
+    setEndDate(end);
+  };
 
   // ---------------------------------------------------------------------------------------
   // 5. Định dạng hiển thị Tiền tệ, Số liệu và Tooltip
   // ---------------------------------------------------------------------------------------
-  /** Format số tiền sang định dạng VNĐ */
   const formatCurrency = (val?: number): string => {
     if (val === undefined || val === null) return '0 đ';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
-  /** Format trục Y để hiển thị tiền gọn gàng (ví dụ: 1.5 Tr, 500 K) */
   const formatYAxis = (tickItem: number) => {
     if (tickItem >= 1000000) {
       return (tickItem / 1000000).toFixed(1) + ' Tr';
@@ -151,7 +207,6 @@ const AdminDashboard: React.FC = () => {
     return tickItem.toString();
   };
 
-  /** Custom Tooltip chuyên nghiệp cho các biểu đồ Recharts */
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -167,9 +222,7 @@ const AdminDashboard: React.FC = () => {
         >
           <p className="font-bold text-sm mb-2 text-[var(--color-text-base)]">{label}</p>
           {payload.map((entry: any, index: number) => {
-            const isRevenue =
-              entry.dataKey === 'revenue' ||
-              entry.name === 'Doanh thu';
+            const isRevenue = entry.dataKey === 'revenue' || entry.name === 'Doanh thu';
             const isPercentage =
               entry.unit === '%' ||
               entry.dataKey === 'percentage' ||
@@ -207,15 +260,15 @@ const AdminDashboard: React.FC = () => {
   };
 
   // ---------------------------------------------------------------------------------------
-  // 6. Xử lý Xuất file Báo cáo
+  // 6. Xử lý Xuất file Báo cáo Excel kèm Spinner & Tiến trình
   // ---------------------------------------------------------------------------------------
   const handleExportExcelClick = () => {
     setShowConfirmExport(true);
   };
 
   const executeExportExcel = async () => {
-    setShowConfirmExport(false);
     try {
+      setIsExporting(true);
       const blob = await adminReportService.exportReportExcel({ startDate, endDate });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -226,6 +279,7 @@ const AdminDashboard: React.FC = () => {
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
       showToast('Xuất báo cáo Excel thành công!', 'success');
+      setShowConfirmExport(false);
     } catch (error: any) {
       if (error.response?.data instanceof Blob) {
         try {
@@ -239,6 +293,8 @@ const AdminDashboard: React.FC = () => {
         const msg = error.response?.data?.message || 'Xuất báo cáo thất bại. Vui lòng thử lại.';
         showToast(msg, 'error');
       }
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -298,7 +354,7 @@ const AdminDashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* Thanh bộ lọc ngày & Nút xuất báo cáo */}
+      {/* Thanh bộ lọc ngày & Nút xuất báo cáo (Responsive Grid/Flex) */}
       <div
         className="card mb-6"
         style={{
@@ -310,28 +366,62 @@ const AdminDashboard: React.FC = () => {
           gap: '1rem',
         }}
       >
-        {/* Bên trái: Hộp chọn khoảng ngày & Nút Lọc */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        {/* Bên trái: Quick Presets & Hộp chọn ngày & Nút Lọc */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flex: '1 1 auto' }}>
+          {/* Quick Date Presets */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'today', label: 'Hôm nay' },
+              { id: '7days', label: '7 ngày qua' },
+              { id: 'thisMonth', label: 'Tháng này' },
+              { id: 'prevMonth', label: 'Tháng trước' },
+            ].map((p) => {
+              const isSelected = activePreset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyDatePreset(p.id as any)}
+                  disabled={loading || isExporting}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    borderRadius: 'var(--radius-md)',
+                    border: isSelected ? '1px solid var(--color-primary, #047857)' : '1px solid var(--color-border)',
+                    backgroundColor: isSelected ? 'var(--color-primary, #047857)' : 'var(--color-bg-base)',
+                    color: isSelected ? '#ffffff' : 'var(--color-text-muted)',
+                    cursor: loading || isExporting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Hộp chọn khoảng ngày */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              height: '42px',
+              height: '40px',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
               backgroundColor: 'var(--color-bg-base)',
-              padding: '0 0.85rem',
+              padding: '0 0.75rem',
             }}
           >
-            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              Ngày:
-            </span>
+            <Calendar size={15} className="text-[var(--color-text-muted)] shrink-0" />
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setActivePreset(null);
+              }}
               onClick={(e) => {
                 try {
                   (e.target as HTMLInputElement).showPicker();
@@ -344,14 +434,17 @@ const AdminDashboard: React.FC = () => {
                 color: 'var(--color-text-base)',
                 fontFamily: 'inherit',
                 cursor: 'pointer',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
               }}
             />
             <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>-</span>
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setActivePreset(null);
+              }}
               onClick={(e) => {
                 try {
                   (e.target as HTMLInputElement).showPicker();
@@ -364,7 +457,7 @@ const AdminDashboard: React.FC = () => {
                 color: 'var(--color-text-base)',
                 fontFamily: 'inherit',
                 cursor: 'pointer',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
               }}
             />
           </div>
@@ -374,18 +467,22 @@ const AdminDashboard: React.FC = () => {
             type="button"
             className="btn btn-secondary font-semibold"
             style={{
-              height: '42px',
+              height: '40px',
               padding: '0 1.25rem',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
               backgroundColor: 'var(--color-bg-surface)',
               color: 'var(--color-text-base)',
               fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
             }}
             onClick={fetchDashboardData}
-            disabled={loading}
+            disabled={loading || isExporting}
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Lọc'}
+            {loading ? <Loader2 size={16} className="animate-spin text-[var(--color-primary)]" /> : 'Lọc'}
           </button>
         </div>
 
@@ -394,52 +491,64 @@ const AdminDashboard: React.FC = () => {
           type="button"
           className="btn btn-primary font-semibold"
           style={{
-            height: '42px',
+            height: '40px',
             padding: '0 1.25rem',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '0.5rem',
             whiteSpace: 'nowrap',
             fontSize: '0.875rem',
             borderRadius: 'var(--radius-md)',
           }}
           onClick={handleExportExcelClick}
+          disabled={loading || isExporting}
         >
-          <Download size={18} />
-          <span>Xuất báo cáo</span>
+          {isExporting ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              <span>Đang xuất Excel...</span>
+            </>
+          ) : (
+            <>
+              <Download size={18} />
+              <span>Xuất báo cáo</span>
+            </>
+          )}
         </button>
       </div>
 
-      {/* 4 Thẻ KPI Dashboard */}
+      {/* 4 Thẻ KPI Dashboard (Responsive CSS Grid: 1 col on mobile, 2 on tablet, 4 on desktop) */}
       <div
-        className="grid gap-6 mb-8"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}
+        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-8"
       >
         {/* Thẻ 1: Doanh thu kỳ này */}
         <div className="card p-5" style={{ borderLeft: '4px solid var(--color-primary, #047857)' }}>
           <div className="text-muted text-xs font-bold tracking-wider uppercase mb-1">
             DOANH THU KỲ NÀY
           </div>
-          <div className="text-3xl font-bold text-[var(--color-primary,#047857)]">
-            {loading && !summary ? (
-              <span className="text-base text-muted animate-pulse">Đang tính toán...</span>
-            ) : (
-              formatCurrency(summary?.currentRevenue)
-            )}
-          </div>
-          <div className="text-xs mt-2 flex items-center gap-1 font-semibold">
-            {summary && (summary.revenueGrowthRate ?? 0) >= 0 ? (
-              <span className="text-[var(--color-success,#047857)] flex items-center gap-1">
-                <TrendingUp size={14} />
-                Tăng {summary.revenueGrowthRate}% so với kỳ trước
-              </span>
-            ) : (
-              <span className="text-[var(--color-danger,#dc2626)] flex items-center gap-1">
-                <TrendingDown size={14} />
-                Giảm {Math.abs(summary?.revenueGrowthRate ?? 0)}% so với kỳ trước
-              </span>
-            )}
-          </div>
+          {loading ? (
+            <KpiCardSkeleton />
+          ) : (
+            <>
+              <div className="text-3xl font-bold text-[var(--color-primary,#047857)]">
+                {formatCurrency(summary?.currentRevenue)}
+              </div>
+              <div className="text-xs mt-2 flex items-center gap-1 font-semibold">
+                {summary && (summary.revenueGrowthRate ?? 0) >= 0 ? (
+                  <span className="text-[var(--color-success,#047857)] flex items-center gap-1">
+                    <TrendingUp size={14} />
+                    Tăng {summary.revenueGrowthRate}% so với kỳ trước
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-danger,#dc2626)] flex items-center gap-1">
+                    <TrendingDown size={14} />
+                    Giảm {Math.abs(summary?.revenueGrowthRate ?? 0)}% so với kỳ trước
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Thẻ 2: Tổng số đơn */}
@@ -447,16 +556,18 @@ const AdminDashboard: React.FC = () => {
           <div className="text-muted text-xs font-bold tracking-wider uppercase mb-1">
             TỔNG SỐ ĐƠN
           </div>
-          <div className="text-3xl font-bold text-[var(--color-text-base)]">
-            {loading && !summary ? (
-              <span className="text-base text-muted animate-pulse">Đang tải...</span>
-            ) : (
-              `${summary?.totalBookings ?? 0} đơn`
-            )}
-          </div>
-          <div className="text-xs mt-2 text-muted">
-            {summary?.completedBookings ?? 0} hoàn thành, {summary?.confirmedBookings ?? 0} đang đá/chờ
-          </div>
+          {loading ? (
+            <KpiCardSkeleton />
+          ) : (
+            <>
+              <div className="text-3xl font-bold text-[var(--color-text-base)]">
+                {`${summary?.totalBookings ?? 0} đơn`}
+              </div>
+              <div className="text-xs mt-2 text-muted">
+                {summary?.completedBookings ?? 0} hoàn thành, {summary?.confirmedBookings ?? 0} đang đá/chờ
+              </div>
+            </>
+          )}
         </div>
 
         {/* Thẻ 3: Tỉ lệ hủy đơn */}
@@ -464,18 +575,20 @@ const AdminDashboard: React.FC = () => {
           <div className="text-muted text-xs font-bold tracking-wider uppercase mb-1">
             TỈ LỆ HỦY ĐƠN
           </div>
-          <div className="text-3xl font-bold text-[var(--color-danger,#dc2626)]">
-            {loading && !summary ? (
-              <span className="text-base text-muted animate-pulse">Đang tải...</span>
-            ) : (
-              `${summary?.cancellationRate ?? 0}%`
-            )}
-          </div>
-          <div className="text-xs mt-2 text-muted">
-            {summary && (summary.cancellationRateDiff ?? 0) <= 0
-              ? `Giảm ${Math.abs(summary.cancellationRateDiff)}% so với kỳ trước`
-              : `Tăng ${summary?.cancellationRateDiff ?? 0}% so với kỳ trước`}
-          </div>
+          {loading ? (
+            <KpiCardSkeleton />
+          ) : (
+            <>
+              <div className="text-3xl font-bold text-[var(--color-danger,#dc2626)]">
+                {`${summary?.cancellationRate ?? 0}%`}
+              </div>
+              <div className="text-xs mt-2 text-muted">
+                {summary && (summary.cancellationRateDiff ?? 0) <= 0
+                  ? `Giảm ${Math.abs(summary.cancellationRateDiff)}% so với kỳ trước`
+                  : `Tăng ${summary?.cancellationRateDiff ?? 0}% so với kỳ trước`}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Thẻ 4: Lượt khách mới */}
@@ -483,35 +596,58 @@ const AdminDashboard: React.FC = () => {
           <div className="text-muted text-xs font-bold tracking-wider uppercase mb-1">
             LƯỢT KHÁCH MỚI
           </div>
-          <div className="text-3xl font-bold text-[var(--color-text-base)]">
-            {loading && !summary ? (
-              <span className="text-base text-muted animate-pulse">Đang tải...</span>
-            ) : (
-              `${summary?.newCustomersCount ?? 0} người`
-            )}
-          </div>
-          <div className="text-xs mt-2 text-muted">
-            Tỉ lệ khách quay lại: {summary?.repeatCustomerRate ?? 0}%
-          </div>
+          {loading ? (
+            <KpiCardSkeleton />
+          ) : (
+            <>
+              <div className="text-3xl font-bold text-[var(--color-text-base)]">
+                {`${summary?.newCustomersCount ?? 0} người`}
+              </div>
+              <div className="text-xs mt-2 text-muted">
+                Tỉ lệ khách quay lại: {summary?.repeatCustomerRate ?? 0}%
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Khu vực 3 Biểu đồ phân tích */}
+      {/* Khu vực 3 Biểu đồ phân tích (Responsive CSS Grid & Zero Overflow) */}
       <div className="flex flex-col gap-6 mb-6">
         {/* 1. Biểu đồ đường Doanh thu theo ngày */}
-        <div className="card p-5 w-full">
+        <div className="card p-4 sm:p-5 w-full min-w-0 overflow-hidden relative">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-lg font-bold text-[var(--color-text-base)]">Biểu đồ Doanh thu</h2>
               <p className="text-xs text-muted">Doanh thu phát sinh theo từng ngày trong khoảng thời gian đã chọn</p>
             </div>
           </div>
-          <div style={{ width: '100%', height: 350 }}>
-            {loading && revenueTrend.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted gap-2">
-                <Loader2 size={24} className="animate-spin text-[var(--color-primary)]" />
-                <span>Đang kết xuất biểu đồ doanh thu...</span>
+          <div style={{ width: '100%', height: 350, position: 'relative' }}>
+            {/* Lớp phủ loading khi đang fetch lại dữ liệu */}
+            {loading && revenueTrend.length > 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                  backdropFilter: 'blur(1.5px)',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <Loader2 size={26} className="animate-spin text-[var(--color-primary)]" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  Đang cập nhật biểu đồ doanh thu...
+                </span>
               </div>
+            )}
+
+            {loading && revenueTrend.length === 0 ? (
+              <ChartLoadingSkeleton message="Đang kết xuất biểu đồ doanh thu..." />
             ) : revenueTrend.length === 0 ? (
               <div className="h-full flex items-center justify-center text-muted">
                 Không có dữ liệu doanh thu trong khoảng thời gian này
@@ -550,18 +686,39 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 2 & 3. Biểu đồ Tần suất đặt sân & Tỷ trọng loại sân nằm cạnh nhau */}
-        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+        {/* 2 & 3. Biểu đồ Tần suất đặt sân & Tỷ trọng loại sân nằm cạnh nhau (Grid chuẩn 1 col mobile, 2 col desktop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
           {/* Biểu đồ cột Tần suất đặt sân theo thứ trong tuần */}
-          <div className="card p-5" style={{ flex: '1 1 450px' }}>
+          <div className="card p-4 sm:p-5 min-w-0 overflow-hidden relative">
             <h2 className="text-lg font-bold text-[var(--color-text-base)] mb-1">Tần suất Đặt sân</h2>
             <p className="text-xs text-muted mb-6">Số lượt đặt sân phân bổ theo các thứ trong tuần (T2 - CN)</p>
-            <div style={{ width: '100%', height: 350 }}>
-              {loading && bookingFrequency.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-muted gap-2">
-                  <Loader2 size={24} className="animate-spin text-[var(--color-secondary)]" />
-                  <span>Đang tải tần suất đơn...</span>
+            <div style={{ width: '100%', height: 350, position: 'relative' }}>
+              {/* Lớp phủ loading khi đang fetch lại dữ liệu */}
+              {loading && bookingFrequency.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                    backdropFilter: 'blur(1.5px)',
+                    borderRadius: 'var(--radius-md)',
+                  }}
+                >
+                  <Loader2 size={26} className="animate-spin text-[var(--color-secondary)]" />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                    Đang cập nhật tần suất đơn...
+                  </span>
                 </div>
+              )}
+
+              {loading && bookingFrequency.length === 0 ? (
+                <ChartLoadingSkeleton message="Đang tải tần suất đơn..." />
               ) : bookingFrequency.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-muted">
                   Không có dữ liệu tần suất đặt sân
@@ -595,15 +752,36 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Biểu đồ tròn Cơ cấu doanh thu theo Loại sân */}
-          <div className="card p-5" style={{ flex: '1 1 450px' }}>
+          <div className="card p-4 sm:p-5 min-w-0 overflow-hidden relative">
             <h2 className="text-lg font-bold text-[var(--color-text-base)] mb-1">Doanh thu theo Loại sân</h2>
             <p className="text-xs text-muted mb-6">Tỷ trọng đóng góp doanh thu giữa Sân 5 người và Sân 7 người</p>
-            <div style={{ width: '100%', height: 350 }}>
-              {loading && pitchTypeRevenue.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-muted gap-2">
-                  <Loader2 size={24} className="animate-spin text-[var(--color-primary)]" />
-                  <span>Đang tính toán cơ cấu sân...</span>
+            <div style={{ width: '100%', height: 350, position: 'relative' }}>
+              {/* Lớp phủ loading khi đang fetch lại dữ liệu */}
+              {loading && pitchTypeRevenue.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                    backdropFilter: 'blur(1.5px)',
+                    borderRadius: 'var(--radius-md)',
+                  }}
+                >
+                  <Loader2 size={26} className="animate-spin text-[var(--color-primary)]" />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                    Đang tính toán cơ cấu sân...
+                  </span>
                 </div>
+              )}
+
+              {loading && pitchTypeRevenue.length === 0 ? (
+                <ChartLoadingSkeleton message="Đang tính toán cơ cấu sân..." />
               ) : pitchTypeRevenue.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-muted">
                   Chưa có số liệu doanh thu theo loại sân
@@ -652,12 +830,13 @@ const AdminDashboard: React.FC = () => {
 
       {/* Modal Xác Nhận Xuất Báo Cáo (React Portal) */}
       {showConfirmExport && (
-        <ModalOverlay onClose={() => setShowConfirmExport(false)}>
+        <ModalOverlay onClose={() => !isExporting && setShowConfirmExport(false)}>
           <div className="flex justify-between items-center mb-4" style={{ flexShrink: 0 }}>
             <h2 className="text-xl font-bold text-[var(--color-text-base)]">Xác Nhận Xuất File Báo Cáo</h2>
             <button
-              onClick={() => setShowConfirmExport(false)}
+              onClick={() => !isExporting && setShowConfirmExport(false)}
               className="text-muted hover:text-[var(--color-text-base)] p-1 transition-colors"
+              disabled={isExporting}
             >
               <X size={20} />
             </button>
@@ -683,11 +862,26 @@ const AdminDashboard: React.FC = () => {
               gap: '1rem',
             }}
           >
-            <button className="btn btn-secondary w-1/2" onClick={() => setShowConfirmExport(false)}>
+            <button
+              className="btn btn-secondary w-1/2"
+              onClick={() => setShowConfirmExport(false)}
+              disabled={isExporting}
+            >
               Hủy bỏ
             </button>
-            <button className="btn btn-primary w-1/2" onClick={executeExportExcel}>
-              Xác nhận xuất
+            <button
+              className="btn btn-primary w-1/2 flex items-center justify-center gap-2"
+              onClick={executeExportExcel}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Đang tạo file...</span>
+                </>
+              ) : (
+                <span>Xác nhận xuất</span>
+              )}
             </button>
           </div>
         </ModalOverlay>
