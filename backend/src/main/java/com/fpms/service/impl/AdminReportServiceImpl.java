@@ -46,25 +46,29 @@ public class AdminReportServiceImpl implements AdminReportService {
         LocalDate prevEndDate = startDate.minusDays(1);
         LocalDate prevStartDate = prevEndDate.minusDays(daysSpan - 1);
 
-        // 2. Tính toán Doanh thu (Kỳ hiện tại vs Kỳ trước)
-        BigDecimal currentRevenue = bookingRepository.sumRevenueBetweenDates(startDate, endDate);
-        BigDecimal previousRevenue = bookingRepository.sumRevenueBetweenDates(prevStartDate, prevEndDate);
-        Double revenueGrowthRate = calculateGrowthRate(currentRevenue, previousRevenue);
-
-        // 3. Phân tích trạng thái đơn đặt sân kỳ hiện tại
-        List<Object[]> currentStatusRows = bookingRepository.countBookingsByStatusBetweenDates(startDate, endDate);
-        Map<BookingStatus, Long> currentStatusCounts = mapStatusCounts(currentStatusRows);
+        // 2. Lấy dữ liệu thống kê tổng hợp (Single-Pass Aggregate: Doanh thu + Trạng thái) cho kỳ hiện tại
+        List<Object[]> currentStatsRows = bookingRepository.getBookingStatsByStatusBetweenDates(startDate, endDate);
+        Map<BookingStatus, Long> currentStatusCounts = new EnumMap<>(BookingStatus.class);
+        BigDecimal currentRevenue = extractStatusStatsAndRevenue(currentStatsRows, currentStatusCounts);
 
         long totalBookings = currentStatusCounts.values().stream().mapToLong(Long::longValue).sum();
         long completedBookings = currentStatusCounts.getOrDefault(BookingStatus.COMPLETED, 0L);
-        long confirmedBookings = currentStatusCounts.getOrDefault(BookingStatus.CONFIRMED, 0L);
-        long cancelledBookings = currentStatusCounts.getOrDefault(BookingStatus.CANCELLED, 0L);
+        long confirmedBookings = currentStatusCounts.getOrDefault(BookingStatus.CONFIRMED, 0L)
+                + currentStatusCounts.getOrDefault(BookingStatus.IN_PROGRESS, 0L)
+                + currentStatusCounts.getOrDefault(BookingStatus.WAITING_APPROVAL, 0L);
+        long cancelledBookings = currentStatusCounts.getOrDefault(BookingStatus.CANCELLED, 0L)
+                + currentStatusCounts.getOrDefault(BookingStatus.REFUNDED, 0L);
 
-        // 4. Phân tích tỷ lệ hủy đơn (Kỳ hiện tại vs Kỳ trước)
-        List<Object[]> prevStatusRows = bookingRepository.countBookingsByStatusBetweenDates(prevStartDate, prevEndDate);
-        Map<BookingStatus, Long> prevStatusCounts = mapStatusCounts(prevStatusRows);
+        // 3. Lấy dữ liệu thống kê tổng hợp cho kỳ trước
+        List<Object[]> prevStatsRows = bookingRepository.getBookingStatsByStatusBetweenDates(prevStartDate, prevEndDate);
+        Map<BookingStatus, Long> prevStatusCounts = new EnumMap<>(BookingStatus.class);
+        BigDecimal previousRevenue = extractStatusStatsAndRevenue(prevStatsRows, prevStatusCounts);
+
         long prevTotalBookings = prevStatusCounts.values().stream().mapToLong(Long::longValue).sum();
-        long prevCancelledBookings = prevStatusCounts.getOrDefault(BookingStatus.CANCELLED, 0L);
+        long prevCancelledBookings = prevStatusCounts.getOrDefault(BookingStatus.CANCELLED, 0L)
+                + prevStatusCounts.getOrDefault(BookingStatus.REFUNDED, 0L);
+
+        Double revenueGrowthRate = calculateGrowthRate(currentRevenue, previousRevenue);
 
         double cancellationRate = totalBookings > 0
                 ? roundToTwoDecimals((cancelledBookings * 100.0) / totalBookings)
@@ -74,16 +78,15 @@ public class AdminReportServiceImpl implements AdminReportService {
                 : 0.0;
         double cancellationRateDiff = roundToTwoDecimals(cancellationRate - prevCancellationRate);
 
-        // 5. Thống kê khách hàng mới trong kỳ
+        // 4. Thống kê khách hàng mới trong kỳ
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
         long newCustomersCount = userRepository.countByIsDeletedFalseAndRoleRoleNameAndCreatedAtBetween(
                 RoleName.ROLE_CUSTOMER, startDateTime, endDateTime);
 
-        // 6. Tỷ lệ khách quay lại trong kỳ
+        // 5. Tỷ lệ khách quay lại trong kỳ (truy vấn đếm trực tiếp tối ưu dưới CSDL)
         long distinctCustomers = bookingRepository.countDistinctCustomersBetweenDates(startDate, endDate);
-        List<Object[]> repeatCustomerRows = bookingRepository.findRepeatCustomerIdsBetweenDates(startDate, endDate);
-        long repeatCustomerCount = repeatCustomerRows.size();
+        long repeatCustomerCount = bookingRepository.countRepeatCustomersBetweenDates(startDate, endDate);
         double repeatCustomerRate = distinctCustomers > 0
                 ? roundToTwoDecimals((repeatCustomerCount * 100.0) / distinctCustomers)
                 : 0.0;
@@ -127,8 +130,8 @@ public class AdminReportServiceImpl implements AdminReportService {
             result.add(RevenueTrendPointResponse.builder()
                     .date(cur)
                     .dayName(getDayOfWeekName(cur.getDayOfWeek()))
-                    .revenue(data.revenue())
-                    .bookingCount(data.count())
+                    .revenue(data.getRevenue())
+                    .bookingCount(data.getCount())
                     .build());
             cur = cur.plusDays(1);
         }
@@ -255,6 +258,22 @@ public class AdminReportServiceImpl implements AdminReportService {
         return rate.doubleValue();
     }
 
+    private BigDecimal extractStatusStatsAndRevenue(List<Object[]> rows, Map<BookingStatus, Long> targetCountsMap) {
+        BigDecimal completedRevenue = BigDecimal.ZERO;
+        if (rows != null) {
+            for (Object[] row : rows) {
+                BookingStatus status = (BookingStatus) row[0];
+                Long count = ((Number) row[1]).longValue();
+                BigDecimal revenue = row.length > 2 && row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
+                targetCountsMap.put(status, count);
+                if (status == BookingStatus.COMPLETED) {
+                    completedRevenue = revenue;
+                }
+            }
+        }
+        return completedRevenue;
+    }
+
     private Map<BookingStatus, Long> mapStatusCounts(List<Object[]> rows) {
         Map<BookingStatus, Long> map = new EnumMap<>(BookingStatus.class);
         if (rows != null) {
@@ -283,5 +302,21 @@ public class AdminReportServiceImpl implements AdminReportService {
         };
     }
 
-    private record DailyData(BigDecimal revenue, Long count) {}
+    private static class DailyData {
+        private final BigDecimal revenue;
+        private final Long count;
+
+        public DailyData(BigDecimal revenue, Long count) {
+            this.revenue = revenue;
+            this.count = count;
+        }
+
+        public BigDecimal getRevenue() {
+            return revenue;
+        }
+
+        public Long getCount() {
+            return count;
+        }
+    }
 }
