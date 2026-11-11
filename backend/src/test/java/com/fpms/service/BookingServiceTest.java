@@ -938,4 +938,46 @@ class BookingServiceTest {
         assertEquals(BookingStatus.IN_PROGRESS, booking.getStatus());
         verify(bookingRepository, times(1)).save(booking);
     }
+
+    @Test
+    @DisplayName("checkOutBooking - Thành công cập nhật trạng thái COMPLETED và set remainingAmount = 0")
+    void checkOutBooking_SetsRemainingAmountZero() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B102")
+                .status(BookingStatus.IN_PROGRESS)
+                .bookingDate(LocalDate.now())
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .pitch(pitch)
+                .timeSlot(timeSlot)
+                .customer(user)
+                .build();
+        booking.setId(102L);
+
+        com.fpms.dto.request.BookingCheckOutRequest request = com.fpms.dto.request.BookingCheckOutRequest.builder()
+                .paymentMethod(com.fpms.entity.enums.PaymentMethodCode.CASH)
+                .note("Thu tiền mặt đủ")
+                .build();
+
+        when(bookingRepository.findById(102L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(userPrincipal.getId())).thenReturn(Optional.of(user));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.fpms.dto.response.BookingResponse mockRes = new com.fpms.dto.response.BookingResponse();
+        mockRes.setStatus(BookingStatus.COMPLETED);
+        mockRes.setRemainingAmount(BigDecimal.ZERO);
+        when(bookingMapper.toBookingResponse(any(Booking.class))).thenReturn(mockRes);
+
+        com.fpms.dto.response.BookingResponse response =
+                bookingService.checkOutBooking(102L, request, userPrincipal);
+
+        assertNotNull(response);
+        assertEquals(BookingStatus.COMPLETED, booking.getStatus());
+        assertEquals(BigDecimal.ZERO, booking.getRemainingAmount());
+
+        org.mockito.ArgumentCaptor<TransactionRequest> txnCaptor = org.mockito.ArgumentCaptor.forClass(TransactionRequest.class);
+        verify(paymentTransactionService, times(1)).createTransaction(txnCaptor.capture());
+        assertEquals(BigDecimal.valueOf(210000), txnCaptor.getValue().getAmount());
+        assertEquals(PaymentType.REMAINING_70, txnCaptor.getValue().getPaymentType());
+        verify(bookingRepository, times(1)).save(booking);
+    }
 }

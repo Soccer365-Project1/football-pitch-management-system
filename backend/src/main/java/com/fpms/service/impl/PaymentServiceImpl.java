@@ -86,20 +86,7 @@ public class PaymentServiceImpl implements PaymentService {
                 transaction.setReferenceCode(transactionNo);
                 paymentTransactionRepository.save(transaction);
 
-                if (booking != null) {
-                    if (transaction.getPaymentType() == PaymentType.REMAINING_70) {
-                        booking.setStatus(BookingStatus.COMPLETED);
-                        bookingRepository.save(booking);
-                        notifyBookingUpdated(booking);
-                        log.info("VNPay Return: Thanh toán nốt 70% thành công cho đơn {}, trạng thái -> COMPLETED", booking.getBookingCode());
-                    } else if (booking.getStatus() == BookingStatus.PENDING_HOLD) {
-                        booking.setStatus(BookingStatus.WAITING_APPROVAL);
-                        booking.setHoldExpiresAt(null);
-                        bookingRepository.save(booking);
-                        notifyBookingUpdated(booking);
-                        log.info("VNPay Return: Đặt cọc thành công cho đơn {}, trạng thái -> WAITING_APPROVAL", booking.getBookingCode());
-                    }
-                }
+                updateBookingAfterSuccessfulPayment(booking, transaction, "VNPay Return");
             }
 
             String returnMsg = transaction.getPaymentType() == PaymentType.REMAINING_70
@@ -215,20 +202,7 @@ public class PaymentServiceImpl implements PaymentService {
                 transaction.setReferenceCode(transactionNo);
                 paymentTransactionRepository.save(transaction);
 
-                if (booking != null) {
-                    if (transaction.getPaymentType() == PaymentType.REMAINING_70) {
-                        booking.setStatus(BookingStatus.COMPLETED);
-                        bookingRepository.save(booking);
-                        notifyBookingUpdated(booking);
-                        log.info("VNPay IPN: Xác nhận thanh toán nốt 70% thành công cho đơn {}", booking.getBookingCode());
-                    } else if (booking.getStatus() == BookingStatus.PENDING_HOLD) {
-                        booking.setStatus(BookingStatus.WAITING_APPROVAL);
-                        booking.setHoldExpiresAt(null);
-                        bookingRepository.save(booking);
-                        notifyBookingUpdated(booking);
-                        log.info("VNPay IPN: Xác nhận đặt cọc thành công cho đơn {}", booking.getBookingCode());
-                    }
-                }
+                updateBookingAfterSuccessfulPayment(booking, transaction, "VNPay IPN");
                 log.info("VNPay IPN: Xác nhận thanh toán thành công cho đơn {}", booking != null ? booking.getBookingCode() : txnRef);
             } else {
                 transaction.setStatus(TransactionStatus.FAILED);
@@ -260,6 +234,27 @@ public class PaymentServiceImpl implements PaymentService {
             response.put("RspCode", "99");
             response.put("Message", "Unknown Error");
             return response;
+        }
+    }
+
+    private void updateBookingAfterSuccessfulPayment(Booking booking, PaymentTransaction transaction, String source) {
+        if (booking == null) {
+            return;
+        }
+        if (transaction.getPaymentType() == PaymentType.REMAINING_70) {
+            booking.setStatus(BookingStatus.COMPLETED);
+            booking.setRemainingAmount(BigDecimal.ZERO);
+            bookingRepository.save(booking);
+            notifyBookingUpdated(booking);
+            log.info("{}: Thanh toán nốt 70% thành công cho đơn {}, trạng thái -> COMPLETED, remainingAmount -> 0",
+                    source, booking.getBookingCode());
+        } else if (booking.getStatus() == BookingStatus.PENDING_HOLD) {
+            booking.setStatus(BookingStatus.WAITING_APPROVAL);
+            booking.setHoldExpiresAt(null);
+            bookingRepository.save(booking);
+            notifyBookingUpdated(booking);
+            log.info("{}: Đặt cọc thành công cho đơn {}, trạng thái -> WAITING_APPROVAL",
+                    source, booking.getBookingCode());
         }
     }
 
