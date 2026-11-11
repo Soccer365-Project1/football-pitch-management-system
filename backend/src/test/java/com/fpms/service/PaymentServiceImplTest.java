@@ -279,4 +279,34 @@ class PaymentServiceImplTest {
         assertEquals(BigDecimal.ZERO, testBooking.getRemainingAmount());
         verify(bookingRepository).save(testBooking);
     }
+
+    @Test
+    @DisplayName("Return URL: Khách bấm Hủy (Mã 24) khi thanh toán nốt 70% -> REMAINING_CANCELLED và giữ nguyên IN_PROGRESS")
+    void testVerifyAndProcessReturn_Remaining70_Cancelled_Code24() {
+        testBooking.setStatus(BookingStatus.IN_PROGRESS);
+        testBooking.setHoldExpiresAt(null);
+        testBooking.setRemainingAmount(new BigDecimal("210000"));
+        testTransaction.setPaymentType(PaymentType.REMAINING_70);
+        testTransaction.setAmount(new BigDecimal("210000"));
+
+        Map<String, String> params = new HashMap<>();
+        params.put("vnp_TxnRef", "TXN_123");
+        params.put("vnp_Amount", "21000000");
+        params.put("vnp_ResponseCode", "24");
+
+        String hashData = VNPayUtil.buildHashData(params);
+        params.put("vnp_SecureHash", VNPayUtil.hmacSHA512(hashSecret, hashData));
+
+        when(paymentTransactionRepository.findByTransactionCode("TXN_123"))
+                .thenReturn(Optional.of(testTransaction));
+
+        PaymentReturnResponse response = paymentService.verifyAndProcessReturn(params);
+
+        assertEquals("REMAINING_CANCELLED", response.getStatus());
+        assertEquals("REMAINING_70", response.getPaymentType());
+        assertEquals(TransactionStatus.FAILED, testTransaction.getStatus());
+        assertEquals(BookingStatus.IN_PROGRESS, testBooking.getStatus());
+        verify(paymentTransactionRepository).save(testTransaction);
+        verify(bookingRepository, never()).save(any());
+    }
 }
