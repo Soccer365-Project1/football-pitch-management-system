@@ -49,25 +49,36 @@ const PaymentResult: React.FC = () => {
     );
   }
 
+  const isSuccess = result?.status === 'SUCCESS';
+  const isRemainingPayment =
+    result?.paymentType === 'REMAINING_70' || result?.status === 'REMAINING_CANCELLED';
+  const isPendingHold = result?.status === 'PENDING_HOLD';
+  const isRemainingCancelled = result?.status === 'REMAINING_CANCELLED';
+  const isRetryableWarning = isPendingHold || isRemainingCancelled;
+  const isCancelled = result?.status === 'CANCELLED';
+
   const handleRepay = async () => {
     if (!result?.bookingId) return;
     try {
       setRepaying(true);
       setRepayError(null);
-      const res = await bookingService.repayBooking(result.bookingId);
+      const res = isRemainingPayment
+        ? await bookingService.payRemainingBooking(result.bookingId)
+        : await bookingService.repayBooking(result.bookingId);
       if (res.data?.paymentUrl) {
         window.location.href = res.data.paymentUrl;
       }
     } catch (err: any) {
-      setRepayError(err?.response?.data?.message || 'Không thể tạo liên kết thanh toán lại. Có thể thời gian giữ chỗ đã hết hạn.');
+      setRepayError(
+        err?.response?.data?.message ||
+          (isRemainingPayment
+            ? 'Không thể tạo liên kết thanh toán lại. Vui lòng thử lại từ trang Đơn của tôi.'
+            : 'Không thể tạo liên kết thanh toán lại. Có thể thời gian giữ chỗ đã hết hạn.')
+      );
     } finally {
       setRepaying(false);
     }
   };
-
-  const isSuccess = result?.status === 'SUCCESS';
-  const isPendingHold = result?.status === 'PENDING_HOLD';
-  const isCancelled = result?.status === 'CANCELLED';
 
   return (
     <div className="min-h-[calc(100vh-160px)] flex items-center justify-center p-4">
@@ -139,7 +150,7 @@ const PaymentResult: React.FC = () => {
               </button>
             </div>
           </>
-        ) : isPendingHold ? (
+        ) : isRetryableWarning ? (
           <>
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -147,9 +158,14 @@ const PaymentResult: React.FC = () => {
             >
               <AlertTriangle size={42} />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Thanh toán chưa hoàn tất</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              {isRemainingCancelled ? 'Đã hủy thanh toán nốt tiền sân' : 'Thanh toán chưa hoàn tất'}
+            </h1>
             <p className="text-muted text-sm mb-6">
-              {result?.message || 'Giao dịch trên VNPAY chưa hoàn thành, nhưng khung giờ của bạn vẫn đang được tạm giữ. Bạn có thể thanh toán lại để giữ chỗ.'}
+              {result?.message ||
+                (isRemainingCancelled
+                  ? 'Bạn đã hủy giao dịch thanh toán phần tiền còn lại trên VNPAY. Đơn đặt sân vẫn đang hoạt động, bạn có thể thử thanh toán lại.'
+                  : 'Giao dịch trên VNPAY chưa hoàn thành, nhưng khung giờ của bạn vẫn đang được tạm giữ. Bạn có thể thanh toán lại để giữ chỗ.')}
             </p>
 
             {repayError && (
@@ -173,9 +189,11 @@ const PaymentResult: React.FC = () => {
                   <span className="text-muted">Mã đơn đặt sân:</span>
                   <span className="font-semibold">{result.bookingCode}</span>
                 </div>
-                {result.amount && (
+                {result.amount != null && (
                   <div className="flex justify-between items-center py-1">
-                    <span className="text-muted">Tiền cọc cần thanh toán (30%):</span>
+                    <span className="text-muted">
+                      {isRemainingCancelled ? 'Số tiền còn lại cần thanh toán (70%):' : 'Tiền cọc cần thanh toán (30%):'}
+                    </span>
                     <span className="font-bold text-primary">{formatPrice(result.amount)}</span>
                   </div>
                 )}
@@ -196,7 +214,8 @@ const PaymentResult: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <RefreshCw size={18} /> Thanh toán lại cọc VNPAY
+                    <RefreshCw size={18} />{' '}
+                    {isRemainingCancelled ? 'Thanh toán lại nốt tiền sân (VNPAY)' : 'Thanh toán lại cọc VNPAY'}
                   </>
                 )}
               </button>
@@ -246,25 +265,60 @@ const PaymentResult: React.FC = () => {
             >
               <XCircle size={42} />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Thanh toán không thành công</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              {isRemainingPayment ? 'Thanh toán nốt tiền sân không thành công' : 'Thanh toán không thành công'}
+            </h1>
             <p className="text-muted text-sm mb-6">
-              {result?.message || 'Giao dịch đặt cọc gặp sự cố hoặc đã hết hạn.'}
+              {result?.message ||
+                (isRemainingPayment
+                  ? 'Giao dịch thanh toán phần tiền còn lại gặp sự cố. Bạn có thể thử thanh toán lại hoặc thanh toán trực tiếp tại sân.'
+                  : 'Giao dịch đặt cọc gặp sự cố hoặc đã hết hạn.')}
             </p>
+            {repayError && (
+              <div
+                className="p-3 mb-4 rounded-lg text-sm text-left"
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+              >
+                {repayError}
+              </div>
+            )}
             <div className="flex flex-col gap-3">
-              <button
-                onClick={() => navigate('/book-pitch')}
-                className="btn btn-primary w-full flex items-center justify-center gap-2 py-3"
-                style={{ padding: '0.85rem' }}
-              >
-                <RefreshCw size={18} /> Thử đặt lại
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="btn btn-outline w-full py-3"
-                style={{ padding: '0.85rem' }}
-              >
-                Quay về trang chủ
-              </button>
+              {isRemainingPayment && result?.bookingId ? (
+                <>
+                  <button
+                    onClick={handleRepay}
+                    disabled={repaying}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 py-3"
+                    style={{ padding: '0.85rem' }}
+                  >
+                    <RefreshCw size={18} /> Thanh toán lại qua VNPAY
+                  </button>
+                  <button
+                    onClick={() => navigate('/my-bookings')}
+                    className="btn btn-outline w-full py-3"
+                    style={{ padding: '0.85rem' }}
+                  >
+                    Về danh sách đơn của tôi
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate('/book-pitch')}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 py-3"
+                    style={{ padding: '0.85rem' }}
+                  >
+                    <RefreshCw size={18} /> Thử đặt lại
+                  </button>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="btn btn-outline w-full py-3"
+                    style={{ padding: '0.85rem' }}
+                  >
+                    Quay về trang chủ
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}
