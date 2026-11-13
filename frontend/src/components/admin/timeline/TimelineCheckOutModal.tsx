@@ -183,6 +183,30 @@ export const TimelineCheckOutModal: React.FC<TimelineCheckOutModalProps> = ({
               </div>
             </div>
 
+            {/* QR chuyển khoản tại quầy */}
+            {paymentMethod === 'BANK_TRANSFER' && remainingAmount > 0 && (
+              <div
+                className="flex flex-col items-center justify-center p-4 rounded-lg text-center"
+                style={{
+                  backgroundColor: 'var(--color-bg-base)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                <p className="text-xs font-semibold text-muted mb-2">
+                  Quét mã VietQR chuyển khoản thu nốt 70% tiền sân tại quầy:
+                </p>
+                <img
+                  src={`https://img.vietqr.io/image/970407-19036789999011-compact2.png?amount=${remainingAmount}&addInfo=${encodeURIComponent(`TT ${slot.bookingCode || slot.bookingId}`)}&accountName=SOCCER365`}
+                  alt={`Mã QR chuyển khoản ngân hàng thu nốt 70% tiền sân số tiền ${formatPrice(remainingAmount)} cho đơn đặt sân #${slot.bookingCode ? slot.bookingCode.replace('#', '') : slot.bookingId}`}
+                  width="180"
+                  height="180"
+                  loading="lazy"
+                  style={{ width: '160px', height: '160px', aspectRatio: '1/1', objectFit: 'contain', borderRadius: '8px' }}
+                />
+                <span className="text-xs text-muted mt-2 font-mono">Techcombank: 19036789999011 - SOCCER365</span>
+              </div>
+            )}
+
             {/* Ô ghi chú thu ngân */}
             <div>
               <label htmlFor="checkout-note" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
@@ -225,6 +249,7 @@ export const TimelineCheckOutModal: React.FC<TimelineCheckOutModalProps> = ({
               type="submit"
               disabled={isCheckingOut}
               className="timeline-btn-confirm-checkout"
+              aria-label={`Xác nhận thu nốt 70% tiền sân ${formatPrice(remainingAmount)} và kết thúc ca đá`}
             >
               {isCheckingOut ? (
                 <>

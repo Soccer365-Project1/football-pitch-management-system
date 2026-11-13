@@ -311,6 +311,7 @@ const AdminTimeline: React.FC = () => {
                                     disabled={isPast}
                                     onClick={isPast ? undefined : () => handleCheckIn(slotData!)}
                                     className={`timeline-btn-checkin ${isPast ? 'timeline-btn-disabled' : ''}`}
+                                    aria-label={`Xác nhận nhận sân cho đơn #${slotData?.bookingCode || slotData?.bookingId} sân ${pitch.name}`}
                                     style={
                                       isPast
                                         ? {
@@ -342,6 +343,7 @@ const AdminTimeline: React.FC = () => {
                                   type="button"
                                   onClick={() => setCheckOutSlot(slotData || null)}
                                   className="timeline-btn-checkout"
+                                  aria-label={`Trả sân và thanh toán cho đơn #${slotData?.bookingCode || slotData?.bookingId} sân ${pitch.name}`}
                                   title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đang sử dụng. Bấm để trả sân & thanh toán`}
                                 >
                                   <Square size={10} className="fill-current" />
