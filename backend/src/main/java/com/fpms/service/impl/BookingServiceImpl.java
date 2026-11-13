@@ -719,11 +719,13 @@ public class BookingServiceImpl implements BookingService {
             note += " - Ghi chú: " + request.getNote().trim();
         }
 
+        BigDecimal remainingAmount = booking.getRemainingAmount() != null ? booking.getRemainingAmount() : BigDecimal.ZERO;
+
         paymentTransactionService.createTransaction(
                 TransactionRequest.builder()
                         .booking(booking)
                         .paymentMethodCode(request.getPaymentMethod())
-                        .amount(booking.getRemainingAmount())
+                        .amount(remainingAmount)
                         .paymentType(PaymentType.REMAINING_70)
                         .status(TransactionStatus.SUCCESS)
                         .processedBy(staff)
@@ -731,6 +733,7 @@ public class BookingServiceImpl implements BookingService {
                         .build()
         );
 
+        booking.setRemainingAmount(BigDecimal.ZERO);
         booking.setStatus(BookingStatus.COMPLETED);
         booking = bookingRepository.save(booking);
 

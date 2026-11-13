@@ -18,7 +18,8 @@ export interface BookingDepositResponse {
 }
 
 export interface PaymentReturnResult {
-  status: 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'PENDING_HOLD' | 'INVALID_SIGNATURE';
+  status: 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'PENDING_HOLD' | 'REMAINING_CANCELLED' | 'INVALID_SIGNATURE';
+  paymentType?: 'DEPOSIT_30' | 'REMAINING_70' | string;
   bookingCode?: string;
   bookingId?: number;
   amount?: number;

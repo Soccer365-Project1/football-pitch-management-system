@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -14,14 +14,12 @@ import {
   Copy,
   Check,
   RotateCcw,
-  TrendingUp,
   Receipt,
   Download
 } from 'lucide-react';
 import {
   transactionService,
   type TransactionSummaryResponse,
-  type SearchFieldType,
   type TransactionStatus,
   type PaymentType
 } from '../../services/transactionService';
@@ -53,14 +51,6 @@ const PAYMENT_METHOD_OPTIONS: { value: string; label: string }[] = [
   { value: 'BANK_TRANSFER', label: 'Chuyển khoản ngân hàng' },
 ];
 
-const SEARCH_FIELD_OPTIONS: { value: SearchFieldType; label: string; placeholder: string }[] = [
-  { value: 'ALL', label: 'Tất cả các trường', placeholder: 'Tìm mã GD, mã đơn, đối soát, SĐT...' },
-  { value: 'TRANSACTION_CODE', label: 'Mã giao dịch', placeholder: 'Nhập mã giao dịch (TXN_...)' },
-  { value: 'BOOKING_CODE', label: 'Mã đơn đặt', placeholder: 'Nhập mã đơn đặt (#B...)' },
-  { value: 'REFERENCE_CODE', label: 'Mã đối soát', placeholder: 'Nhập mã đối soát ngân hàng/VNPAY...' },
-  { value: 'PHONE', label: 'Số điện thoại', placeholder: 'Nhập số điện thoại khách hàng...' },
-];
-
 export const AdminTransactions: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -68,7 +58,6 @@ export const AdminTransactions: React.FC = () => {
   const status = searchParams.get('status') || '';
   const paymentType = searchParams.get('paymentType') || '';
   const paymentMethodCode = searchParams.get('paymentMethodCode') || '';
-  const searchField = (searchParams.get('searchField') as SearchFieldType) || 'ALL';
   const urlKeyword = searchParams.get('keyword') || '';
   const fromDate = searchParams.get('fromDate') || '';
   const toDate = searchParams.get('toDate') || '';
@@ -98,7 +87,6 @@ export const AdminTransactions: React.FC = () => {
     status?: string;
     paymentType?: string;
     paymentMethodCode?: string;
-    searchField?: SearchFieldType;
     keyword?: string;
     fromDate?: string;
     toDate?: string;
@@ -124,13 +112,8 @@ export const AdminTransactions: React.FC = () => {
           else next.delete('paymentMethodCode');
         }
 
-        if (newValues.searchField !== undefined) {
-          if (newValues.searchField && newValues.searchField !== 'ALL') {
-            next.set('searchField', newValues.searchField);
-          } else {
-            next.delete('searchField');
-          }
-        }
+        // Luôn tìm kiếm trên tất cả các trường
+        next.delete('searchField');
 
         if (newValues.keyword !== undefined) {
           const trimmed = newValues.keyword.trim();
@@ -186,7 +169,7 @@ export const AdminTransactions: React.FC = () => {
         page,
         pageSize,
         keyword: urlKeyword,
-        searchField,
+        searchField: 'ALL',
         status,
         paymentType,
         paymentMethodCode,
@@ -214,28 +197,7 @@ export const AdminTransactions: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [page, pageSize, urlKeyword, searchField, status, paymentType, paymentMethodCode, fromDate, toDate]);
-
-  // Tính toán nhanh thống kê trên trang hiện tại
-  const pageStats = useMemo(() => {
-    let successCount = 0;
-    let pendingCount = 0;
-    let failedCount = 0;
-    let successAmount = 0;
-
-    transactions.forEach((t) => {
-      if (t.status === 'SUCCESS') {
-        successCount++;
-        successAmount += Number(t.amount || 0);
-      } else if (t.status === 'PENDING') {
-        pendingCount++;
-      } else if (t.status === 'FAILED') {
-        failedCount++;
-      }
-    });
-
-    return { successCount, pendingCount, failedCount, successAmount };
-  }, [transactions]);
+  }, [page, pageSize, urlKeyword, status, paymentType, paymentMethodCode, fromDate, toDate]);
 
   // Các handler bộ lọc
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -248,10 +210,6 @@ export const AdminTransactions: React.FC = () => {
 
   const handlePaymentMethodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     updateParams({ paymentMethodCode: e.target.value, page: 1 });
-  };
-
-  const handleSearchFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateParams({ searchField: e.target.value as SearchFieldType, page: 1 });
   };
 
   const handleFromDateChange = (val: string) => {
@@ -296,7 +254,7 @@ export const AdminTransactions: React.FC = () => {
     try {
       const blob = await transactionService.exportExcel({
         keyword: urlKeyword,
-        searchField,
+        searchField: 'ALL',
         status,
         paymentType,
         paymentMethodCode,
@@ -338,12 +296,7 @@ export const AdminTransactions: React.FC = () => {
     urlKeyword,
     fromDate,
     toDate,
-    searchField !== 'ALL' ? searchField : '',
   ].filter(Boolean).length;
-
-  const currentPlaceholder =
-    SEARCH_FIELD_OPTIONS.find((opt) => opt.value === searchField)?.placeholder ||
-    'Tìm kiếm giao dịch...';
 
   const formatDateTime = (iso?: string) => {
     if (!iso) return '---';
@@ -485,268 +438,212 @@ export const AdminTransactions: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* 1. Header Trang & Tiêu đề */}
-      <div>
-        <h1
-          style={{
-            fontSize: '1.5rem',
-            fontWeight: 800,
-            color: 'var(--color-text-base)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            margin: 0,
-          }}
-        >
-          <Receipt style={{ color: 'var(--color-primary)' }} size={28} />
-          Quản Lý Giao Dịch
-        </h1>
-        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0' }}>
-          Theo dõi dòng tiền, đối soát giao dịch thanh toán trực tuyến và thu tiền mặt tại quầy
-        </p>
-      </div>
-
-      {/* 2. Thẻ KPI Tổng Quan Nhanh */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-        <div style={{ padding: '1.15rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            <span>TỔNG GIAO DỊCH</span>
-            <Receipt size={18} style={{ color: 'var(--color-primary)' }} />
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 900, color: 'var(--color-text-base)' }}>{totalElements}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Bản ghi trong hệ thống</div>
-        </div>
-
-        <div style={{ padding: '1.15rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            <span>TIỀN THÀNH CÔNG (TRANG)</span>
-            <TrendingUp size={18} color="#10b981" />
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#047857' }}>{formatPrice(pageStats.successAmount)}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>{pageStats.successCount} giao dịch thành công</div>
-        </div>
-
-        <div style={{ padding: '1.15rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            <span>ĐANG CHỜ XỬ LÝ</span>
-            <Clock size={18} color="#f59e0b" />
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#b45309' }}>{pageStats.pendingCount}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Giao dịch chờ thanh toán</div>
-        </div>
-
-        <div style={{ padding: '1.15rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            <span>GIAO DỊCH THẤT BẠI</span>
-            <AlertTriangle size={18} color="#ef4444" />
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#dc2626' }}>{pageStats.failedCount}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Hết hạn hoặc lỗi cổng</div>
-        </div>
-      </div>
-
-      {/* 3. Toolbar Tìm Kiếm & Lọc Đa Năng */}
+      {/* 1. Header Trang & Tiêu đề + Nút Xuất Excel bên phải theo mẫu phác thảo */}
       <div
         style={{
-          padding: '1.25rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontSize: '1.5rem',
+              fontWeight: 800,
+              color: 'var(--color-text-base)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              margin: 0,
+            }}
+          >
+            <Receipt style={{ color: 'var(--color-primary)' }} size={28} />
+            Quản Lý Giao Dịch
+          </h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0' }}>
+            Theo dõi dòng tiền, đối soát giao dịch thanh toán trực tuyến và thu tiền mặt tại quầy
+          </p>
+        </div>
+
+        {/* Nút Xuất Excel ở góc trên bên phải */}
+        <button
+          type="button"
+          onClick={handleOpenExportConfirm}
+          disabled={exporting || loading}
+          className="btn btn-primary"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            height: '42px',
+            padding: '0 1.25rem',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            borderRadius: 'var(--radius-md)',
+            flexShrink: 0,
+          }}
+          title="Xuất danh sách giao dịch thỏa mãn bộ lọc ra file Excel (.xlsx)"
+        >
+          {exporting ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Download size={16} />
+          )}
+          <span>{exporting ? 'Đang xuất...' : 'Xuất Excel'}</span>
+        </button>
+      </div>
+
+      {/* 2. Toolbar Tìm Kiếm & Lọc: Gọn gàng trên 1 hàng duy nhất theo mẫu phác thảo */}
+      <div
+        style={{
+          padding: '1rem 1.25rem',
           borderRadius: 'var(--radius-md)',
           backgroundColor: 'var(--color-bg-surface)',
           border: '1px solid var(--color-border)',
           boxShadow: 'var(--shadow-sm)',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
         }}
       >
-        {/* Hàng 1: Dropdown filters + Date Picker range */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-          {/* Trạng thái */}
-          <select value={status} onChange={handleStatusChange} style={selectStyle} title="Lọc theo trạng thái giao dịch">
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Loại thanh toán */}
-          <select value={paymentType} onChange={handlePaymentTypeChange} style={selectStyle} title="Lọc theo loại giao dịch">
-            {PAYMENT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Phương thức */}
-          <select value={paymentMethodCode} onChange={handlePaymentMethodChange} style={selectStyle} title="Lọc theo phương thức thanh toán">
-            {PAYMENT_METHOD_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Khoảng ngày đôi */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <DateInputWithPicker
-              value={fromDate}
-              max={toDate || undefined}
-              onChange={handleFromDateChange}
-              placeholder="Từ ngày"
-              title="Từ ngày giao dịch"
-              label="Từ ngày"
-            />
-            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>
-            <DateInputWithPicker
-              value={toDate}
-              min={fromDate || undefined}
-              onChange={handleToDateChange}
-              placeholder="Đến ngày"
-              title="Đến ngày giao dịch"
-              label="Đến ngày"
-            />
-          </div>
-
-          {/* Nút Xóa bộ lọc (dịch sang trái, gần chữ Đến ngày) */}
-          {activeFilterCount > 0 && (
+        {/* Ô gõ từ khóa: Tìm kiếm theo tất cả (mã GD, đơn, đối soát, SĐT...) */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            height: '42px',
+            padding: '0 0.85rem',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--color-bg-base)',
+            flex: '1 1 240px',
+            minWidth: '220px',
+            maxWidth: '320px',
+          }}
+        >
+          <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+          <input
+            type="text"
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                updateParams({ keyword: keywordInput.trim(), page: 1 });
+              }
+            }}
+            placeholder="Tìm mã GD, đơn, SĐT..."
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: 'var(--color-text-base)',
+              fontFamily: 'inherit',
+              fontSize: '0.875rem',
+              width: '100%',
+              minWidth: 0,
+            }}
+          />
+          {keywordInput && (
             <button
-              onClick={handleClearAllFilters}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                height: '42px',
-                padding: '0 0.85rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#b91c1c',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: 'var(--radius-md)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
+              type="button"
+              onClick={() => {
+                setKeywordInput('');
+                updateParams({ keyword: '', page: 1 });
               }}
-              title="Xóa tất cả bộ lọc hiện tại"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+                padding: '0.2rem',
+                display: 'flex',
+                alignItems: 'center',
+              }}
             >
-              <RotateCcw size={13} />
-              Xóa bộ lọc ({activeFilterCount})
+              <X size={15} />
             </button>
           )}
         </div>
 
-        {/* Hàng 2: Tìm kiếm từ khóa (ngắn gọn) + Nút Xuất Excel đặt sát cạnh */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {/* Dropdown chọn trường */}
-          <select
-            value={searchField}
-            onChange={handleSearchFieldChange}
-            style={{ ...selectStyle, flexShrink: 0, minWidth: '155px' }}
-          >
-            {SEARCH_FIELD_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+        {/* Khoảng ngày đôi (Từ ngày - Đến ngày) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+          <DateInputWithPicker
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={handleFromDateChange}
+            placeholder="Từ ngày"
+            title="Từ ngày giao dịch"
+            label="Từ ngày"
+          />
+          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>
+          <DateInputWithPicker
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={handleToDateChange}
+            placeholder="Đến ngày"
+            title="Đến ngày giao dịch"
+            label="Đến ngày"
+          />
+        </div>
 
-          {/* Ô gõ từ khóa: Chiều rộng vừa phải (360px), gọn gàng */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              height: '42px',
-              padding: '0 0.85rem',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--color-bg-base)',
-              width: '360px',
-              maxWidth: '100%',
-            }}
-          >
-            <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-            <input
-              type="text"
-              value={keywordInput}
-              onChange={(e) => setKeywordInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  updateParams({ keyword: keywordInput.trim(), page: 1 });
-                }
-              }}
-              placeholder={currentPlaceholder}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: 'var(--color-text-base)',
-                fontFamily: 'inherit',
-                fontSize: '0.875rem',
-                width: '100%',
-                minWidth: 0,
-              }}
-            />
-            {keywordInput && (
-              <button
-                type="button"
-                onClick={() => {
-                  setKeywordInput('');
-                  updateParams({ keyword: '', page: 1 });
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--color-text-muted)',
-                  cursor: 'pointer',
-                  padding: '0.2rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
+        {/* Lọc Trạng thái */}
+        <select value={status} onChange={handleStatusChange} style={selectStyle} title="Lọc theo trạng thái giao dịch">
+          {STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
 
-          {/* Nút Xuất Excel: Đặt sát ngay cạnh ô search */}
+        {/* Lọc Loại giao dịch */}
+        <select value={paymentType} onChange={handlePaymentTypeChange} style={selectStyle} title="Lọc theo loại giao dịch">
+          {PAYMENT_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Lọc Phương thức */}
+        <select value={paymentMethodCode} onChange={handlePaymentMethodChange} style={selectStyle} title="Lọc theo phương thức thanh toán">
+          {PAYMENT_METHOD_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Nút Xóa bộ lọc */}
+        {activeFilterCount > 0 && (
           <button
-            type="button"
-            onClick={handleOpenExportConfirm}
-            disabled={exporting || loading}
+            onClick={handleClearAllFilters}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.45rem',
+              gap: '0.4rem',
               height: '42px',
-              padding: '0 1.15rem',
-              backgroundColor: '#059669',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 'var(--radius-md)',
+              padding: '0 0.85rem',
+              fontSize: '0.75rem',
               fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: exporting || loading ? 'not-allowed' : 'pointer',
-              opacity: exporting || loading ? 0.7 : 1,
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'background-color 0.15s ease',
+              color: '#b91c1c',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
               flexShrink: 0,
             }}
-            onMouseEnter={(e) => {
-              if (!exporting && !loading) e.currentTarget.style.backgroundColor = '#047857';
-            }}
-            onMouseLeave={(e) => {
-              if (!exporting && !loading) e.currentTarget.style.backgroundColor = '#059669';
-            }}
-            title="Xuất danh sách giao dịch thỏa mãn bộ lọc ra file Excel (.xlsx)"
+            title="Xóa tất cả bộ lọc hiện tại"
           >
-            {exporting ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
-            <span>{exporting ? 'Đang xuất...' : 'Xuất Excel'}</span>
+            <RotateCcw size={13} />
+            Xóa bộ lọc ({activeFilterCount})
           </button>
-        </div>
+        )}
       </div>
 
       {/* 4. Bảng Dữ Liệu Giao Dịch */}
