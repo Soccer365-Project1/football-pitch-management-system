@@ -356,7 +356,7 @@ class AdminBookingServiceTest {
     @Test
     @DisplayName("collectPayment: Thu tiền 70% còn lại + phụ phí và đóng ca thành công (UC011.4)")
     void collectPayment_Success_CalculatesGrandTotal() {
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus(BookingStatus.IN_PROGRESS);
         CollectPaymentRequest request = CollectPaymentRequest.builder()
                 .additionalFee(BigDecimal.valueOf(50000)) // Phụ phí 50k
                 .paymentMethod(PaymentMethodCode.CASH)
@@ -384,7 +384,7 @@ class AdminBookingServiceTest {
     }
 
     @Test
-    @DisplayName("collectPayment: Ném lỗi khi đơn không ở trạng thái CONFIRMED hoặc IN_PROGRESS")
+    @DisplayName("collectPayment: Ném lỗi khi đơn không ở trạng thái IN_PROGRESS")
     void collectPayment_InvalidStatus_ThrowsException() {
         booking.setStatus(BookingStatus.CANCELLED);
         CollectPaymentRequest request = CollectPaymentRequest.builder()
@@ -393,8 +393,13 @@ class AdminBookingServiceTest {
 
         when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
 
-        AppException ex = assertThrows(AppException.class, () -> adminBookingService.collectPayment(10L, request, staffPrincipal));
-        assertEquals(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT, ex.getErrorCode());
+        AppException exCancelled = assertThrows(AppException.class, () -> adminBookingService.collectPayment(10L, request, staffPrincipal));
+        assertEquals(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT, exCancelled.getErrorCode());
+
+        // Test với CONFIRMED (đơn chưa nhận sân không được thu tiền đóng ca)
+        booking.setStatus(BookingStatus.CONFIRMED);
+        AppException exConfirmed = assertThrows(AppException.class, () -> adminBookingService.collectPayment(10L, request, staffPrincipal));
+        assertEquals(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT, exConfirmed.getErrorCode());
     }
 
     @Test

@@ -33,7 +33,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
     }
   }, [booking]);
 
-  if (!isOpen || !booking) return null;
+  if (!isOpen || !booking || booking.status !== 'IN_PROGRESS') return null;
 
   const price = booking.totalAmount || 0;
   const deposit = booking.depositAmount || 0;

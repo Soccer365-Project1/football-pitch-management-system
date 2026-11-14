@@ -215,7 +215,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     public AdminBookingDetailResponse collectPayment(Long id, CollectPaymentRequest request, UserPrincipal currentUser) {
         Booking booking = getValidBooking(id);
 
-        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.IN_PROGRESS) {
+        if (booking.getStatus() != BookingStatus.IN_PROGRESS) {
             throw new AppException(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT);
         }
 

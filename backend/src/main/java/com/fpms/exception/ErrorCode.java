@@ -114,7 +114,7 @@ public enum ErrorCode {
 
     // Booking Admin Management Error Codes (3056 - 3062)
     BOOKING_NOT_WAITING_APPROVAL(3056, HttpStatus.BAD_REQUEST, "Chỉ có thể duyệt đơn đặt sân ở trạng thái chờ duyệt"),
-    BOOKING_CANNOT_COLLECT_PAYMENT(3057, HttpStatus.BAD_REQUEST, "Chỉ có thể thu tiền và đóng ca cho đơn ở trạng thái đã xác nhận hoặc đang diễn ra"),
+    BOOKING_CANNOT_COLLECT_PAYMENT(3057, HttpStatus.BAD_REQUEST, "Chỉ có thể thu tiền và đóng ca cho đơn ở trạng thái đang diễn ra (đã nhận sân)"),
     REFUND_METHOD_REQUIRED(3058, HttpStatus.BAD_REQUEST, "Vui lòng chọn phương thức hoàn tiền khi hủy đơn"),
     ADDITIONAL_FEE_INVALID(3059, HttpStatus.BAD_REQUEST, "Phụ phí phát sinh không hợp lệ, phải là số không âm"),
     BOOKING_ALREADY_CANCELLED_OR_COMPLETED(3060, HttpStatus.BAD_REQUEST, "Không thể thao tác trên đơn đã bị hủy hoặc đã hoàn thành"),
