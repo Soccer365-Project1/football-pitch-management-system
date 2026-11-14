@@ -120,6 +120,10 @@ public enum ErrorCode {
     BOOKING_ALREADY_CANCELLED_OR_COMPLETED(3060, HttpStatus.BAD_REQUEST, "Không thể thao tác trên đơn đã bị hủy hoặc đã hoàn thành"),
     BOOKING_CANCEL_REASON_LENGTH_INVALID(3061, HttpStatus.BAD_REQUEST, "Lý do hủy đơn phải từ 5 đến 500 ký tự"),
     PAID_AMOUNT_EXCEEDS_TOTAL(3062, HttpStatus.BAD_REQUEST, "Số tiền cọc không được vượt quá giá trị ca đá"),
+    BOOKING_NOT_WAITING_CANCELLATION(3063, HttpStatus.BAD_REQUEST, "Chỉ có thể xử lý yêu cầu hủy cho đơn ở trạng thái chờ duyệt hủy"),
+    REJECT_CANCEL_REASON_REQUIRED(3064, HttpStatus.BAD_REQUEST, "Lý do từ chối hủy đơn không được để trống"),
+    REJECT_CANCEL_REASON_LENGTH_INVALID(3065, HttpStatus.BAD_REQUEST, "Lý do từ chối hủy đơn phải từ 5 đến 500 ký tự"),
+    REFUND_AMOUNT_INVALID(3066, HttpStatus.BAD_REQUEST, "Số tiền hoàn cọc không hợp lệ, phải là số không âm"),
 
     // Report & Analytics Error Codes (5000 - 5099)
     INVALID_DATE_RANGE(5001, HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc"),

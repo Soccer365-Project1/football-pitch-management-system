@@ -115,6 +115,10 @@ export interface AdminBookingCancelPayload {
   refundAmount?: number;
 }
 
+export interface AdminBookingRejectCancelPayload {
+  rejectionReason: string;
+}
+
 export interface CollectPaymentPayload {
   additionalFee?: number;
   paymentMethod: PaymentMethodCode;

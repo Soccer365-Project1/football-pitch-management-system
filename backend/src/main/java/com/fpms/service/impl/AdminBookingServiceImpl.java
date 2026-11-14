@@ -2,6 +2,7 @@ package com.fpms.service.impl;
 
 import com.fpms.common.response.PageResponse;
 import com.fpms.dto.request.AdminBookingCancelRequest;
+import com.fpms.dto.request.AdminBookingRejectCancelRequest;
 import com.fpms.dto.request.AdminBookingSearchRequest;
 import com.fpms.dto.request.CollectPaymentRequest;
 import com.fpms.dto.request.CounterBookingCreationRequest;
@@ -31,6 +32,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
@@ -49,19 +51,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final UserRepository userRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final BookingCancellationRepository bookingCancellationRepository;
     private final AdminBookingMapper adminBookingMapper;
     private final SimpMessagingTemplate messagingTemplate;
-
-    private DayType determineDayType(LocalDate date) {
-        if (holidayRepository.existsByHolidayDate(date)) {
-            return DayType.HOLIDAY;
-        }
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
-            return DayType.WEEKEND;
-        }
-        return DayType.WEEKDAY;
-    }  
 
     @Override
     @Transactional(readOnly = true)
@@ -70,108 +62,45 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Pageable pageable = request != null ? request.toPageable() : AdminBookingSearchRequest.builder().build().toPageable();
 
         Page<Booking> page = bookingRepository.findAll(spec, pageable);
-        Page<AdminBookingSummaryResponse> responsePage = page.map(adminBookingMapper::toSummaryResponse);
-
-        return PageResponse.from(responsePage);
+        return PageResponse.from(page.map(adminBookingMapper::toSummaryResponse));
     }
 
     @Override
     @Transactional(readOnly = true)
     public AdminBookingDetailResponse getBookingDetail(Long id) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
-
-        if (Boolean.TRUE.equals(booking.getIsDeleted())) {
-            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
-        }
-
-        List<PaymentTransaction> transactions = paymentTransactionRepository.findByBookingIdOrderByCreatedAtDesc(id);
-        return adminBookingMapper.toDetailResponse(booking, transactions);
+        Booking booking = getValidBooking(id);
+        return toDetailResponse(booking);
     }
 
     @Override
     @Transactional
     public AdminBookingDetailResponse createCounterBooking(CounterBookingCreationRequest request, UserPrincipal currentUser) {
-        // 1. Kiểm tra Sân hoạt động
-        Pitch pitch = pitchRepository.findById(request.getPitchId())
-                .orElseThrow(() -> new AppException(ErrorCode.PITCH_NOT_FOUND));
+        // 1. Kiểm tra tính khả dụng của sân và ca đá
+        Pitch pitch = getActivePitch(request.getPitchId());
+        TimeSlot timeSlot = getTimeSlot(request.getTimeSlotId());
+        validateBookingSlotAvailability(pitch, timeSlot, request.getBookingDate());
 
-        if (pitch.getStatus() != PitchStatus.ACTIVE) {
-            throw new AppException(ErrorCode.PITCH_NOT_ACTIVE);
-        }
+        // 2. Xác định đơn giá theo ma trận giá
+        BigDecimal totalPitchAmount = resolvePitchPrice(pitch, timeSlot, request.getBookingDate());
 
-        // 2. Kiểm tra Ca đá
-        TimeSlot timeSlot = timeSlotRepository.findById(request.getTimeSlotId())
-                .orElseThrow(() -> new AppException(ErrorCode.TIME_SLOT_NOT_FOUND));
-
-        // 3. Kiểm tra Ngày và Giờ ca đá
-        LocalDate today = LocalDate.now();
-        if (request.getBookingDate().isBefore(today)) {
-            throw new AppException(ErrorCode.BOOKING_DATE_INVALID);
-        }
-        if (request.getBookingDate().isAfter(today.plusDays(30))) {
-            throw new AppException(ErrorCode.BOOKING_DATE_EXCEEDS_LIMIT);
-        }
-        if (request.getBookingDate().isEqual(today) && timeSlot.getEndTime().isBefore(LocalTime.now())) {
-            throw new AppException(ErrorCode.TIME_SLOT_ALREADY_PASSED);
-        }
-
-        // 4. Kiểm tra xung đột trùng lịch ca đá
-        boolean isOccupied = bookingRepository.existsByPitchIdAndTimeSlotIdAndBookingDateAndStatusNotIn(
-                pitch.getId(),
-                timeSlot.getId(),
-                request.getBookingDate(),
-                Arrays.asList(BookingStatus.CANCELLED, BookingStatus.REFUNDED)
-        );
-
-        if (isOccupied) {
-            throw new AppException(ErrorCode.BOOKING_TIME_SLOT_ALREADY_BOOKED);
-        }
-
-        // 5. Xác định đơn giá theo Ma trận giá PriceMatrix
-        DayType dayType = determineDayType(request.getBookingDate());
-        PriceMatrix priceMatrix = priceMatrixRepository.findByPitchTypeIdAndIsPeakHourAndDayType(
-                pitch.getPitchType().getId(),
-                timeSlot.getIsPeakHour(),
-                dayType
-        ).orElseThrow(() -> new AppException(ErrorCode.PRICE_MATRIX_NOT_FOUND));
-
-        // 6. Xác định nhân viên và khách hàng
-        User staff = null;
-        if (currentUser != null && currentUser.getId() != null) {
-            staff = userRepository.findById(currentUser.getId()).orElse(null);
-        }
-
-        User customer = null;
-        if (request.getCustomerId() != null) {
-            customer = userRepository.findById(request.getCustomerId()).orElse(null);
-        }
-
-        BigDecimal totalPitchAmount = priceMatrix.getPrice();
-        BigDecimal deposit30Percent = totalPitchAmount.multiply(new BigDecimal("0.3"));
-
-        // Kiểm tra tiền cọc / tiền trả trước không được vượt quá giá trị ca đá
+        // 3. Tính toán số tiền thanh toán trước tại quầy
         if (request.getPaidAmount() != null && request.getPaidAmount().compareTo(totalPitchAmount) > 0) {
             throw new AppException(ErrorCode.PAID_AMOUNT_EXCEEDS_TOTAL);
         }
 
-        // Xác định số tiền thanh toán trước dựa trên lựa chọn (DEPOSIT_30 hoặc FULL_PAYMENT)
+        BigDecimal deposit30Percent = totalPitchAmount.multiply(new BigDecimal("0.3"));
         BigDecimal paidAmount;
-        PaymentType pType;
+        PaymentType paymentType;
 
         if (request.getPaidAmount() != null) {
             paidAmount = request.getPaidAmount();
-            pType = paidAmount.compareTo(totalPitchAmount) >= 0 ? PaymentType.FULL_PAYMENT : PaymentType.DEPOSIT_30;
+            paymentType = paidAmount.compareTo(totalPitchAmount) >= 0 ? PaymentType.FULL_PAYMENT : PaymentType.DEPOSIT_30;
         } else if (request.getPaymentType() == PaymentType.DEPOSIT_30) {
             paidAmount = deposit30Percent;
-            pType = PaymentType.DEPOSIT_30;
-        } else if (request.getPaymentType() == PaymentType.FULL_PAYMENT) {
-            paidAmount = totalPitchAmount;
-            pType = PaymentType.FULL_PAYMENT;
+            paymentType = PaymentType.DEPOSIT_30;
         } else {
-            // Mặc định tại quầy: thanh toán 100% toàn bộ tiền sân
             paidAmount = totalPitchAmount;
-            pType = PaymentType.FULL_PAYMENT;
+            paymentType = PaymentType.FULL_PAYMENT;
         }
 
         if (paidAmount.compareTo(totalPitchAmount) > 0) {
@@ -181,7 +110,12 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         BigDecimal depositAmount = paidAmount;
         BigDecimal remainingAmount = totalPitchAmount.subtract(paidAmount);
 
-        // 7. Tạo bản ghi Booking
+        // 4. Lưu Booking
+        User staff = resolveStaff(currentUser);
+        User customer = request.getCustomerId() != null
+                ? userRepository.findById(request.getCustomerId()).orElse(null)
+                : null;
+
         Booking booking = Booking.builder()
                 .bookingCode("#B" + System.currentTimeMillis())
                 .pitch(pitch)
@@ -206,62 +140,34 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         booking = bookingRepository.save(booking);
 
-        // 8. Nếu khách có thanh toán trước tại quầy -> Lưu PaymentTransaction
+        // 5. Lưu giao dịch thanh toán ban đầu nếu có trả trước
         if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
-            PaymentMethodCode methodCode = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethodCode.CASH;
-            PaymentMethod paymentMethod = paymentMethodRepository.findByCode(methodCode).orElse(null);
-
-            String txnCode = "TXN_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-            PaymentTransaction transaction = PaymentTransaction.builder()
-                    .transactionCode(txnCode)
-                    .booking(booking)
-                    .paymentMethod(paymentMethod)
-                    .processedBy(staff)
-                    .amount(paidAmount)
-                    .paymentType(pType)
-                    .status(TransactionStatus.SUCCESS)
-                    .note(pType == PaymentType.FULL_PAYMENT
-                            ? "Thanh toán toàn bộ 100% tiền sân tại quầy khi tạo đơn"
-                            : "Thanh toán tiền cọc 30% tại quầy khi tạo đơn")
-                    .build();
-
-            paymentTransactionRepository.save(transaction);
+            String note = paymentType == PaymentType.FULL_PAYMENT
+                    ? "Thanh toán toàn bộ 100% tiền sân tại quầy khi tạo đơn"
+                    : "Thanh toán tiền cọc 30% tại quầy khi tạo đơn";
+            savePaymentTransaction(booking, staff, request.getPaymentMethod(), paidAmount, paymentType, "TXN_", note);
         }
 
-        // 9. Đồng bộ Realtime WebSocket
+        // 6. Phát WebSocket & trả kết quả
         sendScheduleEvent("BOOKING_CREATED", booking);
-
-        List<PaymentTransaction> transactions = paymentTransactionRepository.findByBookingIdOrderByCreatedAtDesc(booking.getId());
-        return adminBookingMapper.toDetailResponse(booking, transactions);
+        return toDetailResponse(booking);
     }
 
     @Override
     @Transactional
     public AdminBookingDetailResponse approveBooking(Long id, UserPrincipal currentUser) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
-
-        if (Boolean.TRUE.equals(booking.getIsDeleted())) {
-            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
-        }
+        Booking booking = getValidBooking(id);
 
         if (booking.getStatus() != BookingStatus.WAITING_APPROVAL) {
             throw new AppException(ErrorCode.BOOKING_NOT_WAITING_APPROVAL);
         }
 
-        if (currentUser != null && currentUser.getId() != null) {
-            User staff = userRepository.findById(currentUser.getId()).orElse(null);
-            booking.setStaff(staff);
-        }
-
+        booking.setStaff(resolveStaff(currentUser));
         booking.setStatus(BookingStatus.CONFIRMED);
         booking = bookingRepository.save(booking);
 
         sendScheduleEvent("BOOKING_APPROVED", booking);
-
-        List<PaymentTransaction> transactions = paymentTransactionRepository.findByBookingIdOrderByCreatedAtDesc(id);
-        return adminBookingMapper.toDetailResponse(booking, transactions);
+        return toDetailResponse(booking);
     }
 
     @Override
@@ -276,13 +182,73 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         return processCancellation(id, request, currentUser, true);
     }
 
-    private AdminBookingDetailResponse processCancellation(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser, Boolean forceRefund) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse rejectCancellation(Long id, AdminBookingRejectCancelRequest request, UserPrincipal currentUser) {
+        Booking booking = getValidBooking(id);
 
-        if (Boolean.TRUE.equals(booking.getIsDeleted())) {
-            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
+        if (booking.getStatus() != BookingStatus.WAITING_CANCELLATION) {
+            throw new AppException(ErrorCode.BOOKING_NOT_WAITING_CANCELLATION);
         }
+
+        User staff = resolveStaff(currentUser);
+        booking.setStaff(staff);
+        booking.setStatus(BookingStatus.CONFIRMED);
+        appendCustomerNote(booking, "[Từ chối hủy đơn: " + request.getRejectionReason().trim() + "]");
+        booking = bookingRepository.save(booking);
+
+        // Cập nhật trạng thái REJECTED cho bản ghi yêu cầu hủy
+        bookingCancellationRepository.findByBookingId(id).ifPresent(cancellation -> {
+            cancellation.setRefundStatus(RefundStatus.REJECTED);
+            cancellation.setRejectionReason(request.getRejectionReason().trim());
+            cancellation.setApprovedBy(staff);
+            cancellation.setProcessedAt(LocalDateTime.now());
+            bookingCancellationRepository.save(cancellation);
+        });
+
+        sendScheduleEvent("BOOKING_APPROVED", booking);
+        return toDetailResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public AdminBookingDetailResponse collectPayment(Long id, CollectPaymentRequest request, UserPrincipal currentUser) {
+        Booking booking = getValidBooking(id);
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT);
+        }
+
+        BigDecimal additionalFee = request.getAdditionalFee() != null ? request.getAdditionalFee() : BigDecimal.ZERO;
+        if (additionalFee.compareTo(BigDecimal.ZERO) < 0) {
+            throw new AppException(ErrorCode.ADDITIONAL_FEE_INVALID);
+        }
+
+        User staff = resolveStaff(currentUser);
+        booking.setStaff(staff);
+
+        BigDecimal remainingPitchAmount = booking.getRemainingAmount() != null ? booking.getRemainingAmount() : BigDecimal.ZERO;
+        BigDecimal amountToCollect = remainingPitchAmount.add(additionalFee);
+
+        booking.setAdditionalFee(additionalFee);
+        booking.setRemainingAmount(BigDecimal.ZERO);
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking = bookingRepository.save(booking);
+
+        // Lưu giao dịch thu tiền còn lại nếu số tiền > 0
+        if (amountToCollect.compareTo(BigDecimal.ZERO) > 0) {
+            String note = request.getPaymentNote() != null && !request.getPaymentNote().isEmpty()
+                    ? request.getPaymentNote().trim()
+                    : "Thu tiền quyết toán và đóng ca";
+            savePaymentTransaction(booking, staff, request.getPaymentMethod(), amountToCollect, PaymentType.REMAINING_70, "TXN_FINAL_", note);
+        }
+
+        sendScheduleEvent("BOOKING_COMPLETED", booking);
+        return toDetailResponse(booking);
+    }
+
+    private AdminBookingDetailResponse processCancellation(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser, Boolean forceRefund) {
+        Booking booking = getValidBooking(id);
 
         if (booking.getStatus() == BookingStatus.COMPLETED ||
             booking.getStatus() == BookingStatus.CANCELLED ||
@@ -290,17 +256,9 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             throw new AppException(ErrorCode.BOOKING_ALREADY_CANCELLED_OR_COMPLETED);
         }
 
-        User staff = null;
-        if (currentUser != null && currentUser.getId() != null) {
-            staff = userRepository.findById(currentUser.getId()).orElse(null);
-            booking.setStaff(staff);
-        }
-
-        // Cập nhật ghi chú lý do hủy
-        String reasonText = "[Nhân viên hủy đơn: " + request.getCancelReason().trim() + "]";
-        booking.setCustomerNote(booking.getCustomerNote() != null && !booking.getCustomerNote().isEmpty()
-                ? booking.getCustomerNote() + " " + reasonText
-                : reasonText);
+        User staff = resolveStaff(currentUser);
+        booking.setStaff(staff);
+        appendCustomerNote(booking, "[Nhân viên hủy đơn: " + request.getCancelReason().trim() + "]");
 
         boolean shouldRefund = Boolean.TRUE.equals(forceRefund) || Boolean.TRUE.equals(request.getIsRefund());
         BigDecimal depositAmount = booking.getDepositAmount() != null ? booking.getDepositAmount() : BigDecimal.ZERO;
@@ -318,13 +276,11 @@ public class AdminBookingServiceImpl implements AdminBookingService {
 
         booking = bookingRepository.save(booking);
 
-        // Lưu bản ghi giao dịch hoàn tiền nếu có
+        // Lưu giao dịch hoàn tiền và đồng bộ bản ghi BookingCancellation nếu có
         if (shouldRefund) {
-            PaymentMethod paymentMethod = paymentMethodRepository.findByCode(request.getRefundMethod()).orElse(null);
-            String txnCode = "TXN_REFUND_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
+            PaymentMethod paymentMethod = getPaymentMethod(request.getRefundMethod());
             PaymentTransaction refundTxn = PaymentTransaction.builder()
-                    .transactionCode(txnCode)
+                    .transactionCode(generateTransactionCode("TXN_REFUND_"))
                     .booking(booking)
                     .paymentMethod(paymentMethod)
                     .processedBy(staff)
@@ -335,76 +291,137 @@ public class AdminBookingServiceImpl implements AdminBookingService {
                     .build();
 
             paymentTransactionRepository.save(refundTxn);
+
+            bookingCancellationRepository.findByBookingId(id).ifPresent(cancellation -> {
+                cancellation.setRefundStatus(RefundStatus.COMPLETED);
+                cancellation.setRefundMethod(paymentMethod);
+                cancellation.setApprovedBy(staff);
+                cancellation.setProcessedAt(LocalDateTime.now());
+                cancellation.setNote(request.getCancelReason().trim());
+                bookingCancellationRepository.save(cancellation);
+            });
         }
 
-        // Bắn WebSocket giải phóng ca đá ngay lập tức
         sendScheduleEvent("BOOKING_CANCELLED", booking);
-
-        List<PaymentTransaction> transactions = paymentTransactionRepository.findByBookingIdOrderByCreatedAtDesc(id);
-        return adminBookingMapper.toDetailResponse(booking, transactions);
+        return toDetailResponse(booking);
     }
 
-    @Override
-    @Transactional
-    public AdminBookingDetailResponse collectPayment(Long id, CollectPaymentRequest request, UserPrincipal currentUser) {
+
+    private Booking getValidBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
 
         if (Boolean.TRUE.equals(booking.getIsDeleted())) {
             throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
         }
+        return booking;
+    }
 
-        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.IN_PROGRESS) {
-            throw new AppException(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT);
-        }
-
-        BigDecimal additionalFee = request.getAdditionalFee() != null ? request.getAdditionalFee() : BigDecimal.ZERO;
-        if (additionalFee.compareTo(BigDecimal.ZERO) < 0) {
-            throw new AppException(ErrorCode.ADDITIONAL_FEE_INVALID);
-        }
-
-        User staff = null;
+    private User resolveStaff(UserPrincipal currentUser) {
         if (currentUser != null && currentUser.getId() != null) {
-            staff = userRepository.findById(currentUser.getId()).orElse(null);
-            booking.setStaff(staff);
+            return userRepository.findById(currentUser.getId()).orElse(null);
         }
+        return null;
+    }
 
-        // Số tiền còn lại phải thu = Số tiền sân còn nợ + Phụ phí phát sinh
-        BigDecimal remainingPitchAmount = booking.getRemainingAmount() != null ? booking.getRemainingAmount() : BigDecimal.ZERO;
-        BigDecimal amountToCollect = remainingPitchAmount.add(additionalFee);
-
-        booking.setAdditionalFee(additionalFee);
-        booking.setRemainingAmount(BigDecimal.ZERO);
-        booking.setStatus(BookingStatus.COMPLETED);
-
-        booking = bookingRepository.save(booking);
-
-        // Lưu giao dịch thanh toán nếu có số tiền cần thu (> 0)
-        if (amountToCollect.compareTo(BigDecimal.ZERO) > 0) {
-            PaymentMethod paymentMethod = paymentMethodRepository.findByCode(request.getPaymentMethod()).orElse(null);
-            String txnCode = "TXN_FINAL_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-            PaymentTransaction finalTxn = PaymentTransaction.builder()
-                    .transactionCode(txnCode)
-                    .booking(booking)
-                    .paymentMethod(paymentMethod)
-                    .processedBy(staff)
-                    .amount(amountToCollect)
-                    .paymentType(PaymentType.REMAINING_70)
-                    .status(TransactionStatus.SUCCESS)
-                    .note(request.getPaymentNote() != null && !request.getPaymentNote().isEmpty()
-                            ? request.getPaymentNote().trim()
-                            : "Thu tiền quyết toán và đóng ca")
-                    .build();
-
-            paymentTransactionRepository.save(finalTxn);
-        }
-
-        // Bắn WebSocket thông báo đóng ca
-        sendScheduleEvent("BOOKING_COMPLETED", booking);
-
-        List<PaymentTransaction> transactions = paymentTransactionRepository.findByBookingIdOrderByCreatedAtDesc(id);
+    private AdminBookingDetailResponse toDetailResponse(Booking booking) {
+        List<PaymentTransaction> transactions = paymentTransactionRepository
+                .findByBookingIdOrderByCreatedAtDesc(booking.getId());
         return adminBookingMapper.toDetailResponse(booking, transactions);
+    }
+
+    private void appendCustomerNote(Booking booking, String noteText) {
+        if (noteText == null || noteText.trim().isEmpty()) {
+            return;
+        }
+        String current = booking.getCustomerNote();
+        String trimmed = noteText.trim();
+        booking.setCustomerNote(current != null && !current.isEmpty() ? current + " " + trimmed : trimmed);
+    }
+
+    private String generateTransactionCode(String prefix) {
+        return prefix + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private Pitch getActivePitch(Long pitchId) {
+        Pitch pitch = pitchRepository.findById(pitchId)
+                .orElseThrow(() -> new AppException(ErrorCode.PITCH_NOT_FOUND));
+        if (pitch.getStatus() != PitchStatus.ACTIVE) {
+            throw new AppException(ErrorCode.PITCH_NOT_ACTIVE);
+        }
+        return pitch;
+    }
+
+    private TimeSlot getTimeSlot(Long timeSlotId) {
+        return timeSlotRepository.findById(timeSlotId)
+                .orElseThrow(() -> new AppException(ErrorCode.TIME_SLOT_NOT_FOUND));
+    }
+
+    private PaymentMethod getPaymentMethod(PaymentMethodCode methodCode) {
+        PaymentMethodCode code = methodCode != null ? methodCode : PaymentMethodCode.CASH;
+        return paymentMethodRepository.findByCode(code).orElse(null);
+    }
+
+    private void validateBookingSlotAvailability(Pitch pitch, TimeSlot timeSlot, LocalDate bookingDate) {
+        LocalDate today = LocalDate.now();
+        if (bookingDate.isBefore(today)) {
+            throw new AppException(ErrorCode.BOOKING_DATE_INVALID);
+        }
+        if (bookingDate.isAfter(today.plusDays(30))) {
+            throw new AppException(ErrorCode.BOOKING_DATE_EXCEEDS_LIMIT);
+        }
+        if (bookingDate.isEqual(today) && timeSlot.getEndTime().isBefore(LocalTime.now())) {
+            throw new AppException(ErrorCode.TIME_SLOT_ALREADY_PASSED);
+        }
+
+        boolean isOccupied = bookingRepository.existsByPitchIdAndTimeSlotIdAndBookingDateAndStatusNotIn(
+                pitch.getId(),
+                timeSlot.getId(),
+                bookingDate,
+                Arrays.asList(BookingStatus.CANCELLED, BookingStatus.REFUNDED)
+        );
+
+        if (isOccupied) {
+            throw new AppException(ErrorCode.BOOKING_TIME_SLOT_ALREADY_BOOKED);
+        }
+    }
+
+    private BigDecimal resolvePitchPrice(Pitch pitch, TimeSlot timeSlot, LocalDate bookingDate) {
+        DayType dayType = determineDayType(bookingDate);
+        PriceMatrix priceMatrix = priceMatrixRepository.findByPitchTypeIdAndIsPeakHourAndDayType(
+                pitch.getPitchType().getId(),
+                timeSlot.getIsPeakHour(),
+                dayType
+        ).orElseThrow(() -> new AppException(ErrorCode.PRICE_MATRIX_NOT_FOUND));
+        return priceMatrix.getPrice();
+    }
+
+    private void savePaymentTransaction(Booking booking, User staff, PaymentMethodCode methodCode,
+                                         BigDecimal amount, PaymentType paymentType, String prefix, String note) {
+        PaymentMethod paymentMethod = getPaymentMethod(methodCode);
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .transactionCode(generateTransactionCode(prefix))
+                .booking(booking)
+                .paymentMethod(paymentMethod)
+                .processedBy(staff)
+                .amount(amount)
+                .paymentType(paymentType)
+                .status(TransactionStatus.SUCCESS)
+                .note(note)
+                .build();
+
+        paymentTransactionRepository.save(transaction);
+    }
+
+    private DayType determineDayType(LocalDate date) {
+        if (holidayRepository.existsByHolidayDate(date)) {
+            return DayType.HOLIDAY;
+        }
+        DayOfWeek dayOfWeek = date.getDayOfWeek();
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            return DayType.WEEKEND;
+        }
+        return DayType.WEEKDAY;
     }
 
     private void sendScheduleEvent(String action, Booking booking) {

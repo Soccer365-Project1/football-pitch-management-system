@@ -2,11 +2,13 @@ package com.fpms.service;
 
 import com.fpms.common.response.PageResponse;
 import com.fpms.dto.request.AdminBookingCancelRequest;
+import com.fpms.dto.request.AdminBookingRejectCancelRequest;
 import com.fpms.dto.request.AdminBookingSearchRequest;
 import com.fpms.dto.request.CollectPaymentRequest;
 import com.fpms.dto.request.CounterBookingCreationRequest;
 import com.fpms.dto.response.AdminBookingDetailResponse;
 import com.fpms.dto.response.AdminBookingSummaryResponse;
+import com.fpms.dto.response.BookingEventDto;
 import com.fpms.entity.*;
 import com.fpms.entity.enums.*;
 import com.fpms.exception.AppException;
@@ -59,6 +61,8 @@ class AdminBookingServiceTest {
     private PaymentMethodRepository paymentMethodRepository;
     @Mock
     private PaymentTransactionRepository paymentTransactionRepository;
+    @Mock
+    private BookingCancellationRepository bookingCancellationRepository;
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
@@ -391,5 +395,54 @@ class AdminBookingServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> adminBookingService.collectPayment(10L, request, staffPrincipal));
         assertEquals(ErrorCode.BOOKING_CANNOT_COLLECT_PAYMENT, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("rejectCancellation: Từ chối yêu cầu hủy đơn thành công, khôi phục CONFIRMED (UC011.3)")
+    void rejectCancellation_Success_RestoresConfirmedStatus() {
+        booking.setStatus(BookingStatus.WAITING_CANCELLATION);
+        AdminBookingRejectCancelRequest request = AdminBookingRejectCancelRequest.builder()
+                .rejectionReason("Khách báo hủy trước giờ đá dưới 24h, sân đã chuẩn bị nhân sự")
+                .build();
+
+        when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(staffUser));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BookingCancellation cancellation = BookingCancellation.builder()
+                .id(1L)
+                .booking(booking)
+                .refundStatus(RefundStatus.PENDING)
+                .build();
+        when(bookingCancellationRepository.findByBookingId(10L)).thenReturn(Optional.of(cancellation));
+        when(bookingCancellationRepository.save(any(BookingCancellation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AdminBookingDetailResponse response = adminBookingService.rejectCancellation(10L, request, staffPrincipal);
+
+        assertNotNull(response);
+        assertEquals(BookingStatus.CONFIRMED, response.getStatus());
+        assertEquals(BookingStatus.CONFIRMED, booking.getStatus());
+        assertEquals(RefundStatus.REJECTED, cancellation.getRefundStatus());
+        assertEquals("Khách báo hủy trước giờ đá dưới 24h, sân đã chuẩn bị nhân sự", cancellation.getRejectionReason());
+        assertEquals(staffUser, cancellation.getApprovedBy());
+        assertNotNull(cancellation.getProcessedAt());
+        assertTrue(booking.getCustomerNote().contains("Khách báo hủy trước giờ đá dưới 24h"));
+        verify(bookingCancellationRepository, times(1)).save(cancellation);
+        verify(messagingTemplate, times(1)).convertAndSend(eq("/topic/schedule"), any(BookingEventDto.class));
+    }
+
+    @Test
+    @DisplayName("rejectCancellation: Ném lỗi khi đơn không ở trạng thái WAITING_CANCELLATION")
+    void rejectCancellation_InvalidStatus_ThrowsException() {
+        booking.setStatus(BookingStatus.CONFIRMED);
+        AdminBookingRejectCancelRequest request = AdminBookingRejectCancelRequest.builder()
+                .rejectionReason("Không thể hủy đơn này")
+                .build();
+
+        when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+
+        AppException ex = assertThrows(AppException.class, () -> adminBookingService.rejectCancellation(10L, request, staffPrincipal));
+        assertEquals(ErrorCode.BOOKING_NOT_WAITING_CANCELLATION, ex.getErrorCode());
+        verify(bookingCancellationRepository, never()).save(any());
     }
 }

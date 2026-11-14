@@ -23,17 +23,27 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const [refundMethod, setRefundMethod] = useState<PaymentMethodCode>('BANK_TRANSFER');
+  const [refundReason, setRefundReason] = useState<string>('');
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
 
   useEffect(() => {
     if (booking) {
       setRefundMethod('BANK_TRANSFER');
+      setRefundReason('');
       setIsRejecting(false);
       setRejectReason('');
       setError(null);
     }
   }, [booking]);
+
+  const handleClose = () => {
+    setIsRejecting(false);
+    setRejectReason('');
+    setRefundReason('');
+    setError(null);
+    onClose();
+  };
 
   if (!isOpen || !booking) return null;
 
@@ -43,17 +53,27 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
     : `#${booking.bookingCode}`;
 
   const handleApproveRefund = async () => {
+    const trimmedReason = refundReason.trim();
+    if (trimmedReason.length < 5) {
+      setError('Vui lòng nhập ghi chú hoàn tiền tối thiểu từ 5 ký tự.');
+      return;
+    }
+    if (trimmedReason.length > 500) {
+      setError('Ghi chú hoàn tiền không được vượt quá 500 ký tự.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
       await adminBookingService.cancelAndRefundBooking(booking.id, {
-        cancelReason: 'Duyệt yêu cầu xin hủy đơn của khách hàng',
+        cancelReason: trimmedReason,
         refundMethod,
         refundAmount: deposit,
       });
-      showToast('Đã duyệt yêu cầu hủy và hoàn tiền cọc thành công!', 'success');
+      showToast('Đã xác nhận hủy đơn và hoàn tiền thành công!', 'success');
       onSuccess();
-      onClose();
+      handleClose();
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Không thể xử lý hoàn tiền đơn đặt sân.';
       setError(msg);
@@ -68,17 +88,20 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
       setError('Vui lòng nhập lý do từ chối yêu cầu hủy tối thiểu từ 5 ký tự.');
       return;
     }
+    if (trimmedReason.length > 500) {
+      setError('Lý do từ chối yêu cầu hủy không được vượt quá 500 ký tự.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
     try {
-      await adminBookingService.cancelBooking(booking.id, {
-        cancelReason: trimmedReason,
-        isRefund: false,
+      await adminBookingService.rejectCancellation(booking.id, {
+        rejectionReason: trimmedReason,
       });
-      showToast(`Đã từ chối yêu cầu hủy đơn #${booking.bookingCode}. Giữ cọc thành công!`, 'info');
+      showToast('Đã từ chối yêu cầu hủy đơn. Đơn đặt sân được giữ nguyên!', 'success');
       onSuccess();
-      onClose();
+      handleClose();
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Không thể từ chối yêu cầu hủy.';
       setError(msg);
@@ -89,24 +112,14 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
 
   return (
     <ModalOverlay
-      onClose={() => {
-        onClose();
-        setIsRejecting(false);
-        setRejectReason('');
-        setError(null);
-      }}
+      onClose={handleClose}
       maxWidth="540px"
     >
       {/* 1. Header */}
       <div className="flex justify-between items-center" style={{ flexShrink: 0, gap: '1rem', marginBottom: '1.25rem' }}>
         <h2 className="text-xl font-bold">Xét Duyệt Yêu Cầu Hủy Đơn</h2>
         <button
-          onClick={() => {
-            onClose();
-            setIsRejecting(false);
-            setRejectReason('');
-            setError(null);
-          }}
+          onClick={handleClose}
           className="text-muted hover:text-[var(--color-text-base)] cursor-pointer"
           style={{ padding: '0.25rem', flexShrink: 0 }}
           aria-label="Đóng"
@@ -170,7 +183,7 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
           >
             <span className="font-bold text-warning block mb-1">Lý do khách xin hủy (BR3):</span>
             <span className="italic" style={{ color: 'var(--color-text-base)' }}>
-              "{booking.customerNote || 'Bận việc đột xuất cùng công ty'}"
+              "{booking.customerNote || 'Không có ghi chú từ khách hàng'}"
             </span>
           </div>
 
@@ -195,7 +208,7 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
               </div>
 
               {/* Phương thức hoàn tiền */}
-              <div>
+              <div className="mb-4">
                 <label className="block text-sm font-semibold mb-2">Phương thức hoàn tiền</label>
                 <select
                   className="w-full"
@@ -212,6 +225,42 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
                   <option value="BANK_TRANSFER">Chuyển khoản</option>
                   <option value="CASH">Tiền mặt</option>
                 </select>
+              </div>
+
+              {/* Ghi chú hoàn tiền bắt buộc (SRS Bảng 3.16 UC011.3) */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-sm font-semibold" style={{ color: 'var(--color-text-base)' }}>
+                    Ghi chú hoàn tiền <span style={{ color: 'var(--color-danger)' }}>*</span>
+                  </label>
+                  <span className="text-xs text-muted">
+                    {refundReason.length}/500
+                  </span>
+                </div>
+                <textarea
+                  className="w-full"
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Nhập ghi chú hoàn tiền bắt buộc (VD: Hoàn cọc 100% qua STK Vietcombank 123456789 - GD123456...)"
+                  value={refundReason}
+                  onChange={(e) => {
+                    setRefundReason(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    border: error && refundReason.trim().length < 5 ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--color-bg-surface)',
+                    color: 'var(--color-text-base)',
+                    outline: 'none',
+                    resize: 'none',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    boxSizing: 'border-box',
+                  }}
+                />
               </div>
             </>
           ) : (
@@ -238,12 +287,18 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
         {/* 3. Khung nhập lý do từ chối hủy (khi chuyển sang trạng thái từ chối) */}
         {isRejecting && (
           <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.65rem', color: 'var(--color-text-base)' }}>
-              Lý do từ chối hủy <span style={{ color: 'var(--color-danger)' }}>*</span>
-            </label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-base)' }}>
+                Lý do từ chối hủy <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <span className="text-xs text-muted">
+                {rejectReason.length}/500
+              </span>
+            </div>
             <textarea
               className="w-full"
               rows={3}
+              maxLength={500}
               placeholder="Nhập lý do khách hàng không được phép hủy đơn (VD: Sân đã bố trí nhân sự, vi phạm quy định báo trước 24h...)"
               value={rejectReason}
               onChange={(e) => {
