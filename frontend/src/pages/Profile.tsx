@@ -201,7 +201,7 @@ const Profile: React.FC = () => {
         className="shadow-lg relative overflow-hidden"
         style={{ 
           borderRadius: '1rem',
-          background: "linear-gradient(135deg, rgba(5,150,105,0.9) 0%, rgba(16,185,129,0.85) 50%, rgba(6,182,212,0.9) 100%), url('https://images.unsplash.com/photo-1518605368461-1ee7e53f0b2f?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat",
+          background: "linear-gradient(135deg, rgba(5,150,105,0.95) 0%, rgba(16,185,129,0.9) 50%, rgba(6,182,212,0.95) 100%)",
           color: 'white',
           padding: '3rem 2rem',
           textAlign: 'center',
@@ -230,8 +230,10 @@ const Profile: React.FC = () => {
           <form onSubmit={handleUpdateProfile} className="flex flex-col gap-4 h-full">
             <div className="flex flex-col gap-4">
               <div>
-                <label className="font-semibold text-sm">Họ và tên</label>
+                <label htmlFor="profileFullName" className="font-semibold text-sm">Họ và tên</label>
                 <input 
+                  id="profileFullName"
+                  name="fullName"
                   type="text" 
                   value={fullName}
                   onChange={(e) => {
@@ -253,8 +255,10 @@ const Profile: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-sm">Số điện thoại</label>
+                <label htmlFor="profilePhoneNumber" className="font-semibold text-sm">Số điện thoại</label>
                 <input 
+                  id="profilePhoneNumber"
+                  name="phoneNumber"
                   type="text" 
                   value={phoneNumber}
                   onChange={(e) => {
@@ -278,10 +282,12 @@ const Profile: React.FC = () => {
             
             <div>
               <div className="flex items-center gap-2">
-                <label className="font-semibold text-sm">Email</label>
+                <label htmlFor="profileEmail" className="font-semibold text-sm">Email</label>
                 <span className="text-xs text-muted font-normal">(Không thể thay đổi sau khi đăng ký)</span>
               </div>
               <input 
+                id="profileEmail"
+                name="email"
                 type="email" 
                 value={user?.email || ''} 
                 className="mt-2 w-full" 
@@ -334,9 +340,11 @@ const Profile: React.FC = () => {
           <form onSubmit={handleChangePassword} className="flex flex-col gap-4 h-full">
             {/* 1. Ô Mật khẩu hiện tại */}
             <div>
-              <label className="font-semibold text-sm">Mật khẩu hiện tại</label>
+              <label htmlFor="currentPassword" className="font-semibold text-sm">Mật khẩu hiện tại</label>
               <div className="relative mt-2">
                 <input 
+                  id="currentPassword"
+                  name="currentPassword"
                   type={showCurrentPassword ? 'text' : 'password'} 
                   value={currentPassword}
                   onChange={(e) => {
@@ -372,9 +380,11 @@ const Profile: React.FC = () => {
 
             {/* 2. Ô Mật khẩu mới */}
             <div>
-              <label className="font-semibold text-sm">Mật khẩu mới</label>
+              <label htmlFor="newPassword" className="font-semibold text-sm">Mật khẩu mới</label>
               <div className="relative mt-2">
                 <input 
+                  id="newPassword"
+                  name="newPassword"
                   type={showNewPassword ? 'text' : 'password'} 
                   value={newPassword}
                   onChange={(e) => {
@@ -412,9 +422,11 @@ const Profile: React.FC = () => {
 
             {/* 3. Ô Xác nhận mật khẩu mới */}
             <div>
-              <label className="font-semibold text-sm">Xác nhận mật khẩu mới</label>
+              <label htmlFor="confirmPassword" className="font-semibold text-sm">Xác nhận mật khẩu mới</label>
               <div className="relative mt-2">
                 <input 
+                  id="confirmPassword"
+                  name="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'} 
                   value={confirmPassword}
                   onChange={(e) => {

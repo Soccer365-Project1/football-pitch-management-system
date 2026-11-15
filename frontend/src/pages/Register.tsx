@@ -147,7 +147,7 @@ const Register: React.FC = () => {
   return (
     <div className="flex justify-center items-start pt-4">
       <div className="card" style={{ width: '100%', maxWidth: '500px' }}>
-        <h2 className="text-2xl font-bold text-center mb-6">Đăng ký tài khoản</h2>
+        <h1 className="text-2xl font-bold text-center mb-6">Đăng ký tài khoản</h1>
 
         {/* Thông báo lỗi từ Server */}
         {serverError && (
@@ -181,8 +181,9 @@ const Register: React.FC = () => {
           {/* Hàng 1: Họ và tên & Số điện thoại (2 cột) */}
           <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div>
-              <label className="font-semibold text-sm">Họ và tên</label>
+              <label htmlFor="registerFullName" className="font-semibold text-sm">Họ và tên</label>
               <input 
+                id="registerFullName"
                 type="text" 
                 name="fullName"
                 value={formData.fullName}
@@ -203,8 +204,9 @@ const Register: React.FC = () => {
             </div>
 
             <div>
-              <label className="font-semibold text-sm">Số điện thoại</label>
+              <label htmlFor="registerPhoneNumber" className="font-semibold text-sm">Số điện thoại</label>
               <input 
+                id="registerPhoneNumber"
                 type="tel" 
                 name="phoneNumber"
                 value={formData.phoneNumber}
@@ -228,8 +230,9 @@ const Register: React.FC = () => {
 
           {/* Hàng 2: Email */}
           <div>
-            <label className="font-semibold text-sm">Email</label>
+            <label htmlFor="registerEmail" className="font-semibold text-sm">Email</label>
             <input 
+              id="registerEmail"
               type="email" 
               name="email"
               value={formData.email}
@@ -251,9 +254,10 @@ const Register: React.FC = () => {
           
           {/* Hàng 3: Mật khẩu */}
           <div>
-            <label className="font-semibold text-sm">Mật khẩu</label>
+            <label htmlFor="registerPassword" className="font-semibold text-sm">Mật khẩu</label>
             <div className="relative mt-2">
               <input 
+                id="registerPassword"
                 type={showPassword ? 'text' : 'password'} 
                 name="password"
                 value={formData.password}
@@ -289,9 +293,10 @@ const Register: React.FC = () => {
 
           {/* Hàng 4: Xác nhận mật khẩu */}
           <div>
-            <label className="font-semibold text-sm">Xác nhận mật khẩu</label>
+            <label htmlFor="registerConfirmPassword" className="font-semibold text-sm">Xác nhận mật khẩu</label>
             <div className="relative mt-2">
               <input 
+                id="registerConfirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'} 
                 name="confirmPassword"
                 value={formData.confirmPassword}
@@ -325,8 +330,9 @@ const Register: React.FC = () => {
           
           {/* Hàng 5: Checkbox điều khoản */}
           <div className="flex flex-col text-sm mt-2">
-            <label className="flex items-center gap-2 text-muted cursor-pointer select-none">
+            <label htmlFor="agreeTerms" className="flex items-center gap-2 text-muted cursor-pointer select-none">
               <input 
+                id="agreeTerms"
                 type="checkbox" 
                 name="agreeTerms"
                 checked={formData.agreeTerms}
