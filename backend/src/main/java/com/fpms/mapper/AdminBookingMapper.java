@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
 public class AdminBookingMapper {
 
     public AdminBookingSummaryResponse toSummaryResponse(Booking booking) {
+        return toSummaryResponse(booking, null);
+    }
+
+    public AdminBookingSummaryResponse toSummaryResponse(Booking booking, String cancellationReason) {
         if (booking == null) {
             return null;
         }
@@ -56,11 +60,17 @@ public class AdminBookingMapper {
                 .bookingType(booking.getBookingType())
                 .status(booking.getStatus())
                 .staffName(staffName)
+                .customerNote(booking.getCustomerNote())
+                .cancellationReason(cancellationReason)
                 .createdAt(booking.getCreatedAt())
                 .build();
     }
 
     public AdminBookingDetailResponse toDetailResponse(Booking booking, List<PaymentTransaction> transactions) {
+        return toDetailResponse(booking, transactions, null);
+    }
+
+    public AdminBookingDetailResponse toDetailResponse(Booking booking, List<PaymentTransaction> transactions, String cancellationReason) {
         if (booking == null) {
             return null;
         }
@@ -110,6 +120,7 @@ public class AdminBookingMapper {
                 .bookingType(booking.getBookingType())
                 .status(booking.getStatus())
                 .customerNote(booking.getCustomerNote())
+                .cancellationReason(cancellationReason)
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .transactions(transactionResponses)

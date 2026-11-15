@@ -35,7 +35,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -62,7 +64,26 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         Pageable pageable = request != null ? request.toPageable() : AdminBookingSearchRequest.builder().build().toPageable();
 
         Page<Booking> page = bookingRepository.findAll(spec, pageable);
-        return PageResponse.from(page.map(adminBookingMapper::toSummaryResponse));
+        List<Long> bookingIds = page.getContent().stream().map(Booking::getId).toList();
+        Map<Long, String> cancellationReasonMap = new HashMap<>();
+        if (!bookingIds.isEmpty()) {
+            bookingCancellationRepository.findByBookingIdIn(bookingIds)
+                    .forEach(c -> {
+                        if (c.getBooking() != null && c.getBooking().getId() != null) {
+                            cancellationReasonMap.put(c.getBooking().getId(), c.getReason());
+                        }
+                    });
+        }
+
+        Page<AdminBookingSummaryResponse> responsePage = page.map(b -> {
+            String reason = cancellationReasonMap.get(b.getId());
+            if (reason == null || reason.isBlank()) {
+                reason = extractCancelReasonFromNote(b.getCustomerNote());
+            }
+            return adminBookingMapper.toSummaryResponse(b, reason);
+        });
+
+        return PageResponse.from(responsePage);
     }
 
     @Override
@@ -327,7 +348,26 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private AdminBookingDetailResponse toDetailResponse(Booking booking) {
         List<PaymentTransaction> transactions = paymentTransactionRepository
                 .findByBookingIdOrderByCreatedAtDesc(booking.getId());
-        return adminBookingMapper.toDetailResponse(booking, transactions);
+        String cancellationReason = bookingCancellationRepository.findByBookingId(booking.getId())
+                .map(BookingCancellation::getReason)
+                .orElseGet(() -> extractCancelReasonFromNote(booking.getCustomerNote()));
+        return adminBookingMapper.toDetailResponse(booking, transactions, cancellationReason);
+    }
+
+    private String extractCancelReasonFromNote(String note) {
+        if (note == null || !note.contains("[Yêu cầu hủy:")) {
+            return null;
+        }
+        try {
+            int startIdx = note.indexOf("[Yêu cầu hủy:") + "[Yêu cầu hủy:".length();
+            int endIdx = note.indexOf("]", startIdx);
+            if (endIdx != -1) {
+                return note.substring(startIdx, endIdx).trim();
+            }
+            return note.substring(startIdx).trim();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void appendCustomerNote(Booking booking, String noteText) {

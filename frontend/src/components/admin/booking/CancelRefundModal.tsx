@@ -26,6 +26,7 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
   const [refundReason, setRefundReason] = useState<string>('');
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
+  const [detailReason, setDetailReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (booking) {
@@ -34,6 +35,21 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
       setIsRejecting(false);
       setRejectReason('');
       setError(null);
+      setDetailReason(null);
+
+      if (!booking.cancellationReason && booking.id) {
+        adminBookingService.getBookingDetail(booking.id)
+          .then((detail) => {
+            if (detail?.cancellationReason) {
+              setDetailReason(detail.cancellationReason);
+            } else if (detail?.customerNote) {
+              setDetailReason(detail.customerNote);
+            }
+          })
+          .catch(() => {
+            // fallback gracefully
+          });
+      }
     }
   }, [booking]);
 
@@ -172,20 +188,30 @@ export const CancelRefundModal: React.FC<CancelRefundModalProps> = ({
           </div>
 
           {/* Box hiển thị lý do hủy từ khách (BR3, BR4) */}
-          <div
-            className="mb-4 rounded-md text-xs"
-            style={{
-              padding: '0.9rem 1.25rem',
-              backgroundColor: 'rgba(245, 158, 11, 0.08)',
-              border: '1px solid rgba(245, 158, 11, 0.25)',
-              lineHeight: 1.6,
-            }}
-          >
-            <span className="font-bold text-warning block mb-1">Lý do khách xin hủy (BR3):</span>
-            <span className="italic" style={{ color: 'var(--color-text-base)' }}>
-              "{booking.customerNote || 'Không có ghi chú từ khách hàng'}"
-            </span>
-          </div>
+          {(() => {
+            const rawReason = detailReason || booking.cancellationReason || booking.customerNote;
+            let formattedReason = rawReason?.trim() || '';
+            if (formattedReason.includes('[Yêu cầu hủy:')) {
+              formattedReason = formattedReason.replace(/.*\[Yêu cầu hủy:\s*([^\]]+)\].*/, '$1').trim();
+            }
+            const displayReason = formattedReason || 'Không có ghi chú từ khách hàng';
+            return (
+              <div
+                className="mb-4 rounded-md text-xs"
+                style={{
+                  padding: '0.9rem 1.25rem',
+                  backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  lineHeight: 1.6,
+                }}
+              >
+                <span className="font-bold text-warning block mb-1">Lý do khách xin hủy (BR3):</span>
+                <span className="italic" style={{ color: 'var(--color-text-base)' }}>
+                  "{displayReason}"
+                </span>
+              </div>
+            );
+          })()}
 
           {!isRejecting ? (
             <>
