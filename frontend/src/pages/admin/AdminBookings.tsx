@@ -435,24 +435,13 @@ const AdminBookings: React.FC = () => {
                             </>
                           )}
                           {booking.status === 'CONFIRMED' && (
-                            <>
-                              {remaining > 0 && (
-                                <button
-                                  className="btn btn-primary whitespace-nowrap"
-                                  style={{ backgroundColor: 'var(--color-secondary)' }}
-                                  onClick={() => setCheckoutBooking(booking)}
-                                >
-                                  Thu tiền
-                                </button>
-                              )}
-                              <button
-                                className="btn btn-secondary text-danger whitespace-nowrap"
-                                onClick={() => setAdminCancelBooking(booking)}
-                                title="Admin tự hủy đơn cho khách"
-                              >
-                                Hủy đơn
-                              </button>
-                            </>
+                            <button
+                              className="btn btn-secondary text-danger whitespace-nowrap"
+                              onClick={() => setAdminCancelBooking(booking)}
+                              title="Admin tự hủy đơn cho khách"
+                            >
+                              Hủy đơn
+                            </button>
                           )}
                           {booking.status === 'IN_PROGRESS' && (
                             <button
