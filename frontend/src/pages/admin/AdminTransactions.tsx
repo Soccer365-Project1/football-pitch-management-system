@@ -420,34 +420,10 @@ export const AdminTransactions: React.FC = () => {
     }
   };
 
-  const selectStyle: React.CSSProperties = {
-    height: '42px',
-    padding: '0 0.85rem',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    fontFamily: 'inherit',
-    color: 'var(--color-text-base)',
-    backgroundColor: 'var(--color-bg-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-md)',
-    outline: 'none',
-    cursor: 'pointer',
-    transition: 'border-color 0.15s ease',
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* 1. Header Trang & Tiêu đề */}
+    <div className="admin-tx-container">
       {/* 1. Header Trang & Tiêu đề + Nút Xuất Excel bên phải theo mẫu phác thảo */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}
-      >
+      <div className="admin-tx-header">
         <div>
           <h1
             style={{
@@ -497,35 +473,9 @@ export const AdminTransactions: React.FC = () => {
       </div>
 
       {/* 2. Toolbar Tìm Kiếm & Lọc: Gọn gàng trên 1 hàng duy nhất theo mẫu phác thảo */}
-      <div
-        style={{
-          padding: '1rem 1.25rem',
-          borderRadius: 'var(--radius-md)',
-          backgroundColor: 'var(--color-bg-surface)',
-          border: '1px solid var(--color-border)',
-          boxShadow: 'var(--shadow-sm)',
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-        }}
-      >
+      <div className="admin-tx-toolbar">
         {/* Ô gõ từ khóa: Tìm kiếm theo tất cả (mã GD, đơn, đối soát, SĐT...) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            height: '42px',
-            padding: '0 0.85rem',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--color-bg-base)',
-            flex: '1 1 240px',
-            minWidth: '220px',
-            maxWidth: '320px',
-          }}
-        >
+        <div className="admin-tx-search">
           <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
           <input
             type="text"
@@ -571,7 +521,7 @@ export const AdminTransactions: React.FC = () => {
         </div>
 
         {/* Khoảng ngày đôi (Từ ngày - Đến ngày) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+        <div className="admin-tx-dates">
           <DateInputWithPicker
             value={fromDate}
             max={toDate || undefined}
@@ -592,7 +542,7 @@ export const AdminTransactions: React.FC = () => {
         </div>
 
         {/* Lọc Trạng thái */}
-        <select value={status} onChange={handleStatusChange} style={selectStyle} title="Lọc theo trạng thái giao dịch">
+        <select value={status} onChange={handleStatusChange} className="admin-tx-select" title="Lọc theo trạng thái giao dịch">
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -601,7 +551,7 @@ export const AdminTransactions: React.FC = () => {
         </select>
 
         {/* Lọc Loại giao dịch */}
-        <select value={paymentType} onChange={handlePaymentTypeChange} style={selectStyle} title="Lọc theo loại giao dịch">
+        <select value={paymentType} onChange={handlePaymentTypeChange} className="admin-tx-select" title="Lọc theo loại giao dịch">
           {PAYMENT_TYPE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -610,7 +560,7 @@ export const AdminTransactions: React.FC = () => {
         </select>
 
         {/* Lọc Phương thức */}
-        <select value={paymentMethodCode} onChange={handlePaymentMethodChange} style={selectStyle} title="Lọc theo phương thức thanh toán">
+        <select value={paymentMethodCode} onChange={handlePaymentMethodChange} className="admin-tx-select" title="Lọc theo phương thức thanh toán">
           {PAYMENT_METHOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -622,22 +572,7 @@ export const AdminTransactions: React.FC = () => {
         {activeFilterCount > 0 && (
           <button
             onClick={handleClearAllFilters}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              height: '42px',
-              padding: '0 0.85rem',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#b91c1c',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              flexShrink: 0,
-            }}
+            className="admin-tx-clear-btn"
             title="Xóa tất cả bộ lọc hiện tại"
           >
             <RotateCcw size={13} />
@@ -646,232 +581,324 @@ export const AdminTransactions: React.FC = () => {
         )}
       </div>
 
-      {/* 4. Bảng Dữ Liệu Giao Dịch */}
-      <div
-        style={{
-          backgroundColor: 'var(--color-bg-surface)',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--color-border)',
-          boxShadow: 'var(--shadow-sm)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div style={{ overflowX: 'auto', minHeight: '380px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr
-                style={{
-                  borderBottom: '1px solid var(--color-border)',
-                  backgroundColor: 'var(--color-bg-base)',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                <th style={{ padding: '0.85rem 1rem' }}>Mã Giao Dịch</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Loại Giao Dịch</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Phương Thức</th>
-                <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>Số Tiền (VNĐ)</th>
-                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Trạng Thái</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Thời Gian</th>
-                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody style={{ fontSize: '0.875rem' }}>
-              {loading && (
+      {/* 3. Bảng Dữ Liệu Giao Dịch (Bản Desktop & Tablet) */}
+      <div className="admin-tx-desktop-view">
+        <div className="admin-tx-table-card">
+          <div className="admin-tx-table-wrap">
+            <table className="admin-tx-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                    <Loader2 className="animate-spin mx-auto mb-2" size={32} style={{ color: 'var(--color-primary)' }} />
-                    <span>Đang tải dữ liệu giao dịch...</span>
-                  </td>
+                  <th>Mã Giao Dịch</th>
+                  <th>Loại Giao Dịch</th>
+                  <th>Phương Thức</th>
+                  <th style={{ textAlign: 'right' }}>Số Tiền (VNĐ)</th>
+                  <th style={{ textAlign: 'center' }}>Trạng Thái</th>
+                  <th>Thời Gian</th>
+                  <th style={{ textAlign: 'center' }}>Thao Tác</th>
                 </tr>
-              )}
-
-              {!loading && transactions.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                    <CreditCard className="mx-auto mb-3" size={44} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />
-                    <div style={{ fontWeight: 600, color: 'var(--color-text-base)' }}>Không tìm thấy giao dịch nào</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
-                      {activeFilterCount > 0
-                        ? 'Thử thay đổi bộ lọc hoặc xóa từ khóa tìm kiếm'
-                        : 'Chưa có bản ghi giao dịch nào phát sinh trên hệ thống'}
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              {!loading &&
-                transactions.map((t) => (
-                  <tr
-                    key={t.id}
-                    style={{
-                      borderBottom: '1px solid var(--color-border)',
-                      transition: 'background-color 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    {/* Mã giao dịch */}
-                    <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-text-base)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span title={t.transactionCode}>{t.transactionCode}</span>
-                        <button
-                          onClick={() => handleCopy(t.transactionCode)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'var(--color-text-muted)',
-                            padding: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                          }}
-                          title="Sao chép mã giao dịch"
-                        >
-                          {copiedId === t.transactionCode ? (
-                            <Check size={12} color="#10b981" />
-                          ) : (
-                            <Copy size={12} />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-
-                    {/* Loại giao dịch */}
-                    <td style={{ padding: '0.85rem 1rem' }}>{getPaymentTypeBadge(t.paymentType)}</td>
-
-                    {/* Phương thức */}
-                    <td style={{ padding: '0.85rem 1rem' }}>
-                      <span style={{ fontWeight: 500, fontSize: '0.8rem', color: 'var(--color-text-base)' }}>
-                        {t.paymentMethodName || t.paymentMethodCode || '---'}
-                      </span>
-                    </td>
-
-                    {/* Số tiền */}
-                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: 700 }}>
-                      <span style={{ color: t.paymentType === 'REFUND' ? '#dc2626' : '#047857' }}>
-                        {t.paymentType === 'REFUND' ? '-' : '+'}
-                        {formatPrice(t.amount)}
-                      </span>
-                    </td>
-
-                    {/* Trạng thái */}
-                    <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>{getStatusBadge(t.status)}</td>
-
-                    {/* Thời gian */}
-                    <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                      {formatDateTime(t.createdAt)}
-                    </td>
-
-                    {/* Thao tác */}
-                    <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                      <button
-                        onClick={() => setSelectedTransactionId(t.id)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          padding: '0.35rem 0.65rem',
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          backgroundColor: 'var(--color-bg-base)',
-                          color: 'var(--color-text-base)',
-                          border: '1px solid var(--color-border)',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-border)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-bg-base)')}
-                        title="Xem chi tiết giao dịch"
-                      >
-                        <Eye size={13} />
-                        Chi tiết
-                      </button>
+              </thead>
+              <tbody style={{ fontSize: '0.875rem' }}>
+                {loading && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <Loader2 className="animate-spin mx-auto mb-2" size={32} style={{ color: 'var(--color-primary)' }} />
+                      <span>Đang tải dữ liệu giao dịch...</span>
                     </td>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                )}
 
-        {/* 5. Phân Trang (Pagination) */}
+                {!loading && transactions.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <CreditCard className="mx-auto mb-3" size={44} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />
+                      <div style={{ fontWeight: 600, color: 'var(--color-text-base)' }}>Không tìm thấy giao dịch nào</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                        {activeFilterCount > 0
+                          ? 'Thử thay đổi bộ lọc hoặc xóa từ khóa tìm kiếm'
+                          : 'Chưa có bản ghi giao dịch nào phát sinh trên hệ thống'}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {!loading &&
+                  transactions.map((t) => (
+                    <tr
+                      key={t.id}
+                      style={{
+                        borderBottom: '1px solid var(--color-border)',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      {/* Mã giao dịch */}
+                      <td style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-text-base)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span title={t.transactionCode}>{t.transactionCode}</span>
+                          <button
+                            onClick={() => handleCopy(t.transactionCode)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: 'var(--color-text-muted)',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            title="Sao chép mã giao dịch"
+                          >
+                            {copiedId === t.transactionCode ? (
+                              <Check size={12} color="#10b981" />
+                            ) : (
+                              <Copy size={12} />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Loại giao dịch */}
+                      <td>{getPaymentTypeBadge(t.paymentType)}</td>
+
+                      {/* Phương thức */}
+                      <td>
+                        <span style={{ fontWeight: 500, fontSize: '0.8rem', color: 'var(--color-text-base)' }}>
+                          {t.paymentMethodName || t.paymentMethodCode || '---'}
+                        </span>
+                      </td>
+
+                      {/* Số tiền */}
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                        <span style={{ color: t.paymentType === 'REFUND' ? '#dc2626' : '#047857' }}>
+                          {t.paymentType === 'REFUND' ? '-' : '+'}
+                          {formatPrice(t.amount)}
+                        </span>
+                      </td>
+
+                      {/* Trạng thái */}
+                      <td style={{ textAlign: 'center' }}>{getStatusBadge(t.status)}</td>
+
+                      {/* Thời gian */}
+                      <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                        {formatDateTime(t.createdAt)}
+                      </td>
+
+                      {/* Thao tác */}
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={() => setSelectedTransactionId(t.id)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            backgroundColor: 'var(--color-bg-base)',
+                            color: 'var(--color-text-base)',
+                            border: '1px solid var(--color-border)',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-border)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-bg-base)')}
+                          title="Xem chi tiết giao dịch"
+                        >
+                          <Eye size={13} />
+                          Chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Phân Trang (Pagination) Desktop */}
+          {!loading && totalElements > 0 && (
+            <div className="admin-tx-pagination">
+              <div>
+                Hiển thị trang <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{page}</span> /{' '}
+                <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{totalPages}</span> (Tổng{' '}
+                <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{totalElements}</span> giao dịch)
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  disabled={page <= 1}
+                  onClick={() => updateParams({ page: page - 1 })}
+                  style={{
+                    padding: '0.45rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-bg-surface)',
+                    color: 'var(--color-text-base)',
+                    cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                    opacity: page <= 1 ? 0.4 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Trang trước"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <span
+                  style={{
+                    padding: '0.25rem 0.65rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'var(--color-primary)',
+                    color: '#ffffff',
+                  }}
+                >
+                  {page}
+                </span>
+
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => updateParams({ page: page + 1 })}
+                  style={{
+                    padding: '0.45rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-bg-surface)',
+                    color: 'var(--color-text-base)',
+                    cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                    opacity: page >= totalPages ? 0.4 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Trang sau"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. Giao Diện Dạng Thẻ Cho Điện Thoại (Mobile Cards View) */}
+      <div className="admin-tx-mobile-cards">
+        {loading && (
+          <div className="card" style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <Loader2 className="animate-spin mx-auto mb-2 text-primary" size={28} />
+            <span>Đang tải dữ liệu giao dịch...</span>
+          </div>
+        )}
+
+        {!loading && transactions.length === 0 && (
+          <div className="card" style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <CreditCard className="mx-auto mb-3 opacity-50" size={44} />
+            <div style={{ fontWeight: 600, color: 'var(--color-text-base)' }}>Không tìm thấy giao dịch nào</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+              {activeFilterCount > 0 ? 'Thử thay đổi bộ lọc hoặc xóa từ khóa tìm kiếm' : 'Chưa có bản ghi giao dịch nào'}
+            </div>
+          </div>
+        )}
+
+        {!loading &&
+          transactions.map((t) => (
+            <div key={`m-${t.id}`} className="admin-tx-card">
+              <div className="admin-tx-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'monospace', fontWeight: 600, fontSize: '0.8rem' }}>
+                  <span title={t.transactionCode}>{t.transactionCode}</span>
+                  <button
+                    onClick={() => handleCopy(t.transactionCode)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    title="Sao chép mã giao dịch"
+                  >
+                    {copiedId === t.transactionCode ? <Check size={13} color="#10b981" /> : <Copy size={13} className="text-muted" />}
+                  </button>
+                </div>
+                <div>{getStatusBadge(t.status)}</div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Số tiền:</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color: t.paymentType === 'REFUND' ? '#dc2626' : '#047857' }}>
+                    {t.paymentType === 'REFUND' ? '-' : '+'}{formatPrice(t.amount)}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Loại giao dịch:</span>
+                  <div>{getPaymentTypeBadge(t.paymentType)}</div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Phương thức:</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                    {t.paymentMethodName || t.paymentMethodCode || '---'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Thời gian:</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{formatDateTime(t.createdAt)}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedTransactionId(t.id)}
+                  className="btn btn-secondary"
+                  style={{
+                    width: '100%',
+                    marginTop: '0.4rem',
+                    padding: '0.55rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  <Eye size={14} />
+                  <span>Xem chi tiết giao dịch</span>
+                </button>
+              </div>
+            </div>
+          ))}
+
+        {/* Phân Trang (Pagination) Mobile */}
         {!loading && totalElements > 0 && (
           <div
+            className="card"
             style={{
               display: 'flex',
-              flexWrap: 'wrap',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.85rem 1.25rem',
-              borderTop: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-bg-base)',
-              fontSize: '0.875rem',
-              color: 'var(--color-text-muted)',
-              gap: '0.75rem',
+              gap: '0.65rem',
+              padding: '0.85rem',
+              textAlign: 'center',
             }}
           >
-            <div>
-              Hiển thị trang <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{page}</span> /{' '}
-              <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{totalPages}</span> (Tổng{' '}
-              <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{totalElements}</span> giao dịch)
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              Trang <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{page}</span> /{' '}
+              <span style={{ fontWeight: 700, color: 'var(--color-text-base)' }}>{totalPages}</span> ({totalElements} giao dịch)
             </div>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button
                 disabled={page <= 1}
                 onClick={() => updateParams({ page: page - 1 })}
-                style={{
-                  padding: '0.45rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  backgroundColor: 'var(--color-bg-surface)',
-                  color: 'var(--color-text-base)',
-                  cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                  opacity: page <= 1 ? 0.4 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                title="Trang trước"
+                className="btn btn-secondary"
+                style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} /> Trang trước
               </button>
-
-              <span
-                style={{
-                  padding: '0.25rem 0.65rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--color-primary)',
-                  color: '#ffffff',
-                }}
-              >
-                {page}
-              </span>
-
               <button
                 disabled={page >= totalPages}
                 onClick={() => updateParams({ page: page + 1 })}
-                style={{
-                  padding: '0.45rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  backgroundColor: 'var(--color-bg-surface)',
-                  color: 'var(--color-text-base)',
-                  cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                  opacity: page >= totalPages ? 0.4 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                title="Trang sau"
+                className="btn btn-secondary"
+                style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
               >
-                <ChevronRight size={16} />
+                Trang sau <ChevronRight size={16} />
               </button>
             </div>
           </div>
