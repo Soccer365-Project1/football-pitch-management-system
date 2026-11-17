@@ -24,19 +24,34 @@ const AdminTopbar: React.FC<AdminTopbarProps> = ({ theme, toggleTheme, setSideba
   return (
     <header className="admin-header" style={{ height: '64px', flexShrink: 0, backgroundColor: 'var(--color-bg-surface)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem' }}>
       <div className="flex items-center gap-4">
-        <button className="menu-toggle-btn btn btn-secondary" style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)' }} onClick={() => setSidebarOpen(true)}>
+        <button 
+          className="menu-toggle-btn btn btn-secondary" 
+          style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)' }} 
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Mở thanh điều hướng quản trị"
+        >
           <Menu size={20} />
         </button>
       </div>
 
       <div className="flex items-center gap-6">
-        <button onClick={toggleTheme} className="btn btn-secondary" style={{ padding: '0.5rem', borderRadius: '50%' }} title="Đổi giao diện">
+        <button 
+          onClick={toggleTheme} 
+          className="btn btn-secondary" 
+          style={{ padding: '0.5rem', borderRadius: '50%' }} 
+          title="Đổi giao diện"
+          aria-label={theme === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
+        >
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
         </button>
 
         <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
 
-        <Link to="/admin/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+        <Link 
+          to="/admin/profile" 
+          style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}
+          aria-label="Xem hồ sơ cá nhân"
+        >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
             <span className="font-bold text-sm" style={{ color: 'var(--color-text-base)' }}>{user?.fullName || 'Quản trị viên'}</span>
             <span className="text-xs text-muted font-medium">{roleText}</span>

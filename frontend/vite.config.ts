@@ -9,6 +9,9 @@ export default defineConfig({
     port: 5173,
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'X-Frame-Options': 'SAMEORIGIN',
+      'X-Content-Type-Options': 'nosniff',
+      'Permissions-Policy': 'unload=*',
     },
   },
 })

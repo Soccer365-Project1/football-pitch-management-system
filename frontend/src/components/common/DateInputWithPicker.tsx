@@ -216,6 +216,7 @@ export const DateInputWithPicker: React.FC<DateInputWithPickerProps> = ({
         title={title}
         disabled={disabled}
         maxLength={10}
+        aria-label={label || title || placeholder || 'Chọn ngày'}
         className={className || 'bookings-date-input'}
         style={{
           width: '100%',
@@ -234,6 +235,7 @@ export const DateInputWithPicker: React.FC<DateInputWithPickerProps> = ({
         value={value || ''}
         min={min}
         max={max}
+        aria-hidden="true"
         onChange={(e) => {
           const newIso = e.target.value;
           if (!newIso) {
@@ -274,6 +276,7 @@ export const DateInputWithPicker: React.FC<DateInputWithPickerProps> = ({
         type="button"
         onClick={handleOpenPicker}
         disabled={disabled}
+        aria-label={title || `Mở lịch chọn ${label}`}
         title="Bấm để mở lịch chọn ngày"
         style={{
           position: 'absolute',
