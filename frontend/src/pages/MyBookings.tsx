@@ -38,6 +38,7 @@ const SEARCH_FIELD_OPTIONS: { value: SearchFieldType; label: string; placeholder
 ];
 
 const MyBookings: React.FC = () => {
+  useDocumentTitle('Lịch sử đặt sân');
   const [searchParams, setSearchParams] = useSearchParams();
 
   useDocumentTitle(

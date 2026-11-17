@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home } from 'lucide-react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const NotFound: React.FC = () => {
+  useDocumentTitle('Không tìm thấy trang');
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-6">
       <div className="text-7xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-wider animate-bounce">

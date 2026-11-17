@@ -28,6 +28,7 @@ import { showToast } from '../../utils/toast';
 import { DateInputWithPicker } from '../../components/common/DateInputWithPicker';
 import { TransactionDetailModal } from '../../components/admin/transaction/TransactionDetailModal';
 import { ModalOverlay } from '../../components/common/ModalOverlay';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Tất cả trạng thái' },
@@ -52,6 +53,7 @@ const PAYMENT_METHOD_OPTIONS: { value: string; label: string }[] = [
 ];
 
 export const AdminTransactions: React.FC = () => {
+  useDocumentTitle('Lịch sử giao dịch');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Đọc params từ URL

@@ -25,6 +25,7 @@ import type {
 } from '../../types/report';
 import { showToast } from '../../utils/toast';
 import { formatDate } from '../../utils/formatUtils';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /**
  * =========================================================================================
@@ -71,6 +72,7 @@ const ChartLoadingSkeleton: React.FC<{ message: string }> = ({ message }) => (
  * 4. Modal xác nhận xuất file Excel kèm trạng thái tiến trình isExporting & Spinner mượt mà.
  */
 const AdminDashboard: React.FC = () => {
+  useDocumentTitle('Bảng điều khiển');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Thời gian lọc & Modal
   // ---------------------------------------------------------------------------------------
@@ -418,6 +420,8 @@ const AdminDashboard: React.FC = () => {
             <Calendar size={15} className="text-[var(--color-text-muted)] shrink-0" />
             <input
               type="date"
+              id="dashboardStartDate"
+              aria-label="Ngày bắt đầu thống kê"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -441,6 +445,8 @@ const AdminDashboard: React.FC = () => {
             <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>-</span>
             <input
               type="date"
+              id="dashboardEndDate"
+              aria-label="Ngày kết thúc thống kê"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
