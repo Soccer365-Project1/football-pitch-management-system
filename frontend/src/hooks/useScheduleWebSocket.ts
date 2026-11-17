@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { useQueryClient } from '@tanstack/react-query';
 
 const getSocketUrl = () => {
@@ -14,6 +13,13 @@ const getSocketUrl = () => {
   return 'http://localhost:8080';
 };
 
+const getBrokerUrl = () => {
+  const socketUrl = getSocketUrl();
+  const wsProto = socketUrl.startsWith('https') ? 'wss:' : 'ws:';
+  const host = socketUrl.replace(/^https?:\/\//, '');
+  return `${wsProto}//${host}/ws`;
+};
+
 export const useScheduleWebSocket = (_selectedDate?: string) => {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
@@ -23,7 +29,7 @@ export const useScheduleWebSocket = (_selectedDate?: string) => {
 
     try {
       client = new Client({
-        webSocketFactory: () => new SockJS(`${getSocketUrl()}/ws`),
+        brokerURL: getBrokerUrl(),
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
@@ -56,7 +62,7 @@ export const useScheduleWebSocket = (_selectedDate?: string) => {
 
       client.activate();
     } catch {
-      // Graceful fallback if SockJS is blocked or unsupported in current environment
+      // Graceful fallback if WebSocket is blocked or unsupported in current environment
       setIsConnected(false);
     }
 
