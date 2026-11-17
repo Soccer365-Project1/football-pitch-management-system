@@ -478,8 +478,8 @@ const AdminPricing: React.FC = () => {
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
         {/* LÊN BẢNG GIÁ MA TRẬN */}
-        <div className="card" style={{ flex: '1 1 600px' }}>
-          <div className="flex justify-between items-center mb-6">
+        <div className="card" style={{ flex: '1 1 600px', minWidth: 0, maxWidth: '100%' }}>
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
               <h2 className="text-xl font-bold">Bảng giá sân</h2>
               <p className="text-sm text-muted mt-2">Hệ thống tự động áp dụng giá theo thời điểm đặt sân.</p>
@@ -671,7 +671,7 @@ const AdminPricing: React.FC = () => {
             </table>
           </div>
 
-          <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '1rem' }}>
             <button
               type="button"
               className="btn btn-secondary"
@@ -694,7 +694,7 @@ const AdminPricing: React.FC = () => {
         </div>
 
         {/* CẤU HÌNH NGÀY LỄ */}
-        <div style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ flex: '1 1 350px', minWidth: 0, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="card" style={{ height: '530px', display: 'flex', flexDirection: 'column' }}>
             <div className="flex items-center gap-4 mb-6" style={{ flexShrink: 0 }}>
               <div
