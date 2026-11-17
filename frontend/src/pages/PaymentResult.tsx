@@ -6,6 +6,7 @@ import { formatPrice } from '../utils/formatUtils.ts';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.ts';
 
 const PaymentResult: React.FC = () => {
+  useDocumentTitle('Kết quả thanh toán');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);

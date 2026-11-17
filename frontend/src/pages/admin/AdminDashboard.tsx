@@ -25,6 +25,7 @@ import type {
 } from '../../types/report';
 import { showToast } from '../../utils/toast';
 import { formatDate } from '../../utils/formatUtils';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /**
  * =========================================================================================
@@ -71,6 +72,7 @@ const ChartLoadingSkeleton: React.FC<{ message: string }> = ({ message }) => (
  * 4. Modal xác nhận xuất file Excel kèm trạng thái tiến trình isExporting & Spinner mượt mà.
  */
 const AdminDashboard: React.FC = () => {
+  useDocumentTitle('Bảng điều khiển');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Thời gian lọc & Modal
   // ---------------------------------------------------------------------------------------

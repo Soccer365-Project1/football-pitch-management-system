@@ -6,6 +6,7 @@ import type { Pitch, PitchType, PitchStatus, PitchRequest } from '../../types/pi
 import { showToast } from '../../utils/toast';
 import { PitchModal } from '../../components/admin/pitch/PitchModal';
 import { ChangeStatusModal } from '../../components/admin/pitch/ChangeStatusModal';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /**
  * =========================================================================================
@@ -19,6 +20,7 @@ import { ChangeStatusModal } from '../../components/admin/pitch/ChangeStatusModa
  * 5. Tách toàn bộ Form Thêm / Sửa vào component con `PitchModal` để giữ trang chính gọn gàng.
  */
 const AdminPitches: React.FC = () => {
+  useDocumentTitle('Quản lý sân bóng');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Bộ lọc & Phân trang (useState)
   // ---------------------------------------------------------------------------------------

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { authService } from '../services/authService';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 interface FormErrors {
   fullName?: string;
@@ -13,6 +14,7 @@ interface FormErrors {
 }
 
 const Register: React.FC = () => {
+  useDocumentTitle('Đăng ký');
   const navigate = useNavigate();
 
   // 1. Quản lý trạng thái dữ liệu Form

@@ -18,6 +18,7 @@ import type { AdminUserItem, RoleName, UserStatus } from '../../types/adminUser'
 import { ModalOverlay } from '../../components/common/ModalOverlay';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../utils/toast';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 interface FormErrors {
   fullName?: string;
@@ -49,6 +50,7 @@ const PASSWORD_REGEX = /^(?=.{6,64}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\
  * 7. Phân trang chuẩn Backend đặt ở góc phải chân card.
  */
 const AdminUsers: React.FC = () => {
+  useDocumentTitle('Quản lý người dùng');
   const { user: currentAdmin } = useAuth();
   const isCurrentUserAdmin = currentAdmin?.role === 'ROLE_ADMIN';
   const isCurrentUserStaff = currentAdmin?.role === 'ROLE_STAFF';

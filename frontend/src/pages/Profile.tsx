@@ -3,6 +3,7 @@ import { Save, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
 import { showToast, showConfirm } from '../utils/toast';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 interface ProfileErrors {
   fullName?: string;
@@ -18,6 +19,7 @@ interface PasswordErrors {
 }
 
 const Profile: React.FC = () => {
+  useDocumentTitle('Hồ sơ cá nhân');
   const { user, updateUser } = useAuth();
 
   // Contact Info state

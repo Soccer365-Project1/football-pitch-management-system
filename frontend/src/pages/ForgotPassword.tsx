@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, RefreshCw, ArrowLeft, KeyRound, Mail, Lock } from 'lucide-react';
 import { authService } from '../services/authService';
 import { showToast, showAlert } from '../utils/toast';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /**
  * Trang Quên Mật Khẩu (ForgotPassword)
@@ -13,6 +14,7 @@ import { showToast, showAlert } from '../utils/toast';
  * - Bước 3: Sau khi OTP hợp lệ -> Cho phép người dùng nhập mật khẩu mới và xác nhận để hoàn tất đặt lại mật khẩu.
  */
 const ForgotPassword: React.FC = () => {
+  useDocumentTitle('Quên mật khẩu');
   const navigate = useNavigate();
 
   // =========================================================================

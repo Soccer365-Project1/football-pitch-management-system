@@ -5,6 +5,7 @@ import type { TimeSlot, TimeSlotRequest } from '../../types/timeslot';
 import { showToast, showAlert } from '../../utils/toast';
 import { TimeSlotModal } from '../../components/admin/timeslot/TimeSlotModal';
 import { DeleteConfirmModal } from '../../components/admin/timeslot/DeleteConfirmModal';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /**
  * =========================================================================================
@@ -18,6 +19,7 @@ import { DeleteConfirmModal } from '../../components/admin/timeslot/DeleteConfir
  * 5. Bọc comment tiếng Việt chi tiết cho mọi State, Handler và JSX để intern dễ theo dõi.
  */
 const AdminTimeSlots: React.FC = () => {
+  useDocumentTitle('Quản lý khung giờ');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Dữ liệu (useState cơ bản)
   // ---------------------------------------------------------------------------------------

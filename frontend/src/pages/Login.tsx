@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { showToast } from '../utils/toast';
 
 // Biến module-level để trỏ callback tới instance hiện tại của component Login
 let activeGoogleCallback: ((response: { credential: string }) => void) | null = null;
 
 const Login: React.FC = () => {
+  useDocumentTitle('Đăng nhập');
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loginWithGoogle } = useAuth();

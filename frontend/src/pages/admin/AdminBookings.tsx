@@ -16,8 +16,10 @@ import { ApproveBookingModal } from '../../components/admin/booking/ApproveBooki
 import { CancelRefundModal } from '../../components/admin/booking/CancelRefundModal';
 import { CollectPaymentModal } from '../../components/admin/booking/CollectPaymentModal';
 import { AdminCancelModal } from '../../components/admin/booking/AdminCancelModal';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const AdminBookings: React.FC = () => {
+  useDocumentTitle('Quản lý đơn đặt sân');
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   // States

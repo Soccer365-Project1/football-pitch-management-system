@@ -9,6 +9,7 @@ import type { Holiday } from '../../types/holiday';
 import type { PitchType } from '../../types/pitch';
 import { showToast } from '../../utils/toast';
 import { formatDate } from '../../utils/formatUtils';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /** Nhãn hiển thị chi tiết của từng ô trong ma trận giá để thông báo lỗi rõ ràng */
 const CELL_LABELS: Record<string, string> = {
@@ -111,6 +112,7 @@ const ModalOverlay = ({ children, onClose }: { children: React.ReactNode; onClos
 };
 
 const AdminPricing: React.FC = () => {
+  useDocumentTitle('Bảng giá & Ngày lễ');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Loại sân & Ma trận Biểu giá
   // ---------------------------------------------------------------------------------------
