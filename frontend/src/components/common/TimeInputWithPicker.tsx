@@ -17,6 +17,7 @@ export interface TimeInputWithPickerProps {
   label: string;
   value: string;
   onChange: (val: string) => void;
+  id?: string;
   placeholder?: string;
   disabled?: boolean;
   hasError?: boolean;
@@ -39,10 +40,12 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
   label,
   value,
   onChange,
+  id,
   placeholder = 'HH:mm (VD: 06:00)',
   disabled = false,
   hasError = false,
 }) => {
+  const inputId = id || `time-input-${label.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
   // Tham chiếu đến thẻ input type="time" ẩn, dùng để kích hoạt popup đồng hồ
   const hiddenTimePickerRef = useRef<HTMLInputElement>(null);
 
@@ -89,18 +92,21 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Tiêu đề nhãn của ô nhập */}
-      <label className="block text-sm font-semibold mb-2">{label}</label>
+      <label htmlFor={inputId} className="block text-sm font-semibold mb-2">{label}</label>
 
       {/* Vùng chứa ô nhập text và nút icon đồng hồ lồng bên trong */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
         {/* Ô nhập văn bản hỗ trợ gõ tay */}
         <input
+          id={inputId}
+          name={inputId}
           type="text"
           placeholder={placeholder}
           value={value}
           onChange={handleTextChange}
           disabled={disabled}
           maxLength={5}
+          aria-label={label}
           style={{
             height: '46px',
             padding: '0.65rem 2.85rem 0.65rem 1rem', // Chừa 2.85rem bên phải để không bị chữ đè lên icon
@@ -122,6 +128,7 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
           value={isValidTimeFormat(value) ? value : ''}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
+          aria-hidden="true"
           style={{
             position: 'absolute',
             opacity: 0,
@@ -139,6 +146,7 @@ export const TimeInputWithPicker: React.FC<TimeInputWithPickerProps> = ({
           type="button"
           onClick={handleOpenPicker}
           disabled={disabled}
+          aria-label={`Mở bảng chọn giờ cho ${label}`}
           title="Bấm để chọn giờ từ đồng hồ"
           style={{
             position: 'absolute',

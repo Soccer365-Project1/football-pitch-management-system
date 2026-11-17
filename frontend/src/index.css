@@ -508,12 +508,15 @@ button {
   background-color: rgba(16, 185, 129, 0.15);
   color: var(--color-success);
 }
-
 .badge-warning {
   background-color: rgba(245, 158, 11, 0.15);
-  color: var(--color-warning);
+  color: #78350f;
+  font-weight: 600;
 }
-
+[data-theme='dark'] .badge-warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
 .badge-danger {
   background-color: rgba(239, 68, 68, 0.15);
   color: var(--color-danger);

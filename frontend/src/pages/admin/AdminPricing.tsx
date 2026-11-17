@@ -9,6 +9,7 @@ import type { Holiday } from '../../types/holiday';
 import type { PitchType } from '../../types/pitch';
 import { showToast } from '../../utils/toast';
 import { formatDate } from '../../utils/formatUtils';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /** Nhãn hiển thị chi tiết của từng ô trong ma trận giá để thông báo lỗi rõ ràng */
 const CELL_LABELS: Record<string, string> = {
@@ -43,30 +44,30 @@ const ROW_CONFIGS: MatrixRowConfig[] = [
     icon: CalendarDays,
     iconColor: 'var(--color-text-muted)',
     iconBg: 'var(--color-bg-base)',
-    peakInputColor: 'var(--color-warning)',
+    peakInputColor: '#b45309',
   },
   {
     dayType: DayType.WEEKEND,
     title: 'Cuối tuần',
     subTitle: 'Thứ 7, Chủ Nhật',
     icon: SunDim,
-    iconColor: 'var(--color-secondary)',
+    iconColor: '#1d4ed8',
     iconBg: 'var(--color-bg-base)',
-    textColor: 'var(--color-secondary)',
-    normalInputColor: 'var(--color-secondary)',
-    peakInputColor: 'var(--color-warning)',
+    textColor: '#1d4ed8',
+    normalInputColor: '#1d4ed8',
+    peakInputColor: '#b45309',
   },
   {
     dayType: DayType.HOLIDAY,
     title: 'Ngày Lễ',
     subTitle: 'Áp dụng phụ thu',
     icon: Gift,
-    iconColor: 'var(--color-danger)',
+    iconColor: '#b91c1c',
     iconBg: 'rgba(239, 68, 68, 0.1)',
     iconBorder: '1px solid rgba(239, 68, 68, 0.2)',
-    textColor: 'var(--color-danger)',
-    normalInputColor: 'var(--color-danger)',
-    peakInputColor: 'var(--color-danger)',
+    textColor: '#b91c1c',
+    normalInputColor: '#b91c1c',
+    peakInputColor: '#b91c1c',
     rowBg: 'rgba(239, 68, 68, 0.02)',
   },
 ];
@@ -111,6 +112,7 @@ const ModalOverlay = ({ children, onClose }: { children: React.ReactNode; onClos
 };
 
 const AdminPricing: React.FC = () => {
+  useDocumentTitle('Bảng giá & Ngày lễ');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Loại sân & Ma trận Biểu giá
   // ---------------------------------------------------------------------------------------
@@ -476,8 +478,8 @@ const AdminPricing: React.FC = () => {
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
         {/* LÊN BẢNG GIÁ MA TRẬN */}
-        <div className="card" style={{ flex: '1 1 600px' }}>
-          <div className="flex justify-between items-center mb-6">
+        <div className="card" style={{ flex: '1 1 600px', minWidth: 0, maxWidth: '100%' }}>
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
               <h2 className="text-xl font-bold">Bảng giá sân</h2>
               <p className="text-sm text-muted mt-2">Hệ thống tự động áp dụng giá theo thời điểm đặt sân.</p>
@@ -496,6 +498,8 @@ const AdminPricing: React.FC = () => {
               >
                 <MapPin size={16} className="text-muted" />
                 <select
+                  id="selectPitchTypePricing"
+                  aria-label="Chọn loại sân bóng"
                   value={selectedPitchTypeId}
                   onChange={(e) => setSelectedPitchTypeId(Number(e.target.value))}
                   style={{
@@ -551,7 +555,7 @@ const AdminPricing: React.FC = () => {
                       padding: '1rem',
                       border: '1px solid var(--color-border)',
                       backgroundColor: 'rgba(245, 158, 11, 0.05)',
-                      color: 'var(--color-warning)',
+                      color: '#b45309',
                     }}
                   >
                     <div className="flex items-center gap-2">
@@ -607,6 +611,7 @@ const AdminPricing: React.FC = () => {
                         >
                           <input
                             type="text"
+                            aria-label={`Giá giờ thường ${row.title}`}
                             value={ratesMap[normalKey] ?? ''}
                             onChange={(e) => handlePriceCellChange(row.dayType, false, e.target.value)}
                             placeholder="Chưa có"
@@ -640,6 +645,7 @@ const AdminPricing: React.FC = () => {
                         >
                           <input
                             type="text"
+                            aria-label={`Giá giờ vàng ${row.title}`}
                             value={ratesMap[peakKey] ?? ''}
                             onChange={(e) => handlePriceCellChange(row.dayType, true, e.target.value)}
                             placeholder="Chưa có"
@@ -665,7 +671,7 @@ const AdminPricing: React.FC = () => {
             </table>
           </div>
 
-          <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '1rem' }}>
             <button
               type="button"
               className="btn btn-secondary"
@@ -688,7 +694,7 @@ const AdminPricing: React.FC = () => {
         </div>
 
         {/* CẤU HÌNH NGÀY LỄ */}
-        <div style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ flex: '1 1 350px', minWidth: 0, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="card" style={{ height: '530px', display: 'flex', flexDirection: 'column' }}>
             <div className="flex items-center gap-4 mb-6" style={{ flexShrink: 0 }}>
               <div
@@ -714,10 +720,12 @@ const AdminPricing: React.FC = () => {
                 }}
               >
                 <div className="mb-4">
-                  <label className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  <label htmlFor="newHolidayDate" className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
                     Chọn ngày
                   </label>
                   <input
+                    id="newHolidayDate"
+                    name="holidayDate"
                     type="date"
                     value={newHolidayDate}
                     onChange={(e) => setNewHolidayDate(e.target.value)}
@@ -735,10 +743,12 @@ const AdminPricing: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  <label htmlFor="newHolidayName" className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
                     Tên sự kiện
                   </label>
                   <input
+                    id="newHolidayName"
+                    name="holidayName"
                     type="text"
                     value={newHolidayName}
                     onChange={(e) => setNewHolidayName(e.target.value)}

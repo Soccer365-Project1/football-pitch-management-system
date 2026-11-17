@@ -24,6 +24,8 @@ import type {
   RevenueByPitchType,
 } from '../../types/report';
 import { showToast } from '../../utils/toast';
+import { formatDate } from '../../utils/formatUtils';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /**
  * =========================================================================================
@@ -70,6 +72,7 @@ const ChartLoadingSkeleton: React.FC<{ message: string }> = ({ message }) => (
  * 4. Modal xác nhận xuất file Excel kèm trạng thái tiến trình isExporting & Spinner mượt mà.
  */
 const AdminDashboard: React.FC = () => {
+  useDocumentTitle('Bảng điều khiển');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Thời gian lọc & Modal
   // ---------------------------------------------------------------------------------------
@@ -417,6 +420,8 @@ const AdminDashboard: React.FC = () => {
             <Calendar size={15} className="text-[var(--color-text-muted)] shrink-0" />
             <input
               type="date"
+              id="dashboardStartDate"
+              aria-label="Ngày bắt đầu thống kê"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -440,6 +445,8 @@ const AdminDashboard: React.FC = () => {
             <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>-</span>
             <input
               type="date"
+              id="dashboardEndDate"
+              aria-label="Ngày kết thúc thống kê"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
@@ -563,8 +570,12 @@ const AdminDashboard: React.FC = () => {
               <div className="text-3xl font-bold text-[var(--color-text-base)]">
                 {`${summary?.totalBookings ?? 0} đơn`}
               </div>
-              <div className="text-xs mt-2 text-muted">
-                {summary?.completedBookings ?? 0} hoàn thành, {summary?.confirmedBookings ?? 0} đang đá/chờ
+              <div className="text-xs mt-2 text-muted flex items-center gap-1.5 flex-wrap">
+                <span>{summary?.completedBookings ?? 0} hoàn thành</span>
+                <span>•</span>
+                <span>{summary?.confirmedBookings ?? 0} đang đá/chờ</span>
+                <span>•</span>
+                <span>{summary?.cancelledBookings ?? 0} đã hủy</span>
               </div>
             </>
           )}
@@ -801,12 +812,9 @@ const AdminDashboard: React.FC = () => {
                       cy="48%"
                       innerRadius={75}
                       outerRadius={115}
-                      paddingAngle={5}
+                      paddingAngle={pitchTypeRevenue.length > 1 ? 4 : 0}
                       dataKey="value"
-                      label={({ name, percent }: { name?: string; percent?: number }) =>
-                        `${name || ''}: ${(((percent ?? 0) * 100)).toFixed(0)}%`
-                      }
-                      labelLine={false}
+                      label={false}
                     >
                       {pitchTypeRevenue.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
@@ -819,6 +827,15 @@ const AdminDashboard: React.FC = () => {
                       verticalAlign="bottom"
                       align="center"
                       wrapperStyle={{ paddingTop: '20px' }}
+                      formatter={(value: string) => {
+                        const item = pitchTypeRevenue.find((p) => p.pitchTypeName === value);
+                        const pct = item ? `${Number(item.percentage).toFixed(0)}%` : '';
+                        return (
+                          <span style={{ color: 'var(--color-text-base)', fontSize: '0.85rem', fontWeight: 500 }}>
+                            {value} {pct && <strong style={{ color: 'var(--color-text-muted)' }}>({pct})</strong>}
+                          </span>
+                        );
+                      }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -844,8 +861,8 @@ const AdminDashboard: React.FC = () => {
           <div className="mb-6">
             <p className="text-sm text-[var(--color-text-base)] leading-relaxed">
               Bạn có chắc chắn muốn xuất báo cáo doanh thu từ ngày{' '}
-              <strong className="text-[var(--color-primary)]">{startDate}</strong> đến ngày{' '}
-              <strong className="text-[var(--color-primary)]">{endDate}</strong> không?
+              <strong className="text-[var(--color-primary)]">{formatDate(startDate)}</strong> đến ngày{' '}
+              <strong className="text-[var(--color-primary)]">{formatDate(endDate)}</strong> không?
             </p>
             <p className="text-muted text-xs mt-3 p-3 bg-[var(--color-bg-base)] rounded">
               File báo cáo định dạng <strong>.xlsx</strong> sẽ bao gồm: Báo cáo tổng hợp KPI và Danh sách

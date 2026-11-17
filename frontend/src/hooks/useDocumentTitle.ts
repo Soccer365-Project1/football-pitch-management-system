@@ -30,4 +30,3 @@ export const useDocumentTitle = (title: string, description?: string) => {
 };
 
 export default useDocumentTitle;
-

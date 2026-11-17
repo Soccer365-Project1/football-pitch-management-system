@@ -6,6 +6,7 @@ import type { Pitch, PitchType, PitchStatus, PitchRequest } from '../../types/pi
 import { showToast } from '../../utils/toast';
 import { PitchModal } from '../../components/admin/pitch/PitchModal';
 import { ChangeStatusModal } from '../../components/admin/pitch/ChangeStatusModal';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /**
  * =========================================================================================
@@ -19,6 +20,7 @@ import { ChangeStatusModal } from '../../components/admin/pitch/ChangeStatusModa
  * 5. Tách toàn bộ Form Thêm / Sửa vào component con `PitchModal` để giữ trang chính gọn gàng.
  */
 const AdminPitches: React.FC = () => {
+  useDocumentTitle('Quản lý sân bóng');
   // ---------------------------------------------------------------------------------------
   // 1. Quản lý trạng thái Bộ lọc & Phân trang (useState)
   // ---------------------------------------------------------------------------------------
@@ -303,6 +305,7 @@ const AdminPitches: React.FC = () => {
             <Search size={16} className="text-muted shrink-0" />
             <input
               type="text"
+              aria-label="Tìm theo tên sân"
               placeholder="Tìm theo tên sân..."
               value={searchTerm}
               onChange={(e) => {
@@ -324,6 +327,7 @@ const AdminPitches: React.FC = () => {
           <div className="admin-pitches-actions">
             {/* Dropdown lọc theo loại sân */}
             <select
+              aria-label="Lọc theo loại sân"
               value={typeFilter}
               onChange={(e) => {
                 setTypeFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value));
@@ -341,6 +345,7 @@ const AdminPitches: React.FC = () => {
 
             {/* Dropdown lọc theo trạng thái hoạt động */}
             <select
+              aria-label="Lọc theo trạng thái hoạt động"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value as PitchStatus | 'ALL');

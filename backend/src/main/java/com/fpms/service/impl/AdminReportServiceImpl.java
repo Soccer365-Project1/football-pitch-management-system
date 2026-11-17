@@ -55,7 +55,9 @@ public class AdminReportServiceImpl implements AdminReportService {
         long completedBookings = currentStatusCounts.getOrDefault(BookingStatus.COMPLETED, 0L);
         long confirmedBookings = currentStatusCounts.getOrDefault(BookingStatus.CONFIRMED, 0L)
                 + currentStatusCounts.getOrDefault(BookingStatus.IN_PROGRESS, 0L)
-                + currentStatusCounts.getOrDefault(BookingStatus.WAITING_APPROVAL, 0L);
+                + currentStatusCounts.getOrDefault(BookingStatus.WAITING_APPROVAL, 0L)
+                + currentStatusCounts.getOrDefault(BookingStatus.WAITING_CANCELLATION, 0L)
+                + currentStatusCounts.getOrDefault(BookingStatus.PENDING_HOLD, 0L);
         long cancelledBookings = currentStatusCounts.getOrDefault(BookingStatus.CANCELLED, 0L)
                 + currentStatusCounts.getOrDefault(BookingStatus.REFUNDED, 0L);
 
@@ -260,6 +262,7 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     private BigDecimal extractStatusStatsAndRevenue(List<Object[]> rows, Map<BookingStatus, Long> targetCountsMap) {
         BigDecimal completedRevenue = BigDecimal.ZERO;
+        BigDecimal cancelledDepositRevenue = BigDecimal.ZERO;
         if (rows != null) {
             for (Object[] row : rows) {
                 BookingStatus status = (BookingStatus) row[0];
@@ -268,10 +271,12 @@ public class AdminReportServiceImpl implements AdminReportService {
                 targetCountsMap.put(status, count);
                 if (status == BookingStatus.COMPLETED) {
                     completedRevenue = revenue;
+                } else if (status == BookingStatus.CANCELLED) {
+                    cancelledDepositRevenue = revenue;
                 }
             }
         }
-        return completedRevenue;
+        return completedRevenue.add(cancelledDepositRevenue);
     }
 
     private Map<BookingStatus, Long> mapStatusCounts(List<Object[]> rows) {

@@ -86,6 +86,9 @@ public class AdminBookingDetailResponse {
     @Schema(description = "Ghi chú của khách hàng hoặc lý do hủy đơn")
     private String customerNote;
 
+    @Schema(description = "Lý do khách xin hủy đơn", example = "Trời mưa to ngập sân")
+    private String cancellationReason;
+
     @Schema(description = "Thời gian tạo đơn")
     private LocalDateTime createdAt;
 

@@ -2,6 +2,7 @@ package com.fpms.service;
 
 import com.fpms.common.response.PageResponse;
 import com.fpms.dto.request.AdminBookingCancelRequest;
+import com.fpms.dto.request.AdminBookingRejectCancelRequest;
 import com.fpms.dto.request.AdminBookingSearchRequest;
 import com.fpms.dto.request.CollectPaymentRequest;
 import com.fpms.dto.request.CounterBookingCreationRequest;
@@ -35,6 +36,11 @@ public interface AdminBookingService {
      * SRS UC011.3: Hủy đơn đặt sân, xử lý hoàn tiền cọc nếu có và giải phóng ca đá ngay lập tức.
      */
     AdminBookingDetailResponse cancelAndRefundBooking(Long id, AdminBookingCancelRequest request, UserPrincipal currentUser);
+
+    /**
+     * SRS UC011.3 Luồng thay thế 3a: Từ chối yêu cầu hủy đơn của khách hàng, khôi phục trạng thái ĐÃ XÁC NHẬN.
+     */
+    AdminBookingDetailResponse rejectCancellation(Long id, AdminBookingRejectCancelRequest request, UserPrincipal currentUser);
 
     /**
      * SRS UC011.5: Admin chủ động hủy đơn đặt sân cho khách (có tùy chọn hoàn cọc hoặc không hoàn cọc).

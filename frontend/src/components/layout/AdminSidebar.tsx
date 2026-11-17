@@ -55,7 +55,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>Soccer365</h2>
             <p className="text-muted text-sm mt-1">Phần mềm quản lý sân bóng</p>
           </div>
-          <button className="menu-toggle-btn text-muted" onClick={() => setSidebarOpen(false)}>
+          <button 
+            className="menu-toggle-btn text-muted" 
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Đóng thanh điều hướng"
+          >
             <X size={24} />
           </button>
         </div>

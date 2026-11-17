@@ -54,6 +54,7 @@ export interface AdminBookingSummary {
   status: BookingStatus;
   staffName?: string;
   customerNote?: string;
+  cancellationReason?: string;
   createdAt?: string;
 }
 
@@ -78,6 +79,7 @@ export interface AdminBookingDetail {
   bookingType: BookingType;
   status: BookingStatus;
   customerNote?: string;
+  cancellationReason?: string;
   createdAt?: string;
   updatedAt?: string;
   transactions?: PaymentTransaction[];
@@ -113,6 +115,10 @@ export interface AdminBookingCancelPayload {
   isRefund?: boolean;
   refundMethod?: PaymentMethodCode;
   refundAmount?: number;
+}
+
+export interface AdminBookingRejectCancelPayload {
+  rejectionReason: string;
 }
 
 export interface CollectPaymentPayload {
