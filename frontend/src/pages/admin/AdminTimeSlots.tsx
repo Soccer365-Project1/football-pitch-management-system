@@ -164,7 +164,7 @@ const AdminTimeSlots: React.FC = () => {
         =============================================================================== */}
         <div className="admin-timeslots-header">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Danh sách Khung giờ</h2>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Danh sách Khung giờ</h1>
             <p className="text-sm text-muted mt-1">
               Quản lý các ca đá cố định trong ngày (thời lượng 1h - 2h), phân định Giờ thường và Giờ vàng cao điểm
             </p>
@@ -293,6 +293,9 @@ const AdminTimeSlots: React.FC = () => {
                               gap: '0.25rem',
                               padding: '0.35rem 0.65rem',
                               fontSize: '0.8rem',
+                              color: '#78350f',
+                              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                              fontWeight: 600,
                             }}
                           >
                             <Zap size={13} className="fill-current" /> Giờ vàng
@@ -308,6 +311,7 @@ const AdminTimeSlots: React.FC = () => {
                               gap: '0.25rem',
                               padding: '0.35rem 0.65rem',
                               fontSize: '0.8rem',
+                              fontWeight: 600,
                             }}
                           >
                             Giờ thường
@@ -341,6 +345,7 @@ const AdminTimeSlots: React.FC = () => {
                               transition: 'all 0.15s ease',
                             }}
                             title="Chỉnh sửa ca đá"
+                            aria-label="Chỉnh sửa ca đá"
                             onClick={() => setEditSlot(slot)}
                           >
                             <Edit size={16} />
@@ -355,6 +360,7 @@ const AdminTimeSlots: React.FC = () => {
                               transition: 'all 0.15s ease',
                             }}
                             title="Xóa ca đá"
+                            aria-label="Xóa ca đá"
                             onClick={() => setDeleteSlot(slot)}
                           >
                             <Trash2 size={16} />

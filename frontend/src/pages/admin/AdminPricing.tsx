@@ -43,30 +43,30 @@ const ROW_CONFIGS: MatrixRowConfig[] = [
     icon: CalendarDays,
     iconColor: 'var(--color-text-muted)',
     iconBg: 'var(--color-bg-base)',
-    peakInputColor: 'var(--color-warning)',
+    peakInputColor: '#b45309',
   },
   {
     dayType: DayType.WEEKEND,
     title: 'Cuối tuần',
     subTitle: 'Thứ 7, Chủ Nhật',
     icon: SunDim,
-    iconColor: 'var(--color-secondary)',
+    iconColor: '#1d4ed8',
     iconBg: 'var(--color-bg-base)',
-    textColor: 'var(--color-secondary)',
-    normalInputColor: 'var(--color-secondary)',
-    peakInputColor: 'var(--color-warning)',
+    textColor: '#1d4ed8',
+    normalInputColor: '#1d4ed8',
+    peakInputColor: '#b45309',
   },
   {
     dayType: DayType.HOLIDAY,
     title: 'Ngày Lễ',
     subTitle: 'Áp dụng phụ thu',
     icon: Gift,
-    iconColor: 'var(--color-danger)',
+    iconColor: '#b91c1c',
     iconBg: 'rgba(239, 68, 68, 0.1)',
     iconBorder: '1px solid rgba(239, 68, 68, 0.2)',
-    textColor: 'var(--color-danger)',
-    normalInputColor: 'var(--color-danger)',
-    peakInputColor: 'var(--color-danger)',
+    textColor: '#b91c1c',
+    normalInputColor: '#b91c1c',
+    peakInputColor: '#b91c1c',
     rowBg: 'rgba(239, 68, 68, 0.02)',
   },
 ];
@@ -496,6 +496,8 @@ const AdminPricing: React.FC = () => {
               >
                 <MapPin size={16} className="text-muted" />
                 <select
+                  id="selectPitchTypePricing"
+                  aria-label="Chọn loại sân bóng"
                   value={selectedPitchTypeId}
                   onChange={(e) => setSelectedPitchTypeId(Number(e.target.value))}
                   style={{
@@ -551,7 +553,7 @@ const AdminPricing: React.FC = () => {
                       padding: '1rem',
                       border: '1px solid var(--color-border)',
                       backgroundColor: 'rgba(245, 158, 11, 0.05)',
-                      color: 'var(--color-warning)',
+                      color: '#b45309',
                     }}
                   >
                     <div className="flex items-center gap-2">
@@ -607,6 +609,7 @@ const AdminPricing: React.FC = () => {
                         >
                           <input
                             type="text"
+                            aria-label={`Giá giờ thường ${row.title}`}
                             value={ratesMap[normalKey] ?? ''}
                             onChange={(e) => handlePriceCellChange(row.dayType, false, e.target.value)}
                             placeholder="Chưa có"
@@ -640,6 +643,7 @@ const AdminPricing: React.FC = () => {
                         >
                           <input
                             type="text"
+                            aria-label={`Giá giờ vàng ${row.title}`}
                             value={ratesMap[peakKey] ?? ''}
                             onChange={(e) => handlePriceCellChange(row.dayType, true, e.target.value)}
                             placeholder="Chưa có"
@@ -714,10 +718,12 @@ const AdminPricing: React.FC = () => {
                 }}
               >
                 <div className="mb-4">
-                  <label className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  <label htmlFor="newHolidayDate" className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
                     Chọn ngày
                   </label>
                   <input
+                    id="newHolidayDate"
+                    name="holidayDate"
                     type="date"
                     value={newHolidayDate}
                     onChange={(e) => setNewHolidayDate(e.target.value)}
@@ -735,10 +741,12 @@ const AdminPricing: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  <label htmlFor="newHolidayName" className="font-semibold text-sm" style={{ display: 'block', marginBottom: '0.5rem' }}>
                     Tên sự kiện
                   </label>
                   <input
+                    id="newHolidayName"
+                    name="holidayName"
                     type="text"
                     value={newHolidayName}
                     onChange={(e) => setNewHolidayName(e.target.value)}

@@ -51,6 +51,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           disabled={submitting}
           className="p-1 rounded-lg text-muted hover:text-[var(--color-text-base)] transition-colors"
           title="Đóng hộp thoại"
+          aria-label="Đóng hộp thoại"
         >
           <X size={20} />
         </button>

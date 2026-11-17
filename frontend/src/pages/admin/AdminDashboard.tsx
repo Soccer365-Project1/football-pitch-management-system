@@ -418,6 +418,8 @@ const AdminDashboard: React.FC = () => {
             <Calendar size={15} className="text-[var(--color-text-muted)] shrink-0" />
             <input
               type="date"
+              id="dashboardStartDate"
+              aria-label="Ngày bắt đầu thống kê"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -441,6 +443,8 @@ const AdminDashboard: React.FC = () => {
             <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>-</span>
             <input
               type="date"
+              id="dashboardEndDate"
+              aria-label="Ngày kết thúc thống kê"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);

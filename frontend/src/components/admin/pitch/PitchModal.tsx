@@ -149,10 +149,12 @@ export const PitchModal: React.FC<PitchModalProps> = ({
         <div className="grid gap-4 mb-6" style={{ overflowY: 'auto', paddingRight: '0.25rem' }}>
           {/* Ô nhập 1: Tên Sân Bóng */}
           <div>
-            <label className="block text-sm font-semibold mb-2">
+            <label htmlFor="pitchNameInput" className="block text-sm font-semibold mb-2">
               Tên sân bóng <span className="text-danger">*</span>
             </label>
             <input
+              id="pitchNameInput"
+              name="name"
               type="text"
               className="w-full"
               placeholder="Ví dụ: Sân 5 số 1, Sân VIP..."
@@ -187,10 +189,12 @@ export const PitchModal: React.FC<PitchModalProps> = ({
 
           {/* Ô nhập 2: Chọn Loại Sân Bóng (Dropdown) */}
           <div>
-            <label className="block text-sm font-semibold mb-2">
+            <label htmlFor="pitchTypeSelect" className="block text-sm font-semibold mb-2">
               Loại sân bóng <span className="text-danger">*</span>
             </label>
             <select
+              id="pitchTypeSelect"
+              name="pitchTypeId"
               className="w-full"
               value={pitchTypeId}
               disabled={submitting}
@@ -219,8 +223,10 @@ export const PitchModal: React.FC<PitchModalProps> = ({
 
           {/* Ô nhập 3: Mô Tả Sân Bóng */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Mô tả (tùy chọn)</label>
+            <label htmlFor="pitchDescriptionInput" className="block text-sm font-semibold mb-2">Mô tả (tùy chọn)</label>
             <textarea
+              id="pitchDescriptionInput"
+              name="description"
               rows={3}
               className="w-full"
               placeholder="Ghi chú về mặt cỏ, hệ thống chiếu sáng, vị trí sân..."

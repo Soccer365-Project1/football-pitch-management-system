@@ -303,6 +303,7 @@ const AdminPitches: React.FC = () => {
             <Search size={16} className="text-muted shrink-0" />
             <input
               type="text"
+              aria-label="Tìm theo tên sân"
               placeholder="Tìm theo tên sân..."
               value={searchTerm}
               onChange={(e) => {
@@ -324,6 +325,7 @@ const AdminPitches: React.FC = () => {
           <div className="admin-pitches-actions">
             {/* Dropdown lọc theo loại sân */}
             <select
+              aria-label="Lọc theo loại sân"
               value={typeFilter}
               onChange={(e) => {
                 setTypeFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value));
@@ -341,6 +343,7 @@ const AdminPitches: React.FC = () => {
 
             {/* Dropdown lọc theo trạng thái hoạt động */}
             <select
+              aria-label="Lọc theo trạng thái hoạt động"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value as PitchStatus | 'ALL');
