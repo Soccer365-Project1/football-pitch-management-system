@@ -249,12 +249,12 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
                 + " | Tổng số bản ghi: " + transactions.size());
         c1.setCellStyle(subtitleStyle);
 
-        // 3. Tiêu đề cột
+        // 3. Tiêu đề cột (Bỏ cột Ghi Chú)
         String[] headers = {
                 "STT", "Mã Giao Dịch", "Mã Đơn Đặt", "Sân Bóng",
                 "Khách Hàng", "Số Điện Thoại", "Loại Giao Dịch", "Phương Thức",
                 "Số Tiền", "Trạng Thái", "Mã Đối Soát", "Người Xử Lý",
-                "Thời Gian Tạo", "Ghi Chú"
+                "Thời Gian Tạo"
         };
 
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
@@ -367,11 +367,6 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             cellTime.setCellValue(txn.getCreatedAt() != null ? txn.getCreatedAt().format(DATE_TIME_FORMATTER) : "");
             cellTime.setCellStyle(cellCenter);
 
-            // Ghi Chú
-            Cell cellNote = row.createCell(13);
-            cellNote.setCellValue(txn.getNote() != null ? txn.getNote() : "");
-            cellNote.setCellStyle(cellLeft);
-
             currentRowIdx++;
         }
 
@@ -400,9 +395,12 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         // 7. Auto size các cột (Cột STT để độ rộng cố định gọn gàng)
         sheet.setColumnWidth(0, 1800); // Khoảng 7 ký tự, vừa vặn cho "STT" và số thứ tự
 
+        // Giới hạn trần tối đa 15000 (khoảng 58 ký tự) để tránh lỗi vượt ngưỡng 255 ký tự (65280) của Excel trên môi trường Linux/Render
+        int maxColumnWidth = 15000;
         for (int i = 1; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.max(sheet.getColumnWidth(i) + 1200, 3200));
+            int calculatedWidth = Math.max(sheet.getColumnWidth(i) + 1200, 3200);
+            sheet.setColumnWidth(i, Math.min(calculatedWidth, maxColumnWidth));
         }
     }
 

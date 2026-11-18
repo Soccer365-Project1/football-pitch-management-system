@@ -889,12 +889,24 @@ class BookingServiceTest {
     @Test
     @DisplayName("checkInBooking - Thất bại khi thời gian hiện tại đã qua endTime ca đá")
     void checkInBooking_Fails_WhenPastEndTime() {
+        LocalTime now = LocalTime.now();
+        LocalTime startTime;
+        LocalTime endTime;
+        if (now.isAfter(LocalTime.of(0, 2))) {
+            startTime = now.minusMinutes(2);
+            endTime = now.minusMinutes(1);
+        } else {
+            long nanos = now.toNanoOfDay();
+            startTime = LocalTime.ofNanoOfDay(Math.max(0, nanos / 3));
+            endTime = LocalTime.ofNanoOfDay(Math.max(1, (nanos * 2) / 3));
+        }
+
         Booking booking = Booking.builder()
                 .bookingCode("#B100")
                 .status(BookingStatus.CONFIRMED)
                 .bookingDate(LocalDate.now())
-                .startTimeSnapshot(LocalTime.now().minusHours(2))
-                .endTimeSnapshot(LocalTime.now().minusHours(1))
+                .startTimeSnapshot(startTime)
+                .endTimeSnapshot(endTime)
                 .customer(user)
                 .build();
         booking.setId(100L);
@@ -912,12 +924,16 @@ class BookingServiceTest {
     @Test
     @DisplayName("checkInBooking - Thành công khi thời gian hiện tại nằm trong khung giờ ca đá")
     void checkInBooking_Success_WhenWithinTime() {
+        LocalTime now = LocalTime.now();
+        LocalTime startTime = now.isAfter(LocalTime.of(0, 1)) ? now.minusMinutes(1) : LocalTime.of(0, 0, 0);
+        LocalTime endTime = now.isBefore(LocalTime.of(23, 58)) ? now.plusMinutes(1) : LocalTime.of(23, 59, 59);
+
         Booking booking = Booking.builder()
                 .bookingCode("#B101")
                 .status(BookingStatus.CONFIRMED)
                 .bookingDate(LocalDate.now())
-                .startTimeSnapshot(LocalTime.now().minusMinutes(10))
-                .endTimeSnapshot(LocalTime.now().plusHours(1))
+                .startTimeSnapshot(startTime)
+                .endTimeSnapshot(endTime)
                 .pitch(pitch)
                 .timeSlot(timeSlot)
                 .customer(user)

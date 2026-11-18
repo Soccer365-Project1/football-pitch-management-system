@@ -272,9 +272,11 @@ public class ExcelExportServiceImpl implements ExcelExportService {
             }
         }
 
+        int maxColumnWidth = 15000;
         for (int i = 0; i < 5; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.max(sheet.getColumnWidth(i) + 1200, 4000));
+            int calculatedWidth = Math.max(sheet.getColumnWidth(i) + 1200, 4000);
+            sheet.setColumnWidth(i, Math.min(calculatedWidth, maxColumnWidth));
         }
     }
 
@@ -463,9 +465,11 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         sheet.createFreezePane(0, 3);
 
         // Auto size các cột
+        int maxColumnWidth = 15000;
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.max(sheet.getColumnWidth(i) + 1200, 3500));
+            int calculatedWidth = Math.max(sheet.getColumnWidth(i) + 1200, 3500);
+            sheet.setColumnWidth(i, Math.min(calculatedWidth, maxColumnWidth));
         }
     }
 

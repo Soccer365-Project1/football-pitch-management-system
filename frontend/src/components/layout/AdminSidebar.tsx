@@ -6,7 +6,7 @@ import { showConfirm, showToast } from '../../utils/toast';
 
 interface AdminSidebarProps {
   sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
+  setSidebarOpen: (openOrUpdater: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
@@ -49,22 +49,49 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
       )}
 
       {/* Sidebar */}
-      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`} style={{ width: '250px', flexShrink: 0, backgroundColor: 'var(--color-bg-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <aside 
+        className={`admin-sidebar ${sidebarOpen ? 'open' : 'closed'}`} 
+        style={{ 
+          width: sidebarOpen ? '260px' : '0px', 
+          minWidth: sidebarOpen ? '260px' : '0px',
+          flexShrink: 0, 
+          backgroundColor: 'var(--color-bg-surface)', 
+          borderRight: sidebarOpen ? '1px solid var(--color-border)' : 'none', 
+          display: 'flex', 
+          flexDirection: 'column',
+          overflow: 'hidden',
+          transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, visibility 0.3s ease',
+          visibility: sidebarOpen ? 'visible' : 'hidden',
+          opacity: sidebarOpen ? 1 : 0,
+        }}
+      >
+        <div style={{ width: '260px', minWidth: '260px', boxSizing: 'border-box', padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>Soccer365</h2>
             <p className="text-muted text-sm mt-1">Phần mềm quản lý sân bóng</p>
           </div>
           <button 
-            className="menu-toggle-btn text-muted" 
+            type="button"
+            className="text-muted" 
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              cursor: 'pointer',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: '0.25rem',
+              borderRadius: 'var(--radius-sm)'
+            }}
             onClick={() => setSidebarOpen(false)}
+            title="Đóng / Thu gọn thanh điều hướng"
             aria-label="Đóng thanh điều hướng"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
         </div>
 
-        <nav style={{ padding: '1rem 0', flexGrow: 1 }}>
+        <nav style={{ width: '260px', minWidth: '260px', boxSizing: 'border-box', padding: '1rem 0', flexGrow: 1, overflowY: 'auto' }}>
           {menuItems.map(item => {
             const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
             return (
@@ -77,9 +104,14 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
                   color: isActive ? 'var(--color-primary)' : 'var(--color-text-base)',
                   borderRight: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
                   fontWeight: isActive ? 600 : 500,
+                  whiteSpace: 'nowrap',
                   transition: 'all var(--transition-fast)'
                 }}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
+                    setSidebarOpen(false);
+                  }
+                }}
               >
                 {item.icon} {item.label}
               </Link>
@@ -87,8 +119,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ sidebarOpen, setSidebarOpen
           })}
         </nav>
 
-        <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
-          <button onClick={handleLogoutClick} className="btn w-full cursor-pointer" style={{ justifyContent: 'flex-start', color: 'var(--color-danger)', padding: '0.875rem 1rem', fontSize: '1rem' }}>
+        <div style={{ width: '260px', minWidth: '260px', boxSizing: 'border-box', padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
+          <button onClick={handleLogoutClick} className="btn w-full cursor-pointer" style={{ justifyContent: 'flex-start', color: 'var(--color-danger)', padding: '0.875rem 1rem', fontSize: '1rem', whiteSpace: 'nowrap' }}>
             <LogOut size={20} /> Đăng xuất
           </button>
         </div>

@@ -6,10 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 interface AdminTopbarProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  setSidebarOpen: (open: boolean) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (openOrUpdater: boolean | ((prev: boolean) => boolean)) => void;
 }
 
-const AdminTopbar: React.FC<AdminTopbarProps> = ({ theme, toggleTheme, setSidebarOpen }) => {
+const AdminTopbar: React.FC<AdminTopbarProps> = ({ theme, toggleTheme, sidebarOpen, setSidebarOpen }) => {
   const { user } = useAuth();
 
   const getInitials = (name?: string) => {
@@ -25,10 +26,11 @@ const AdminTopbar: React.FC<AdminTopbarProps> = ({ theme, toggleTheme, setSideba
     <header className="admin-header" style={{ height: '64px', flexShrink: 0, backgroundColor: 'var(--color-bg-surface)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem' }}>
       <div className="flex items-center gap-4">
         <button 
-          className="menu-toggle-btn btn btn-secondary" 
-          style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)' }} 
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Mở thanh điều hướng quản trị"
+          type="button"
+          className="admin-sidebar-toggle-btn" 
+          onClick={() => setSidebarOpen(prev => !prev)}
+          title={sidebarOpen ? "Thu gọn thanh điều hướng bên trái" : "Hiện thanh điều hướng bên trái"}
+          aria-label={sidebarOpen ? "Thu gọn thanh điều hướng bên trái" : "Hiện thanh điều hướng bên trái"}
         >
           <Menu size={20} />
         </button>
