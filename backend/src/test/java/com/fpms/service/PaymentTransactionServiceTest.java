@@ -218,7 +218,7 @@ class PaymentTransactionServiceTest {
 
     @Test
     @DisplayName("exportTransactionsExcel - Thành công tạo mảng byte Excel khi có dữ liệu thỏa mãn")
-    void exportTransactionsExcel_Success() {
+    void exportTransactionsExcel_Success() throws Exception {
         TransactionSearchRequest request = TransactionSearchRequest.builder()
                 .status(TransactionStatus.SUCCESS)
                 .fromDate(LocalDate.of(2026, 11, 1))
@@ -235,6 +235,54 @@ class PaymentTransactionServiceTest {
         // Header bytes của file ZIP / OOXML (.xlsx) bắt đầu bằng 'PK' (0x50, 0x4B)
         assertEquals(0x50, result[0]);
         assertEquals(0x4B, result[1]);
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(result))) {
+            org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheetAt(0);
+            org.apache.poi.ss.usermodel.Row dataRow = sheet.getRow(4);
+            assertEquals(90000.0, dataRow.getCell(8).getNumericCellValue());
+
+            org.apache.poi.ss.usermodel.Row totalRow = sheet.getRow(5);
+            org.apache.poi.ss.usermodel.Cell sumCell = totalRow.getCell(8);
+            assertEquals("SUM(I5:I5)", sumCell.getCellFormula());
+            assertEquals(90000.0, sumCell.getNumericCellValue());
+        }
+    }
+
+    @Test
+    @DisplayName("exportTransactionsExcel - Hoàn cọc (REFUND) mang giá trị âm và được trừ đi trong tổng tiền")
+    void exportTransactionsExcel_RefundDeductedInTotal() throws Exception {
+        TransactionSearchRequest request = TransactionSearchRequest.builder().build();
+
+        PaymentTransaction refundTxn = PaymentTransaction.builder()
+                .id(2L)
+                .transactionCode("TXN_REFUND_001")
+                .booking(mockBooking)
+                .paymentMethod(mockMethod)
+                .amount(BigDecimal.valueOf(25000))
+                .paymentType(PaymentType.REFUND)
+                .status(TransactionStatus.SUCCESS)
+                .createdAt(LocalDateTime.of(2026, 11, 2, 10, 0))
+                .build();
+
+        when(paymentTransactionRepository.findAll(any(Specification.class), any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(mockTxn, refundTxn));
+
+        byte[] result = paymentTransactionService.exportTransactionsExcel(request);
+        assertNotNull(result);
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(result))) {
+            org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheetAt(0);
+            // Dòng 1: Cọc 90,000
+            assertEquals(90000.0, sheet.getRow(4).getCell(8).getNumericCellValue());
+            // Dòng 2: Hoàn cọc -25,000 (mang dấu âm)
+            assertEquals(-25000.0, sheet.getRow(5).getCell(8).getNumericCellValue());
+
+            // Dòng tổng cộng: SUM(I5:I6) = 90,000 - 25,000 = 65,000
+            org.apache.poi.ss.usermodel.Row totalRow = sheet.getRow(6);
+            org.apache.poi.ss.usermodel.Cell sumCell = totalRow.getCell(8);
+            assertEquals("SUM(I5:I6)", sumCell.getCellFormula());
+            assertEquals(65000.0, sumCell.getNumericCellValue());
+        }
     }
 
     @Test

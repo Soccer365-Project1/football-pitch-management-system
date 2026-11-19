@@ -8,7 +8,7 @@
   <meta name="description"
     content="Soccer365 - Nền tảng quản lý và đặt sân bóng đá trực tuyến hàng đầu. Đặt sân dễ dàng, thanh toán tiện lợi và cập nhật lịch tức thì." />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:* ws://localhost:* https://* wss://*; object-src 'none'; base-uri 'self';" />
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:* ws://localhost:* https://* wss://*; frame-src 'self' https://accounts.google.com; object-src 'none'; base-uri 'self';" />
   <title>Soccer365 - Quản Lý & Đặt Sân Bóng Đá</title>
 
   <script>
@@ -27,7 +27,23 @@
     (function () {
       const _origConsoleError = console.error;
       console.error = function (...args) {
-        const msg = args.map(a => (typeof a === 'object' ? (a?.message || JSON.stringify(a)) : String(a))).join(' ');
+        let msg = '';
+        try {
+          msg = args.map(a => {
+            if (typeof a === 'object' && a !== null) {
+              if (a.message) return String(a.message);
+              try {
+                return JSON.stringify(a);
+              } catch {
+                return String(a);
+              }
+            }
+            return String(a);
+          }).join(' ');
+        } catch {
+          msg = '';
+        }
+
         if (
           msg.includes('Could not establish connection') ||
           msg.includes('Receiving end does not exist') ||

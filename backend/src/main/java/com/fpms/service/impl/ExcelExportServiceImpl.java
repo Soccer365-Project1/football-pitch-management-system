@@ -19,6 +19,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +70,10 @@ public class ExcelExportServiceImpl implements ExcelExportService {
 
             // 2. Tạo Sheet 2: Danh sách chi tiết đơn đặt sân
             createBookingDetailSheet(workbook, styles, bookings, filterRequest);
+
+            // Tự động tính toán trước kết quả các công thức
+            XSSFFormulaEvaluator.evaluateAllFormulaCells(workbook);
+            workbook.setForceFormulaRecalculation(true);
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
