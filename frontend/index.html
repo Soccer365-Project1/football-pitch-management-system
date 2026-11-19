@@ -27,7 +27,23 @@
     (function () {
       const _origConsoleError = console.error;
       console.error = function (...args) {
-        const msg = args.map(a => (typeof a === 'object' ? (a?.message || JSON.stringify(a)) : String(a))).join(' ');
+        let msg = '';
+        try {
+          msg = args.map(a => {
+            if (typeof a === 'object' && a !== null) {
+              if (a.message) return String(a.message);
+              try {
+                return JSON.stringify(a);
+              } catch {
+                return String(a);
+              }
+            }
+            return String(a);
+          }).join(' ');
+        } catch {
+          msg = '';
+        }
+
         if (
           msg.includes('Could not establish connection') ||
           msg.includes('Receiving end does not exist') ||
