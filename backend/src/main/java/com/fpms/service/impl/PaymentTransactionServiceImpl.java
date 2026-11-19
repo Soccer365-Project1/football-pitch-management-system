@@ -25,6 +25,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -218,7 +219,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         XSSFCellStyle cellMoney = workbook.createCellStyle();
         cellMoney.setFont(boldFont);
         cellMoney.setAlignment(HorizontalAlignment.RIGHT);
-        cellMoney.setDataFormat(dataFormat.getFormat("#,##0 \"₫\""));
+        cellMoney.setDataFormat(dataFormat.getFormat("#,##0"));
         setAllBorders(cellMoney);
 
         XSSFCellStyle totalLabelStyle = workbook.createCellStyle();
@@ -233,7 +234,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         totalMoneyStyle.setFillForegroundColor(grayColor);
         totalMoneyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         totalMoneyStyle.setAlignment(HorizontalAlignment.RIGHT);
-        totalMoneyStyle.setDataFormat(dataFormat.getFormat("#,##0 \"₫\""));
+        totalMoneyStyle.setDataFormat(dataFormat.getFormat("#,##0"));
         setAllBorders(totalMoneyStyle);
 
         // 1. Tiêu đề chính
@@ -249,11 +250,11 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
                 + " | Tổng số bản ghi: " + transactions.size());
         c1.setCellStyle(subtitleStyle);
 
-        // 3. Tiêu đề cột (Bỏ cột Ghi Chú)
+        // 3. Tiêu đề cột (Bỏ cột Ghi Chú, format tiền tệ rõ ràng theo VNĐ)
         String[] headers = {
                 "STT", "Mã Giao Dịch", "Mã Đơn Đặt", "Sân Bóng",
                 "Khách Hàng", "Số Điện Thoại", "Loại Giao Dịch", "Phương Thức",
-                "Số Tiền", "Trạng Thái", "Mã Đối Soát", "Người Xử Lý",
+                "Số Tiền (VNĐ)", "Trạng Thái", "Mã Đối Soát", "Người Xử Lý",
                 "Thời Gian Tạo"
         };
 
@@ -402,6 +403,10 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             int calculatedWidth = Math.max(sheet.getColumnWidth(i) + 1200, 3200);
             sheet.setColumnWidth(i, Math.min(calculatedWidth, maxColumnWidth));
         }
+
+        // 8. Tự động tính toán trước kết quả các công thức để khi mở file (Excel, Sheets, Viewer) hiển thị ngay giá trị tổng
+        XSSFFormulaEvaluator.evaluateAllFormulaCells(workbook);
+        workbook.setForceFormulaRecalculation(true);
     }
 
     private String formatPaymentType(PaymentType type) {
