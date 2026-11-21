@@ -39,16 +39,16 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
   return (
     <header className="navbar">
       <div className="container flex items-center justify-between" style={{ gap: '0.75rem' }}>
-        <Link to="/" className="font-bold text-2xl flex-shrink-0" style={{ color: 'var(--color-primary)' }}>
+        <Link to="/" className="font-bold text-2xl flex-shrink-0" style={{ color: 'var(--color-primary)' }} aria-label="Soccer365 - Trang chủ hệ thống đặt sân bóng đá">
           Soccer365
         </Link>
         
         {/* Desktop Navigation */}
-        <nav className="customer-desktop-nav hidden md:flex items-center">
+        <nav className="customer-desktop-nav hidden md:flex items-center" aria-label="Điều hướng chính">
           <div className="customer-nav-links flex items-center">
-            <Link to="/" className="font-semibold customer-nav-link">Trang Chủ</Link>
-            <Link to="/book-pitch" className="font-semibold customer-nav-link">Đặt Sân</Link>
-            <Link to="/my-bookings" className="font-semibold customer-nav-link">Đơn Của Tôi</Link>
+            <Link to="/" className="font-semibold customer-nav-link" aria-label="Về trang chủ Soccer365">Trang Chủ</Link>
+            <Link to="/book-pitch" className="font-semibold customer-nav-link" aria-label="Tra cứu lịch và đặt sân bóng đá">Đặt Sân</Link>
+            <Link to="/my-bookings" className="font-semibold customer-nav-link" aria-label="Xem và quản lý đơn đặt sân của tôi">Đơn Của Tôi</Link>
           </div>
           
           <div className="customer-nav-actions flex items-center">
@@ -68,14 +68,20 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
                   to="/profile" 
                   className={`btn ${isProfilePage ? 'btn-primary' : 'btn-secondary'} customer-user-btn flex items-center gap-2 font-semibold flex-shrink-0`} 
                   style={{ height: '38px', justifyContent: 'center' }}
+                  aria-label={`Trang hồ sơ cá nhân của ${user?.fullName || 'người dùng'}`}
                 >
                   {user?.avatarUrl ? (
                     <img 
                       src={user.avatarUrl} 
-                      alt="" 
-                      aria-hidden="true"
-                      style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
+                      alt={user?.fullName ? `Ảnh đại diện của ${user.fullName}` : 'Ảnh đại diện người dùng'} 
+                      width="24"
+                      height="24"
+                      loading="lazy"
+                      style={{ width: '22px', height: '22px', aspectRatio: '1/1', borderRadius: '50%', objectFit: 'cover' }}
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   ) : (
                     <User size={18} aria-hidden="true" />
@@ -130,12 +136,12 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
       {/* Mobile Dropdown */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-surface)' }}>
-          <div className="container flex flex-col gap-3 py-4">
-            <Link to="/" className="font-semibold py-2">Trang Chủ</Link>
-            <Link to="/book-pitch" className="font-semibold py-2">Đặt Sân</Link>
-            <Link to="/my-bookings" className="font-semibold py-2">Đơn Của Tôi</Link>
+          <nav className="container flex flex-col gap-3 py-4" aria-label="Điều hướng trên điện thoại">
+            <Link to="/" className="font-semibold py-2" aria-label="Về trang chủ Soccer365">Trang Chủ</Link>
+            <Link to="/book-pitch" className="font-semibold py-2" aria-label="Tra cứu lịch và đặt sân bóng đá">Đặt Sân</Link>
+            <Link to="/my-bookings" className="font-semibold py-2" aria-label="Xem danh sách đơn đặt sân của tôi">Đơn Của Tôi</Link>
             {isAuthenticated && (
-              <Link to="/profile" className="font-semibold py-2">
+              <Link to="/profile" className="font-semibold py-2" aria-label="Xem và chỉnh sửa hồ sơ cá nhân">
                 Hồ Sơ ({user?.fullName || 'Của Tôi'})
               </Link>
             )}
@@ -161,7 +167,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ theme, toggleTheme }) =
                 </>
               )}
             </div>
-          </div>
+          </nav>
         </div>
       )}
     </header>

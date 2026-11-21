@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { showToast } from '../utils/toast';
 
 // Biến module-level để trỏ callback tới instance hiện tại của component Login
 let activeGoogleCallback: ((response: { credential: string }) => void) | null = null;
 
 const Login: React.FC = () => {
+  useDocumentTitle('Đăng nhập');
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loginWithGoogle } = useAuth();
@@ -94,16 +96,14 @@ const Login: React.FC = () => {
     }
   };
 
-  // Khởi tạo dịch vụ Google Identity Services
+  // Khởi tạo dịch vụ Google Identity Services và gắn nút Google vào container (phủ trong suốt lên nút custom)
   useEffect(() => {
-    // Fallback Client ID mặc định đồng bộ với cấu hình Backend nếu không có file .env khi deploy
     const googleClientId =
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       '1032558823852-is8rsjbfg1ckpntdajo7emphtpnstha0.apps.googleusercontent.com';
 
     if (!googleClientId || googleClientId.includes('YOUR_GOOGLE_CLIENT_ID')) return;
 
-    // Cập nhật callback cho instance hiện tại của component
     activeGoogleCallback = async (response: { credential: string }) => {
       if (!response.credential) {
         setServerError('Không nhận được mã xác thực từ Google');
@@ -138,7 +138,6 @@ const Login: React.FC = () => {
     const renderGoogleSignIn = () => {
       if (!window.google?.accounts?.id) return;
 
-      // 1. Chỉ gọi initialize duy nhất 1 lần trong toàn bộ window session
       const win = window as any;
       if (!win.__fpms_google_initialized__) {
         window.google.accounts.id.initialize({
@@ -151,7 +150,6 @@ const Login: React.FC = () => {
         win.__fpms_google_initialized__ = true;
       }
 
-      // 2. Render nút Đăng nhập chuẩn của Google vào container của trang Login
       const googleBtnContainer = document.getElementById('googleSignInBtnContainer');
       if (googleBtnContainer) {
         googleBtnContainer.innerHTML = '';
@@ -167,7 +165,6 @@ const Login: React.FC = () => {
       }
     };
 
-    // Nạp động Google GSI SDK khi người dùng vào trang đăng nhập
     if (window.google?.accounts?.id) {
       renderGoogleSignIn();
     } else {
@@ -178,9 +175,7 @@ const Login: React.FC = () => {
         script.src = 'https://accounts.google.com/gsi/client';
         script.async = true;
         script.defer = true;
-        script.onload = () => {
-          renderGoogleSignIn();
-        };
+        script.onload = () => renderGoogleSignIn();
         document.head.appendChild(script);
       } else {
         script.addEventListener('load', () => renderGoogleSignIn());
@@ -191,7 +186,7 @@ const Login: React.FC = () => {
   return (
     <div className="flex justify-center items-start pt-4">
       <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
-        <h2 className="text-2xl font-bold text-center mb-6">Đăng nhập Soccer365</h2>
+        <h1 className="text-2xl font-bold text-center mb-6">Đăng nhập Soccer365</h1>
 
         {/* Thông báo lỗi từ Backend */}
         {serverError && (
@@ -210,8 +205,9 @@ const Login: React.FC = () => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Ô Email hoặc Số điện thoại */}
           <div>
-            <label className="font-semibold text-sm">Email hoặc Số điện thoại</label>
+            <label htmlFor="loginId" className="font-semibold text-sm">Email hoặc Số điện thoại</label>
             <input 
+              id="loginId"
               type="text" 
               name="loginId"
               value={formData.loginId}
@@ -233,9 +229,10 @@ const Login: React.FC = () => {
           
           {/* Ô Mật khẩu */}
           <div>
-            <label className="font-semibold text-sm">Mật khẩu</label>
+            <label htmlFor="loginPassword" className="font-semibold text-sm">Mật khẩu</label>
             <div className="relative mt-2">
               <input 
+                id="loginPassword"
                 type={showPassword ? 'text' : 'password'} 
                 name="password"
                 value={formData.password}
@@ -269,8 +266,9 @@ const Login: React.FC = () => {
           
           {/* Ghi nhớ & Quên mật khẩu */}
           <div className="flex justify-between items-center text-sm">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <label htmlFor="rememberMe" className="flex items-center gap-2 cursor-pointer select-none">
               <input 
+                id="rememberMe"
                 type="checkbox" 
                 name="rememberMe"
                 checked={formData.rememberMe}
@@ -298,25 +296,29 @@ const Login: React.FC = () => {
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--color-border)' }}></div>
           </div>
           
-          {/* Nút Đăng nhập bằng Google: Custom Button UI nhúng logo đa sắc kết hợp lớp phủ Google GSI */}
-          <div className="relative w-full flex justify-center items-center my-1" style={{ minHeight: '44px' }}>
-            {/* 1. Nút Custom UI chuẩn giao diện dự án (Luôn hiển thị 100%, không bao giờ mất layout) */}
-            <button
-              type="button"
-              onClick={() => {
-                if (window.google?.accounts?.id) {
-                  window.google.accounts.id.prompt();
-                } else {
-                  showToast('Đang kết nối tới dịch vụ Google, vui lòng thử lại sau giây lát...', 'info');
-                }
-              }}
-              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border rounded-lg font-medium text-sm transition-all shadow-sm cursor-pointer hover:bg-gray-50"
+          {/* Nút Đăng nhập bằng Google Custom: Phủ Iframe Google trong suốt lên trên để bấm 1 lần mở ngay bảng chọn tài khoản */}
+          <div 
+            className="w-full relative my-1" 
+            style={{ 
+              height: '44px',
+              borderRadius: 'var(--radius-md, 8px)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-bg-surface, #ffffff)',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              overflow: 'hidden'
+            }}
+          >
+            {/* 1. Nút Custom hiển thị giao diện rõ ràng sắc nét */}
+            <div
+              className="w-full h-full flex items-center justify-center gap-3 px-4 font-semibold text-sm pointer-events-none select-none"
               style={{
-                backgroundColor: '#ffffff',
-                borderColor: 'var(--color-border, #e5e7eb)',
-                color: '#374151',
-                height: '44px',
+                color: 'var(--color-text-base, #1f2937)',
               }}
+              aria-hidden="true"
             >
               {/* Google SVG Logo đa sắc */}
               <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
@@ -325,14 +327,28 @@ const Login: React.FC = () => {
                 <path fill="#FBBC05" d="M5.28 14.27a7.22 7.22 0 0 1 0-4.54V6.58H1.25a11.98 11.98 0 0 0 0 10.84l4.03-3.15z"/>
                 <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
               </svg>
-              <span className="font-semibold text-sm">Đăng nhập bằng Google</span>
-            </button>
+              <span>Đăng nhập bằng Google</span>
+            </div>
 
-            {/* 2. Lớp phủ iframe Google GSI (Ẩn trong suốt, phủ lên trên để bắt sự kiện click an toàn) */}
+            {/* 2. Container nút Google Iframe thật: Phủ kín 100% lên nút custom và làm trong suốt (opacity: 0.0001) */}
             <div
               id="googleSignInBtnContainer"
-              className="absolute inset-0 flex justify-center items-center overflow-hidden cursor-pointer"
-              style={{ opacity: 0.0001 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0.0001,
+                cursor: 'pointer',
+                zIndex: 10,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Đăng nhập bằng Google"
+              aria-label="Đăng nhập bằng tài khoản Google"
             ></div>
           </div>
           

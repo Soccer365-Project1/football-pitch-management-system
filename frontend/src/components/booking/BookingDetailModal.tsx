@@ -95,7 +95,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
               </div>
             )}
             <div className="booking-modal-total-row">
-              <span>Còn lại thanh toán tại sân:</span>
+              <span>Còn lại cần thanh toán:</span>
               <span style={{ color: 'var(--color-primary)' }}>
                 {formatPrice(booking.remainingAmount || 0)}
               </span>

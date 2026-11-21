@@ -3,6 +3,7 @@ package com.fpms.controller;
 import com.fpms.common.response.ApiResponse;
 import com.fpms.common.response.PageResponse;
 import com.fpms.dto.request.AdminBookingCancelRequest;
+import com.fpms.dto.request.AdminBookingRejectCancelRequest;
 import com.fpms.dto.request.AdminBookingSearchRequest;
 import com.fpms.dto.request.CollectPaymentRequest;
 import com.fpms.dto.request.CounterBookingCreationRequest;
@@ -73,6 +74,16 @@ public class AdminBookingController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         AdminBookingDetailResponse response = adminBookingService.cancelAndRefundBooking(id, request, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Hủy đơn đặt sân thành công", response));
+    }
+
+    @Operation(summary = "UC011.3: Từ chối yêu cầu hủy đơn của khách", description = "Từ chối yêu cầu hủy đơn, khôi phục trạng thái đơn về CONFIRMED và lưu lý do từ chối")
+    @PostMapping("/{id}/reject-cancellation")
+    public ResponseEntity<ApiResponse<AdminBookingDetailResponse>> rejectCancellation(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminBookingRejectCancelRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        AdminBookingDetailResponse response = adminBookingService.rejectCancellation(id, request, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối yêu cầu hủy đơn thành công", response));
     }
 
     @Operation(summary = "UC011.5: Admin tự hủy đơn đặt sân cho khách", description = "Admin chủ động hủy đơn cho khách (CONFIRMED, WAITING_APPROVAL, WAITING_CANCELLATION) có tùy chọn hoàn cọc hoặc không hoàn cọc")

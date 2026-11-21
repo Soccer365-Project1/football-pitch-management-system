@@ -889,12 +889,24 @@ class BookingServiceTest {
     @Test
     @DisplayName("checkInBooking - Thất bại khi thời gian hiện tại đã qua endTime ca đá")
     void checkInBooking_Fails_WhenPastEndTime() {
+        LocalTime now = LocalTime.now();
+        LocalTime startTime;
+        LocalTime endTime;
+        if (now.isAfter(LocalTime.of(0, 2))) {
+            startTime = now.minusMinutes(2);
+            endTime = now.minusMinutes(1);
+        } else {
+            long nanos = now.toNanoOfDay();
+            startTime = LocalTime.ofNanoOfDay(Math.max(0, nanos / 3));
+            endTime = LocalTime.ofNanoOfDay(Math.max(1, (nanos * 2) / 3));
+        }
+
         Booking booking = Booking.builder()
                 .bookingCode("#B100")
                 .status(BookingStatus.CONFIRMED)
                 .bookingDate(LocalDate.now())
-                .startTimeSnapshot(LocalTime.now().minusHours(2))
-                .endTimeSnapshot(LocalTime.now().minusHours(1))
+                .startTimeSnapshot(startTime)
+                .endTimeSnapshot(endTime)
                 .customer(user)
                 .build();
         booking.setId(100L);
@@ -912,12 +924,16 @@ class BookingServiceTest {
     @Test
     @DisplayName("checkInBooking - Thành công khi thời gian hiện tại nằm trong khung giờ ca đá")
     void checkInBooking_Success_WhenWithinTime() {
+        LocalTime now = LocalTime.now();
+        LocalTime startTime = now.isAfter(LocalTime.of(0, 1)) ? now.minusMinutes(1) : LocalTime.of(0, 0, 0);
+        LocalTime endTime = now.isBefore(LocalTime.of(23, 58)) ? now.plusMinutes(1) : LocalTime.of(23, 59, 59);
+
         Booking booking = Booking.builder()
                 .bookingCode("#B101")
                 .status(BookingStatus.CONFIRMED)
                 .bookingDate(LocalDate.now())
-                .startTimeSnapshot(LocalTime.now().minusMinutes(10))
-                .endTimeSnapshot(LocalTime.now().plusHours(1))
+                .startTimeSnapshot(startTime)
+                .endTimeSnapshot(endTime)
                 .pitch(pitch)
                 .timeSlot(timeSlot)
                 .customer(user)
@@ -936,6 +952,48 @@ class BookingServiceTest {
         assertNotNull(response);
         assertEquals(BookingStatus.IN_PROGRESS, response.getStatus());
         assertEquals(BookingStatus.IN_PROGRESS, booking.getStatus());
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    @DisplayName("checkOutBooking - Thành công cập nhật trạng thái COMPLETED và set remainingAmount = 0")
+    void checkOutBooking_SetsRemainingAmountZero() {
+        Booking booking = Booking.builder()
+                .bookingCode("#B102")
+                .status(BookingStatus.IN_PROGRESS)
+                .bookingDate(LocalDate.now())
+                .remainingAmount(BigDecimal.valueOf(210000))
+                .pitch(pitch)
+                .timeSlot(timeSlot)
+                .customer(user)
+                .build();
+        booking.setId(102L);
+
+        com.fpms.dto.request.BookingCheckOutRequest request = com.fpms.dto.request.BookingCheckOutRequest.builder()
+                .paymentMethod(com.fpms.entity.enums.PaymentMethodCode.CASH)
+                .note("Thu tiền mặt đủ")
+                .build();
+
+        when(bookingRepository.findById(102L)).thenReturn(Optional.of(booking));
+        when(userRepository.findById(userPrincipal.getId())).thenReturn(Optional.of(user));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.fpms.dto.response.BookingResponse mockRes = new com.fpms.dto.response.BookingResponse();
+        mockRes.setStatus(BookingStatus.COMPLETED);
+        mockRes.setRemainingAmount(BigDecimal.ZERO);
+        when(bookingMapper.toBookingResponse(any(Booking.class))).thenReturn(mockRes);
+
+        com.fpms.dto.response.BookingResponse response =
+                bookingService.checkOutBooking(102L, request, userPrincipal);
+
+        assertNotNull(response);
+        assertEquals(BookingStatus.COMPLETED, booking.getStatus());
+        assertEquals(BigDecimal.ZERO, booking.getRemainingAmount());
+
+        org.mockito.ArgumentCaptor<TransactionRequest> txnCaptor = org.mockito.ArgumentCaptor.forClass(TransactionRequest.class);
+        verify(paymentTransactionService, times(1)).createTransaction(txnCaptor.capture());
+        assertEquals(BigDecimal.valueOf(210000), txnCaptor.getValue().getAmount());
+        assertEquals(PaymentType.REMAINING_70, txnCaptor.getValue().getPaymentType());
         verify(bookingRepository, times(1)).save(booking);
     }
 }

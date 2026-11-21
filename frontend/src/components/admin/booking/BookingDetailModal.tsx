@@ -210,12 +210,21 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           </div>
 
           {/* Khối 4: Ghi chú */}
-          {detail.customerNote && (
+          {(detail.customerNote || detail.cancellationReason) && (
             <div className="p-3 rounded-lg text-xs" style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
               <div className="font-semibold text-warning mb-1 flex items-center gap-1">
                 <FileText size={14} /> Ghi chú / Lý do hủy:
               </div>
-              <p className="italic text-base-content">{detail.customerNote}</p>
+              {detail.cancellationReason && (
+                <p className="italic text-base-content mb-1">
+                  <strong>Lý do hủy:</strong> {detail.cancellationReason}
+                </p>
+              )}
+              {detail.customerNote && (
+                <p className="italic text-base-content">
+                  {detail.cancellationReason ? `Ghi chú: ${detail.customerNote}` : detail.customerNote}
+                </p>
+              )}
             </div>
           )}
 

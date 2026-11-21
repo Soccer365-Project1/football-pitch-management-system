@@ -6,6 +6,7 @@ import type {
   AdminBookingSearchParams,
   CounterBookingCreationPayload,
   AdminBookingCancelPayload,
+  AdminBookingRejectCancelPayload,
   CollectPaymentPayload
 } from '../types/adminBooking';
 
@@ -71,6 +72,15 @@ export const adminBookingService = {
    */
   cancelAndRefundBooking: async (id: number, payload: AdminBookingCancelPayload): Promise<AdminBookingDetail> => {
     const response = await api.post<ApiResponse<AdminBookingDetail>>(`/admin/bookings/${id}/cancel-refund`, payload);
+    return response.data.data!;
+  },
+
+  /**
+   * UC011.3: Từ chối yêu cầu hủy đơn, khôi phục trạng thái về CONFIRMED
+   * Endpoint: POST /api/v1/admin/bookings/{id}/reject-cancellation
+   */
+  rejectCancellation: async (id: number, payload: AdminBookingRejectCancelPayload): Promise<AdminBookingDetail> => {
+    const response = await api.post<ApiResponse<AdminBookingDetail>>(`/admin/bookings/${id}/reject-cancellation`, payload);
     return response.data.data!;
   },
 

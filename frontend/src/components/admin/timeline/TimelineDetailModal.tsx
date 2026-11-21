@@ -278,6 +278,7 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
               disabled={isCheckingIn || !checkInCheck.canCheckIn}
               onClick={!checkInCheck.canCheckIn ? undefined : () => onCheckIn(slot)}
               className={`timeline-btn-confirm-checkin ${!checkInCheck.canCheckIn ? 'timeline-btn-disabled' : ''}`}
+              aria-label={`Xác nhận nhận sân cho ca đá ${slot.pitchName || ''} lúc ${slot.startTime || ''}`}
               style={
                 !checkInCheck.canCheckIn
                   ? {
@@ -312,6 +313,7 @@ export const TimelineDetailModal: React.FC<TimelineDetailModalProps> = ({
               type="button"
               onClick={() => onOpenCheckOut(slot)}
               className="timeline-btn-confirm-checkout"
+              aria-label={`Mở modal trả sân và thu tiền cho ca đá ${slot.pitchName || ''}`}
             >
               <Square size={12} className="fill-current" />
               <span>Trả sân & Thanh toán</span>

@@ -12,7 +12,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentReturnResponse {
-    private String status; // SUCCESS, CANCELLED, FAILED, INVALID_SIGNATURE
+    private String status; // SUCCESS, CANCELLED, REMAINING_CANCELLED, PENDING_HOLD, FAILED, INVALID_SIGNATURE
+    private String paymentType; // DEPOSIT_30, REMAINING_70
     private String bookingCode;
     private Long bookingId;
     private BigDecimal amount;

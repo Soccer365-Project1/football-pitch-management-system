@@ -485,7 +485,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                     style={{
                       fontWeight: 600,
                       fontSize: '0.95rem',
-                      color: type === 'PEAK' ? '#d97706' : 'var(--color-text-base)',
+                      color: type === 'PEAK' ? '#92400e' : 'var(--color-text-base)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.25rem',
@@ -503,7 +503,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                       gap: '0.2rem',
                       opacity: type === 'PEAK' ? 1 : 0.6,
                       backgroundColor: type === 'PEAK' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(107, 114, 128, 0.1)',
-                      color: type === 'PEAK' ? '#d97706' : 'var(--color-text-muted)',
+                      color: type === 'PEAK' ? '#78350f' : 'var(--color-text-muted)',
                     }}
                   >
                     {type === 'PEAK' && <Check size={12} />} Cao điểm
