@@ -225,6 +225,7 @@ export const TimelineCheckOutModal: React.FC<TimelineCheckOutModalProps> = ({
               type="submit"
               disabled={isCheckingOut}
               className="timeline-btn-confirm-checkout"
+              aria-label={`Xác nhận thu nốt 70% tiền sân ${formatPrice(remainingAmount)} và kết thúc ca đá`}
             >
               {isCheckingOut ? (
                 <>

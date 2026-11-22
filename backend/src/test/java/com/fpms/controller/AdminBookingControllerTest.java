@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fpms.common.response.PageResponse;
 import com.fpms.dto.request.AdminBookingCancelRequest;
+import com.fpms.dto.request.AdminBookingRejectCancelRequest;
 import com.fpms.dto.request.AdminBookingSearchRequest;
 import com.fpms.dto.request.CollectPaymentRequest;
 import com.fpms.dto.request.CounterBookingCreationRequest;
@@ -226,5 +227,37 @@ class AdminBookingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/bookings/{id}/reject-cancellation: Từ chối yêu cầu hủy thành công (UC011.3)")
+    void rejectCancellation_Success() throws Exception {
+        sampleDetail.setStatus(BookingStatus.CONFIRMED);
+        AdminBookingRejectCancelRequest request = AdminBookingRejectCancelRequest.builder()
+                .rejectionReason("Khách báo hủy trước giờ đá dưới 24h, sân đã chuẩn bị")
+                .build();
+
+        when(adminBookingService.rejectCancellation(eq(1L), any(AdminBookingRejectCancelRequest.class), any()))
+                .thenReturn(sampleDetail);
+
+        mockMvc.perform(post("/api/v1/admin/bookings/1/reject-cancellation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/bookings/{id}/reject-cancellation: Ném lỗi khi lý do từ chối dưới 5 ký tự")
+    void rejectCancellation_InvalidReason_ReturnsBadRequest() throws Exception {
+        AdminBookingRejectCancelRequest request = AdminBookingRejectCancelRequest.builder()
+                .rejectionReason("123") // < 5 ký tự
+                .build();
+
+        mockMvc.perform(post("/api/v1/admin/bookings/1/reject-cancellation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }

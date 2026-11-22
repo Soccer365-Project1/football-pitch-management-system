@@ -13,7 +13,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "payment_transactions")
+@Table(
+    name = "payment_transactions",
+    indexes = {
+        @Index(name = "idx_transactions_created_method_status", columnList = "created_at, payment_method_id, status"),
+        @Index(name = "idx_transactions_booking_type_status", columnList = "booking_id, payment_type, status")
+    }
+)
 public class PaymentTransaction {
 
     @Id

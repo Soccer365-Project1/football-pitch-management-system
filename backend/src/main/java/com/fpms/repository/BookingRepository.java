@@ -47,10 +47,49 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     java.util.Optional<Booking> findByIdAndCustomerIdAndIsDeletedFalse(Long id, Long customerId);
     // ==================== BÁO CÁO THỐNG KÊ (REPORTS & ANALYTICS) ====================
 
-    @Query("SELECT COALESCE(SUM(COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)), 0) FROM Booking b " +
+    /**
+     * Gộp tính tổng doanh thu (SUM) và đếm số lượng đơn (COUNT) theo từng trạng thái (GROUP BY status)
+     * chỉ trong 1 lần quét Composite Index idx_bookings_date_status.
+     * Mỗi dòng trả về Object[]: [0] = BookingStatus, [1] = Long (count), [2] = BigDecimal (revenue).
+     */
+    @Query("SELECT b.status, COUNT(b), " +
+           "COALESCE(SUM(CASE " +
+           "  WHEN b.status = com.fpms.entity.enums.BookingStatus.CANCELLED THEN COALESCE(b.depositAmount, 0) " +
+           "  ELSE (COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)) END), 0) " +
+           "FROM Booking b " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status = BookingStatus.COMPLETED")
+           "GROUP BY b.status")
+    List<Object[]> getBookingStatsByStatusBetweenDates(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /**
+     * Đếm trực tiếp số lượng khách hàng quay lại (có từ 2 đơn hợp lệ trở lên trong kỳ)
+     * ngay tại CSDL, tránh tải danh sách ID khách hàng lên bộ nhớ JVM.
+     */
+    @Query(value = "SELECT COUNT(*) FROM (" +
+                   "    SELECT b.customer_id " +
+                   "    FROM bookings b " +
+                   "    WHERE b.is_deleted = false " +
+                   "      AND b.customer_id IS NOT NULL " +
+                   "      AND b.booking_date >= :startDate AND b.booking_date <= :endDate " +
+                   "      AND b.status NOT IN ('CANCELLED', 'REFUNDED') " +
+                   "    GROUP BY b.customer_id " +
+                   "    HAVING COUNT(b.id) >= 2" +
+                   ") AS repeat_customers_subquery",
+           nativeQuery = true)
+    long countRepeatCustomersBetweenDates(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT COALESCE(SUM(CASE " +
+           "  WHEN b.status = com.fpms.entity.enums.BookingStatus.CANCELLED THEN COALESCE(b.depositAmount, 0) " +
+           "  ELSE (COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)) END), 0) FROM Booking b " +
+           "WHERE b.isDeleted = false " +
+           "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
+           "AND (b.status = com.fpms.entity.enums.BookingStatus.COMPLETED " +
+           "     OR (b.status = com.fpms.entity.enums.BookingStatus.CANCELLED AND b.depositAmount > 0))")
     java.math.BigDecimal sumRevenueBetweenDates(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
@@ -63,10 +102,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT b.bookingDate, COALESCE(SUM(COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)), 0), COUNT(b) FROM Booking b " +
+    @Query("SELECT b.bookingDate, " +
+           "COALESCE(SUM(CASE " +
+           "  WHEN b.status = com.fpms.entity.enums.BookingStatus.CANCELLED THEN COALESCE(b.depositAmount, 0) " +
+           "  ELSE (COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)) END), 0), " +
+           "COUNT(b) FROM Booking b " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status = BookingStatus.COMPLETED " +
+           "AND (b.status = com.fpms.entity.enums.BookingStatus.COMPLETED " +
+           "     OR (b.status = com.fpms.entity.enums.BookingStatus.CANCELLED AND b.depositAmount > 0)) " +
            "GROUP BY b.bookingDate " +
            "ORDER BY b.bookingDate ASC")
     List<Object[]> getDailyRevenueBetweenDates(
@@ -82,13 +126,18 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT pt.id, pt.name, COALESCE(SUM(COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)), 0), COUNT(b) " +
+    @Query("SELECT pt.id, pt.name, " +
+           "COALESCE(SUM(CASE " +
+           "  WHEN b.status = com.fpms.entity.enums.BookingStatus.CANCELLED THEN COALESCE(b.depositAmount, 0) " +
+           "  ELSE (COALESCE(b.totalPitchAmount, 0) + COALESCE(b.additionalFee, 0)) END), 0), " +
+           "COUNT(b) " +
            "FROM Booking b " +
            "JOIN b.pitch p " +
            "JOIN p.pitchType pt " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status = BookingStatus.COMPLETED " +
+           "AND (b.status = com.fpms.entity.enums.BookingStatus.COMPLETED " +
+           "     OR (b.status = com.fpms.entity.enums.BookingStatus.CANCELLED AND b.depositAmount > 0)) " +
            "GROUP BY pt.id, pt.name")
     List<Object[]> getRevenueByPitchTypeBetweenDates(
             @Param("startDate") LocalDate startDate,
@@ -121,7 +170,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
            "JOIN FETCH b.timeSlot ts " +
            "WHERE b.isDeleted = false " +
            "AND b.bookingDate >= :startDate AND b.bookingDate <= :endDate " +
-           "AND b.status = BookingStatus.COMPLETED " +
            "ORDER BY b.bookingDate DESC, b.createdAt DESC")
     List<Booking> findBookingsForReportExport(
             @Param("startDate") LocalDate startDate,

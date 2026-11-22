@@ -14,12 +14,14 @@ import type { Pitch } from '../../types/pitch.ts';
 import type { AdminTimelineSlotResponse } from '../../types/adminTimeline.ts';
 import { TimelineDetailModal, TimelineCheckOutModal, canCheckInSlot, isSlotPastEndTime } from '../../components/admin/timeline/index.ts';
 import { showToast, showAlert, showConfirmHtml } from '../../utils/toast.ts';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle.ts';
 
 const getLocalDateString = (d: Date = new Date()) => {
   return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 };
 
 const AdminTimeline: React.FC = () => {
+  useDocumentTitle('Timeline lịch sân');
   // 1. Đồng bộ Ngày & Bộ lọc loại sân với URL query params (searchParams)
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -311,6 +313,7 @@ const AdminTimeline: React.FC = () => {
                                     disabled={isPast}
                                     onClick={isPast ? undefined : () => handleCheckIn(slotData!)}
                                     className={`timeline-btn-checkin ${isPast ? 'timeline-btn-disabled' : ''}`}
+                                    aria-label={`Xác nhận nhận sân cho đơn #${slotData?.bookingCode || slotData?.bookingId} sân ${pitch.name}`}
                                     style={
                                       isPast
                                         ? {
@@ -342,6 +345,7 @@ const AdminTimeline: React.FC = () => {
                                   type="button"
                                   onClick={() => setCheckOutSlot(slotData || null)}
                                   className="timeline-btn-checkout"
+                                  aria-label={`Trả sân và thanh toán cho đơn #${slotData?.bookingCode || slotData?.bookingId} sân ${pitch.name}`}
                                   title={`Đơn #${slotData?.bookingCode || slotData?.bookingId} - Đang sử dụng. Bấm để trả sân & thanh toán`}
                                 >
                                   <Square size={10} className="fill-current" />

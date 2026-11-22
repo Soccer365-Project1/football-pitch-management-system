@@ -1,48 +1,81 @@
 import { useEffect, useState } from 'react';
 import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { useQueryClient } from '@tanstack/react-query';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Avoid mixed content if loaded via HTTPS
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return `https://${window.location.hostname}:8080`;
+  }
+  return 'http://localhost:8080';
+};
 
-export const useScheduleWebSocket = (selectedDate?: string) => {
+const getBrokerUrl = () => {
+  const socketUrl = getSocketUrl();
+  const wsProto = socketUrl.startsWith('https') ? 'wss:' : 'ws:';
+  const host = socketUrl.replace(/^https?:\/\//, '');
+  return `${wsProto}//${host}/ws`;
+};
+
+export const useScheduleWebSocket = (_selectedDate?: string) => {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${SOCKET_URL}/ws`),
-      onConnect: () => {
-        setIsConnected(true);
-        console.log('Connected to WebSocket');
+    let client: Client | null = null;
 
-        // Subscribe to schedule topic
-        client.subscribe('/topic/schedule', (message) => {
-          console.log('Received WebSocket message:', message.body);
+    try {
+      client = new Client({
+        brokerURL: getBrokerUrl(),
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+        debug: () => {
+          // Disable verbose STOMP debug traces to keep browser console clean
+        },
+        onConnect: () => {
+          setIsConnected(true);
 
-          // Invalidate the schedule grid & bookings cache to refetch
-          queryClient.invalidateQueries({ queryKey: ['scheduleGrid'] });
-          queryClient.invalidateQueries({ queryKey: ['pitches'] });
-          queryClient.invalidateQueries({ queryKey: ['myBookings'] });
-          queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
-        });
-      },
-      onStompError: (frame) => {
-        console.error('Broker reported error: ' + frame.headers['message']);
-        console.error('Additional details: ' + frame.body);
-      },
-      onDisconnect: () => {
-        setIsConnected(false);
-        console.log('Disconnected from WebSocket');
-      }
-    });
+          // Subscribe to schedule topic for real-time booking updates
+          client?.subscribe('/topic/schedule', () => {
+            // Invalidate cache to refetch latest status
+            queryClient.invalidateQueries({ queryKey: ['scheduleGrid'] });
+            queryClient.invalidateQueries({ queryKey: ['pitches'] });
+            queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+            queryClient.invalidateQueries({ queryKey: ['adminTimeline'] });
+          });
+        },
+        onStompError: (frame) => {
+          // Log as info/warning to prevent red console errors during server reconnects
+          console.warn('STOMP connection notice:', frame.headers?.message || 'Server notice');
+        },
+        onWebSocketClose: () => {
+          setIsConnected(false);
+        },
+        onDisconnect: () => {
+          setIsConnected(false);
+        },
+      });
 
-    client.activate();
+      client.activate();
+    } catch {
+      // Graceful fallback if WebSocket is blocked or unsupported in current environment
+      setIsConnected(false);
+    }
 
     return () => {
-      client.deactivate();
+      try {
+        if (client && client.active) {
+          client.deactivate();
+        }
+      } catch {
+        // Safe teardown
+      }
     };
-  }, [queryClient, selectedDate]);
+  }, [queryClient]);
 
   return { isConnected };
 };

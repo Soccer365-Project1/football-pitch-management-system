@@ -172,14 +172,15 @@ class ExcelExportServiceTest {
             assertEquals(300000.0, dataRow.getCell(8).getNumericCellValue()); // Tiền sân
             assertEquals(90000.0, dataRow.getCell(9).getNumericCellValue());  // Tiền cọc 30%
             assertEquals(210000.0, dataRow.getCell(10).getNumericCellValue()); // Tiền còn lại 70%
-            assertEquals(20000.0, dataRow.getCell(11).getNumericCellValue()); // Phụ phí
-            assertEquals(320000.0, dataRow.getCell(12).getNumericCellValue()); // Tổng tiền = 300k + 20k
+            assertEquals(300000.0, dataRow.getCell(11).getNumericCellValue()); // Tổng thực thu = 300k
+            assertEquals("Hoàn thành", dataRow.getCell(12).getStringCellValue()); // Trạng thái đơn
 
             // Row 4 là Row Tổng Cộng có công thức SUM
             Row totalRow = detailSheet.getRow(4);
             assertNotNull(totalRow);
             assertTrue(totalRow.getCell(0).getStringCellValue().contains("TỔNG CỘNG"));
             assertEquals("SUM(I4:I4)", totalRow.getCell(8).getCellFormula());
+            assertEquals("SUM(L4:L4)", totalRow.getCell(11).getCellFormula());
         }
     }
 

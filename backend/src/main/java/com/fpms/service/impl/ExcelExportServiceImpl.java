@@ -19,6 +19,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +70,10 @@ public class ExcelExportServiceImpl implements ExcelExportService {
 
             // 2. Tạo Sheet 2: Danh sách chi tiết đơn đặt sân
             createBookingDetailSheet(workbook, styles, bookings, filterRequest);
+
+            // Tự động tính toán trước kết quả các công thức
+            XSSFFormulaEvaluator.evaluateAllFormulaCells(workbook);
+            workbook.setForceFormulaRecalculation(true);
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
@@ -175,9 +180,10 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         cBookings.setCellValue(summary.getTotalBookings() != null ? summary.getTotalBookings() : 0);
         cBookings.setCellStyle(styles.centerStyle);
         Cell cBookingsDetail = r2.createCell(3);
-        cBookingsDetail.setCellValue(String.format("Hoàn thành: %d | Đã xác nhận: %d",
+        cBookingsDetail.setCellValue(String.format("Hoàn thành: %d | Đang đá/chờ: %d | Đã hủy: %d",
                 summary.getCompletedBookings() != null ? summary.getCompletedBookings() : 0,
-                summary.getConfirmedBookings() != null ? summary.getConfirmedBookings() : 0));
+                summary.getConfirmedBookings() != null ? summary.getConfirmedBookings() : 0,
+                summary.getCancelledBookings() != null ? summary.getCancelledBookings() : 0));
         cBookingsDetail.setCellStyle(styles.textStyle);
 
         // 3. Tỉ lệ hủy đơn
@@ -271,9 +277,11 @@ public class ExcelExportServiceImpl implements ExcelExportService {
             }
         }
 
+        int maxColumnWidth = 15000;
         for (int i = 0; i < 5; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.max(sheet.getColumnWidth(i) + 1200, 4000));
+            int calculatedWidth = Math.max(sheet.getColumnWidth(i) + 1200, 4000);
+            sheet.setColumnWidth(i, Math.min(calculatedWidth, maxColumnWidth));
         }
     }
 
@@ -306,8 +314,8 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         String[] headers = {
                 "STT", "Mã Đơn", "Tên Khách Hàng", "Số Điện Thoại",
                 "Tên Sân", "Loại Sân", "Ngày Đá", "Khung Giờ",
-                "Tiền Sân", "Tiền Cọc (30%)", "Tiền Còn Lại (70%)", "Phụ Phí",
-                "Tổng Tiền", "Trạng Thái Đơn", "Thời Gian Tạo"
+                "Tiền Sân", "Tiền Cọc (30%)", "Tiền Còn Lại (70%)",
+                "Tổng Thực Thu", "Trạng Thái Đơn", "Thời Gian Tạo"
         };
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
@@ -392,25 +400,29 @@ public class ExcelExportServiceImpl implements ExcelExportService {
             cRem.setCellValue(remaining);
             cRem.setCellStyle(styles.moneyStyle);
 
-            // 11: Phụ phí
-            double fee = booking.getAdditionalFee() != null ? booking.getAdditionalFee().doubleValue() : 0.0;
-            Cell cFee = row.createCell(11);
-            cFee.setCellValue(fee);
-            cFee.setCellStyle(styles.moneyStyle);
-
-            // 12: Tổng tiền (Tiền sân + Phụ phí)
-            double total = pitchAmount + fee;
-            Cell cTot = row.createCell(12);
+            // 11: Tổng thực thu:
+            // - Đơn COMPLETED: thu đủ 100% tiền sân
+            // - Đơn CANCELLED: thu khoản cọc 30% bị phạt (không hoàn tiền)
+            // - Đơn REFUNDED hoặc khác: thực thu = 0
+            double total;
+            if (booking.getStatus() == BookingStatus.COMPLETED) {
+                total = pitchAmount;
+            } else if (booking.getStatus() == BookingStatus.CANCELLED) {
+                total = deposit;
+            } else {
+                total = 0.0;
+            }
+            Cell cTot = row.createCell(11);
             cTot.setCellValue(total);
             cTot.setCellStyle(styles.moneyStyle);
 
-            // 13: Trạng thái đơn (Tiếng Việt)
-            Cell cStatus = row.createCell(13);
+            // 12: Trạng thái đơn (Tiếng Việt)
+            Cell cStatus = row.createCell(12);
             cStatus.setCellValue(formatBookingStatus(booking.getStatus()));
             cStatus.setCellStyle(styles.centerStyle);
 
-            // 14: Ngày tạo
-            Cell cCreated = row.createCell(14);
+            // 13: Ngày tạo
+            Cell cCreated = row.createCell(13);
             cCreated.setCellValue(booking.getCreatedAt() != null ? booking.getCreatedAt().format(DATE_TIME_FORMATTER) : "-");
             cCreated.setCellStyle(styles.centerStyle);
         }
@@ -444,28 +456,25 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         sumRem.setCellFormula(String.format("SUM(K%d:K%d)", startDataRow, endDataRow));
         sumRem.setCellStyle(styles.totalMoneyStyle);
 
-        // Cột 11: SUM Phụ phí (L)
-        Cell sumFee = totalRow.createCell(11);
-        sumFee.setCellFormula(String.format("SUM(L%d:L%d)", startDataRow, endDataRow));
-        sumFee.setCellStyle(styles.totalMoneyStyle);
-
-        // Cột 12: SUM Tổng tiền (M)
-        Cell sumTotal = totalRow.createCell(12);
-        sumTotal.setCellFormula(String.format("SUM(M%d:M%d)", startDataRow, endDataRow));
+        // Cột 11: SUM Tổng thực thu (L)
+        Cell sumTotal = totalRow.createCell(11);
+        sumTotal.setCellFormula(String.format("SUM(L%d:L%d)", startDataRow, endDataRow));
         sumTotal.setCellStyle(styles.totalMoneyStyle);
 
+        Cell empty12 = totalRow.createCell(12);
+        empty12.setCellStyle(styles.totalLabelStyle);
         Cell empty13 = totalRow.createCell(13);
         empty13.setCellStyle(styles.totalLabelStyle);
-        Cell empty14 = totalRow.createCell(14);
-        empty14.setCellStyle(styles.totalLabelStyle);
 
         // Cố định hàng tiêu đề bảng
         sheet.createFreezePane(0, 3);
 
         // Auto size các cột
+        int maxColumnWidth = 15000;
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
-            sheet.setColumnWidth(i, Math.max(sheet.getColumnWidth(i) + 1200, 3500));
+            int calculatedWidth = Math.max(sheet.getColumnWidth(i) + 1200, 3500);
+            sheet.setColumnWidth(i, Math.min(calculatedWidth, maxColumnWidth));
         }
     }
 

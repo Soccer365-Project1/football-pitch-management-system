@@ -16,8 +16,10 @@ import { ApproveBookingModal } from '../../components/admin/booking/ApproveBooki
 import { CancelRefundModal } from '../../components/admin/booking/CancelRefundModal';
 import { CollectPaymentModal } from '../../components/admin/booking/CollectPaymentModal';
 import { AdminCancelModal } from '../../components/admin/booking/AdminCancelModal';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const AdminBookings: React.FC = () => {
+  useDocumentTitle('Quản lý đơn đặt sân');
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   // States
@@ -133,8 +135,8 @@ const AdminBookings: React.FC = () => {
       case 'COMPLETED':
         return (
           <span
-            className="badge"
-            style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-secondary)' }}
+            className="badge font-semibold"
+            style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#1d4ed8' }}
           >
             Đã hoàn thành
           </span>
@@ -167,8 +169,9 @@ const AdminBookings: React.FC = () => {
         {/* Toolbar chuẩn SRS */}
         <div className="flex flex-wrap items-center justify-between mb-6 gap-4" style={{ flexShrink: 0 }}>
           <div className="flex flex-wrap gap-4 items-center">
-            <h2 className="text-xl font-semibold mr-2 whitespace-nowrap">Danh sách Đơn</h2>
+            <h1 className="text-xl font-semibold mr-2 whitespace-nowrap">Danh sách Đơn</h1>
             <select
+              aria-label="Lọc theo trạng thái đơn"
               className="btn btn-secondary"
               style={{
                 height: '42px',
@@ -204,6 +207,7 @@ const AdminBookings: React.FC = () => {
               <Search size={16} className="text-muted" />
               <input
                 type="text"
+                aria-label="Tìm mã đơn, tên khách"
                 placeholder="Tìm mã đơn, tên khách..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -219,6 +223,7 @@ const AdminBookings: React.FC = () => {
             </div>
 
             <select
+              aria-label="Lọc theo loại sân"
               className="btn btn-secondary"
               style={{
                 height: '42px',
@@ -262,6 +267,7 @@ const AdminBookings: React.FC = () => {
               <input
                 ref={dateInputRef}
                 type="date"
+                aria-label="Chọn ngày xem đơn đặt"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
@@ -277,6 +283,7 @@ const AdminBookings: React.FC = () => {
               {selectedDate && (
                 <button
                   type="button"
+                  aria-label="Xóa bộ lọc ngày"
                   className="text-muted hover:text-danger ml-1"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -435,24 +442,13 @@ const AdminBookings: React.FC = () => {
                             </>
                           )}
                           {booking.status === 'CONFIRMED' && (
-                            <>
-                              {remaining > 0 && (
-                                <button
-                                  className="btn btn-primary whitespace-nowrap"
-                                  style={{ backgroundColor: 'var(--color-secondary)' }}
-                                  onClick={() => setCheckoutBooking(booking)}
-                                >
-                                  Thu tiền
-                                </button>
-                              )}
-                              <button
-                                className="btn btn-secondary text-danger whitespace-nowrap"
-                                onClick={() => setAdminCancelBooking(booking)}
-                                title="Admin tự hủy đơn cho khách"
-                              >
-                                Hủy đơn
-                              </button>
-                            </>
+                            <button
+                              className="btn btn-secondary text-danger whitespace-nowrap"
+                              onClick={() => setAdminCancelBooking(booking)}
+                              title="Admin tự hủy đơn cho khách"
+                            >
+                              Hủy đơn
+                            </button>
                           )}
                           {booking.status === 'IN_PROGRESS' && (
                             <button

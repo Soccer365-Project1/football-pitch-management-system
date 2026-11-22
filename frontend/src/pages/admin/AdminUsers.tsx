@@ -18,6 +18,7 @@ import type { AdminUserItem, RoleName, UserStatus } from '../../types/adminUser'
 import { ModalOverlay } from '../../components/common/ModalOverlay';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../../utils/toast';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 interface FormErrors {
   fullName?: string;
@@ -49,6 +50,7 @@ const PASSWORD_REGEX = /^(?=.{6,64}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\
  * 7. Phân trang chuẩn Backend đặt ở góc phải chân card.
  */
 const AdminUsers: React.FC = () => {
+  useDocumentTitle('Quản lý người dùng');
   const { user: currentAdmin } = useAuth();
   const isCurrentUserAdmin = currentAdmin?.role === 'ROLE_ADMIN';
   const isCurrentUserStaff = currentAdmin?.role === 'ROLE_STAFF';
@@ -344,6 +346,7 @@ const AdminUsers: React.FC = () => {
             <Search size={16} className="text-muted shrink-0" />
             <input
               type="text"
+              aria-label="Tìm theo tên, email, số điện thoại"
               placeholder="Tìm theo tên, email, sđt..."
               value={searchTerm}
               onChange={(e) => {
@@ -365,6 +368,7 @@ const AdminUsers: React.FC = () => {
           <div className="flex gap-4 items-center flex-wrap">
             {/* Dropdown lọc Vai trò */}
             <select
+              aria-label="Lọc theo vai trò"
               value={roleFilter}
               onChange={(e) => {
                 setRoleFilter(e.target.value);
@@ -388,6 +392,7 @@ const AdminUsers: React.FC = () => {
 
             {/* Dropdown lọc Trạng thái */}
             <select
+              aria-label="Lọc theo trạng thái"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -515,16 +520,16 @@ const AdminUsers: React.FC = () => {
                       <td className="p-4" style={{ whiteSpace: 'nowrap' }}>
                         {isAdmin && (
                           <span
-                            className="badge flex items-center gap-1 inline-flex"
-                            style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: 'var(--color-danger)' }}
+                            className="badge flex items-center gap-1 inline-flex font-semibold"
+                            style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#b91c1c' }}
                           >
                             <ShieldAlert size={14} /> Quản trị viên
                           </span>
                         )}
                         {isStaff && (
                           <span
-                            className="badge flex items-center gap-1 inline-flex"
-                            style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-secondary)' }}
+                            className="badge flex items-center gap-1 inline-flex font-semibold"
+                            style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#1d4ed8' }}
                           >
                             <Shield size={14} /> Nhân viên
                           </span>
@@ -694,8 +699,10 @@ const AdminUsers: React.FC = () => {
             <div className="grid gap-4 mb-6" style={{ overflowY: 'auto', paddingRight: '0.5rem' }}>
               {/* Họ và tên */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Họ và Tên *</label>
+                <label htmlFor="addStaffFullName" className="block text-sm font-semibold mb-2">Họ và Tên *</label>
                 <input
+                  id="addStaffFullName"
+                  name="fullName"
                   type="text"
                   className="w-full"
                   placeholder="Nhập họ và tên nhân viên..."
@@ -719,8 +726,10 @@ const AdminUsers: React.FC = () => {
 
               {/* Số điện thoại */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Số điện thoại *</label>
+                <label htmlFor="addStaffPhone" className="block text-sm font-semibold mb-2">Số điện thoại *</label>
                 <input
+                  id="addStaffPhone"
+                  name="phoneNumber"
                   type="text"
                   className="w-full"
                   placeholder="VD: 0909123456 (10 chữ số)..."
@@ -744,8 +753,10 @@ const AdminUsers: React.FC = () => {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Email *</label>
+                <label htmlFor="addStaffEmail" className="block text-sm font-semibold mb-2">Email *</label>
                 <input
+                  id="addStaffEmail"
+                  name="email"
                   type="email"
                   className="w-full"
                   placeholder="VD: staff@fpms.com..."
@@ -769,8 +780,9 @@ const AdminUsers: React.FC = () => {
 
               {/* Vai trò */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Vai trò</label>
+                <label htmlFor="addStaffRole" className="block text-sm font-semibold mb-2">Vai trò</label>
                 <input
+                  id="addStaffRole"
                   type="text"
                   className="w-full"
                   value="Nhân viên"
@@ -939,10 +951,12 @@ const AdminUsers: React.FC = () => {
               <div className="grid gap-4 mb-6" style={{ overflowY: 'auto', paddingRight: '0.5rem' }}>
                 {/* Họ và tên */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">
+                  <label htmlFor="editUserFullName" className="block text-sm font-semibold mb-2">
                     Họ và Tên {canEditTargetUser && '*'}
                   </label>
                   <input
+                    id="editUserFullName"
+                    name="fullName"
                     type="text"
                     className="w-full"
                     value={editFullName}
@@ -968,10 +982,12 @@ const AdminUsers: React.FC = () => {
 
                 {/* Số điện thoại */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">
+                  <label htmlFor="editUserPhone" className="block text-sm font-semibold mb-2">
                     Số điện thoại {canEditTargetUser && '*'}
                   </label>
                   <input
+                    id="editUserPhone"
+                    name="phoneNumber"
                     type="text"
                     className="w-full"
                     placeholder="VD: 0912345678"
@@ -998,8 +1014,9 @@ const AdminUsers: React.FC = () => {
 
                 {/* Email (Read-only) */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Email</label>
+                  <label htmlFor="editUserEmail" className="block text-sm font-semibold mb-2">Email</label>
                   <input
+                    id="editUserEmail"
                     type="email"
                     className="w-full"
                     value={viewUser.email}
@@ -1018,8 +1035,9 @@ const AdminUsers: React.FC = () => {
 
                 {/* Vai trò (Read-only, tiếng Việt, không in hoa) */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Vai trò</label>
+                  <label htmlFor="editUserRole" className="block text-sm font-semibold mb-2">Vai trò</label>
                   <input
+                    id="editUserRole"
                     type="text"
                     className="w-full"
                     value={
@@ -1043,8 +1061,9 @@ const AdminUsers: React.FC = () => {
 
                 {/* Trạng thái tài khoản (Read-only) */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Trạng thái tài khoản</label>
+                  <label htmlFor="editUserStatus" className="block text-sm font-semibold mb-2">Trạng thái tài khoản</label>
                   <input
+                    id="editUserStatus"
                     type="text"
                     className="w-full"
                     value={viewUser.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã bị khóa / Thu hồi'}

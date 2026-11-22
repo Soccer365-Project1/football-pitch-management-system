@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, RefreshCw, ArrowLeft, KeyRound, Mail, Lock } from 'lucide-react';
 import { authService } from '../services/authService';
 import { showToast, showAlert } from '../utils/toast';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /**
  * Trang Quên Mật Khẩu (ForgotPassword)
@@ -13,6 +14,7 @@ import { showToast, showAlert } from '../utils/toast';
  * - Bước 3: Sau khi OTP hợp lệ -> Cho phép người dùng nhập mật khẩu mới và xác nhận để hoàn tất đặt lại mật khẩu.
  */
 const ForgotPassword: React.FC = () => {
+  useDocumentTitle('Quên mật khẩu');
   const navigate = useNavigate();
 
   // =========================================================================
@@ -375,11 +377,11 @@ const ForgotPassword: React.FC = () => {
         </div>
 
         {/* Tiêu đề từng bước */}
-        <h2 className="text-2xl font-bold text-center mb-2">
+        <h1 className="text-2xl font-bold text-center mb-2">
           {step === 1 && 'Quên mật khẩu?'}
           {step === 2 && 'Xác thực mã OTP'}
           {step === 3 && 'Tạo mật khẩu mới'}
-        </h2>
+        </h1>
 
         {/* Đoạn mô tả hướng dẫn chi tiết theo ngữ cảnh của từng bước */}
         <p className="text-center text-muted text-sm mb-6">
@@ -422,10 +424,12 @@ const ForgotPassword: React.FC = () => {
           {/* ============================================================ */}
           {step === 1 && (
             <div>
-              <label className="font-semibold text-sm flex items-center gap-1.5">
+              <label htmlFor="forgotEmail" className="font-semibold text-sm flex items-center gap-1.5">
                 <Mail size={16} /> Email đăng ký
               </label>
               <input
+                id="forgotEmail"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => {
@@ -459,7 +463,7 @@ const ForgotPassword: React.FC = () => {
           {step === 2 && (
             <div>
               <div className="flex justify-between items-center">
-                <label className="font-semibold text-sm flex items-center gap-1.5">
+                <label htmlFor="otpCode" className="font-semibold text-sm flex items-center gap-1.5">
                   <KeyRound size={16} /> Mã OTP (6 chữ số)
                 </label>
                 
@@ -484,6 +488,8 @@ const ForgotPassword: React.FC = () => {
 
               {/* Ô input mã OTP 6 số với kiểu dáng nổi bật, căn giữa, dãn ký tự */}
               <input
+                id="otpCode"
+                name="otpCode"
                 type="text"
                 value={otpCode}
                 onChange={(e) => {
@@ -525,11 +531,13 @@ const ForgotPassword: React.FC = () => {
             <>
               {/* Ô nhập mật khẩu mới */}
               <div>
-                <label className="font-semibold text-sm flex items-center gap-1.5">
+                <label htmlFor="resetNewPassword" className="font-semibold text-sm flex items-center gap-1.5">
                   <Lock size={16} /> Mật khẩu mới
                 </label>
                 <div className="relative mt-2">
                   <input
+                    id="resetNewPassword"
+                    name="newPassword"
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => {
@@ -572,11 +580,13 @@ const ForgotPassword: React.FC = () => {
 
               {/* Ô nhập xác nhận mật khẩu mới */}
               <div>
-                <label className="font-semibold text-sm flex items-center gap-1.5">
+                <label htmlFor="resetConfirmPassword" className="font-semibold text-sm flex items-center gap-1.5">
                   <Lock size={16} /> Xác nhận mật khẩu mới
                 </label>
                 <div className="relative mt-2">
                   <input
+                    id="resetConfirmPassword"
+                    name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => {

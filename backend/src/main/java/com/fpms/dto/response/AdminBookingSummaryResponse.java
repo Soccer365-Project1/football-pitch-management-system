@@ -71,6 +71,12 @@ public class AdminBookingSummaryResponse {
     @Schema(description = "Họ tên nhân viên phụ trách/tạo đơn/duyệt đơn", example = "Trần Thị Lễ Tân")
     private String staffName;
 
+    @Schema(description = "Ghi chú của khách hàng khi đặt sân hoặc yêu cầu hủy", example = "Cần chuẩn bị bóng số 5")
+    private String customerNote;
+
+    @Schema(description = "Lý do khách xin hủy đơn", example = "Trời mưa to ngập sân")
+    private String cancellationReason;
+
     @Schema(description = "Thời gian tạo đơn")
     private LocalDateTime createdAt;
 }

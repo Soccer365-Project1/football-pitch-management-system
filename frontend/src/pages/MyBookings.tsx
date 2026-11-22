@@ -16,6 +16,7 @@ import { DateInputWithPicker } from '../components/common/DateInputWithPicker.ts
 import { useMyBookings } from '../hooks/queries/useBookingQueries.ts';
 import { useScheduleWebSocket } from '../hooks/useScheduleWebSocket.ts';
 import { useQueryClient } from '@tanstack/react-query';
+import { useDocumentTitle } from '../hooks/useDocumentTitle.ts';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Tất cả trạng thái' },
@@ -37,7 +38,13 @@ const SEARCH_FIELD_OPTIONS: { value: SearchFieldType; label: string; placeholder
 ];
 
 const MyBookings: React.FC = () => {
+  useDocumentTitle('Lịch sử đặt sân');
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useDocumentTitle(
+    'Đơn Đặt Sân Của Tôi - Quản Lý Lịch Đá | Soccer365',
+    'Xem lịch sử đặt sân bóng đá, trạng thái đơn giữ chỗ, thời gian ca đá và thông tin thanh toán của bạn trên Soccer365.'
+  );
 
   // Đọc trực tiếp các giá trị bộ lọc & phân trang từ URL Search Params (URL-based state)
   const status = searchParams.get('status') || '';
@@ -371,6 +378,7 @@ const MyBookings: React.FC = () => {
 
   return (
     <div className="bookings-page-container">
+      <h1 className="sr-only">Quản Lý Đơn Đặt Sân Của Tôi</h1>
       {/* =========================================================================
           1. BẢN DESKTOP
           ========================================================================= */}
